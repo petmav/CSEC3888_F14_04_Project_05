@@ -24,6 +24,17 @@ Week-13/
 - The weekly meeting minutes template is required every week from Week 2 onward, so a copy is included in each week's `references/` folder.
 - Not every week has published templates yet — Canvas releases some assignment content closer to the due date. Each week's `README.md` notes what's currently available and what's still pending.
 
+## Weekly Roles
+
+XP roles rotate each week. The whole group programs; the listed role-holders take on that responsibility in addition to their normal project work.
+
+| Week | Tracker | Manager | Customer Liaison | Programmer | Tester | Doomsayer |
+|------|---------|---------|------------------|------------|--------|-----------|
+| 2 | Paras | Peter | Sarah | Sapphire, Tasia, Rue, Zach, Hugh | Sapphire | Tasia |
+| 3 | Tasia | Rue | Paras | Sarah, Sapphire, Zach, Peter, Hugh | Sarah | Peter |
+| 4 | Hugh | Paras | Zach | Sarah, Sapphire, Peter, Tasia, Rue | Tasia | Sarah |
+| 5 | Sapphire | Zach | Rue | Sarah, Zach, Hugh, Peter, Tasia | Hugh | Peter |
+
 ## Source
 
 Content mirrored from the "CS Capstone Projects" Canvas course (ID 73598) — Unit Schedule and Assessment Overview pages. Re-check Canvas periodically since later weeks' templates and assignment briefs are published progressively through semester.
