@@ -1,0 +1,12 @@
+# Prettier writes LF and CI runs on Linux, so LF is the only correct
+# in-repo line ending. Without this, a checkout on Windows commits CRLF and
+# `yarn lint` fails on the runner.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "description": "Warns whether a transaction recipient is on Redbelly Network's on-chain KYC permission list before you sign.",
+  "proposedName": "Redbelly Address Check",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/petmav/redbelly-address-check.git"
+  },
+  "source": {
+    "shasum": "g3w0oK4fW0gYUET91tOQJiGbe0S65WTLT8DyZRbDUk4=",
+    "location": {
+      "npm": {
+        "filePath": "dist/bundle.js",
+        "iconPath": "images/icon.svg",
+        "packageName": "redbelly-address-check",
+        "registry": "https://registry.npmjs.org/"
+      }
+    }
+  },
+  "initialPermissions": {
+    "endowment:transaction-insight": {},
+    "endowment:network-access": {},
+    "endowment:page-home": {},
+    "endowment:ethereum-provider": {}
+  },
+  "platformVersion": "10.3.0",
+  "manifestVersion": "0.1"
+}
