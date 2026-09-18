@@ -46,6 +46,7 @@ import {
   perpsService,
   miscService,
   feedbackService,
+  redbellyService,
 } from 'background/service';
 import type { GasAccountServiceStore } from 'background/service/gasAccount';
 import buildinProvider, {
@@ -6693,6 +6694,16 @@ export class WalletController extends BaseController {
   };
 
   parseCustomNetworkTx = customTestnetService.parseTx;
+
+  // Redbelly (FR1-FR5). Every one of these is a read-only chain call against
+  // Redbelly's public RPC endpoints; see background/service/redbelly.ts.
+  getRedbellyVerdict = redbellyService.getVerdict;
+  getRedbellyAddressFacts = redbellyService.getAddressFacts;
+  getRedbellyIsRegistered = redbellyService.getIsRegistered;
+  getRedbellyUsdPerGas = redbellyService.getUsdPerGas;
+  getRedbellyBalance = redbellyService.getBalance;
+  getRedbellyAccountSummaries = redbellyService.getAccountSummaries;
+  clearRedbellyCaches = redbellyService.clearCaches;
 
   hasPrivateKeyInWallet = async (address: string) => {
     let pk: any = null;

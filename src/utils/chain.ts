@@ -4,6 +4,7 @@ import {
   TestnetChain,
 } from '@/background/service/customTestnet';
 import defaultSuppordChain from '@/constant/default-support-chains.json';
+import { withRedbellyChains } from '@/constant/redbelly-chains';
 import eventBus from '@/eventBus';
 import { Chain } from '@debank/common';
 import {
@@ -30,19 +31,33 @@ getMainnetListFromLocal().then((list) => {
 });
 
 const store = {
-  mainnetList: defaultSuppordChain
-    .filter((item) => !item.is_disabled)
-    .map((item) => {
-      return supportedChainToChain(item);
-    }),
+  mainnetList: withRedbellyChains(
+    defaultSuppordChain
+      .filter((item) => !item.is_disabled)
+      .map((item) => {
+        return supportedChainToChain(item);
+      })
+  ),
   testnetList: [] as TestnetChain[],
 };
 
+/**
+ * Single choke point for mainnet chain list writes.
+ *
+ * Redbelly is re-applied on every write rather than only at startup. The
+ * mainnet list is replaced wholesale once an hour from
+ * `static.debank.com/supported_chains.json` (see `syncChain.ts`) and again
+ * from `browser.storage.local` on boot; without this, Redbelly would silently
+ * disappear within the hour. Enforcing it here means no caller can forget.
+ */
 export const updateChainStore = (params: Partial<typeof store>) => {
-  Object.assign(store, params);
+  const next = params.mainnetList
+    ? { ...params, mainnetList: withRedbellyChains(params.mainnetList) }
+    : params;
+  Object.assign(store, next);
   eventBus.emit(EVENTS.broadcastToUI, {
     method: 'syncChainList',
-    params,
+    params: next,
   });
 };
 
