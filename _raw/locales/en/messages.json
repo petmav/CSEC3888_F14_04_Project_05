@@ -342,6 +342,20 @@
         "fromMySeedPhrase": "From my seed phrase",
         "fromMyPrivateKey": "From my private key"
       },
+      "redbelly": {
+        "recipientTitle": "Redbelly KYC",
+        "recipientTip": "Redbelly records identity-verified accounts in an on-chain permission list. This row reports whether the recipient is on that list for this network.",
+        "checking": "Checking",
+        "registered": "Registered",
+        "registeredTip": "This address completed Redbelly identity verification. That confirms someone verified controls it, not that it is the recipient you intended.",
+        "notRegistered": "Not registered",
+        "notRegisteredTip": "This address is not on the Redbelly permission list. Nobody can spend funds sent here, and the transfer cannot be reversed.",
+        "contract": "Contract address",
+        "contractTip": "The permission list covers user accounts, so no identity check applies to a smart contract.",
+        "unknown": "Could not verify",
+        "unknownTip": "The Redbelly node did not answer, so this address was not checked. This is not a confirmation that the address is valid.",
+        "blockedReason": "Recipient is not registered on Redbelly. Funds sent there cannot be spent."
+      },
       "tokenApprove": {
         "title": "Token Approval",
         "approveToken": "Approve token",
@@ -2805,6 +2819,16 @@
         "bridge": "Bridge"
       },
       "assets": {
+        "redbelly": {
+          "title": "Redbelly",
+          "subtitle": "Read directly from a Redbelly node",
+          "kycRegistered": "KYC registered",
+          "kycNotRegistered": "NOT registered",
+          "kycUnknown": "KYC unknown",
+          "kycNotRegisteredTip": "This account has not completed Redbelly identity verification. Redbelly nodes reject transactions from unregistered accounts with error -32603.",
+          "unavailable": "Node did not answer",
+          "unavailableTip": "The Redbelly node could not be reached, so no balance was read. This is not a statement about your funds."
+        },
         "usdValue": "USD VALUE",
         "amount": "AMOUNT",
         "price": "PRICE",

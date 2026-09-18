@@ -431,6 +431,13 @@ export const formatGasCostUsd = (gasCostUsd: BigNumber) => {
   const bn = gasCostUsd!;
   let value;
 
+  // A non-finite cost means the price behind it could not be read. Show
+  // nothing rather than a figure we cannot substantiate: on Redbelly the USD
+  // gas peg is an on-chain contract that can fail to answer (US7).
+  if (!bn || !bn.isFinite()) {
+    return '';
+  }
+
   if (bn.gt(1)) {
     value = bn.toFixed(2);
   } else if (bn.gt(0.0001)) {
@@ -447,6 +454,10 @@ export const formatGasHeaderUsdValue = (
   roundingMode = BigNumber.ROUND_HALF_UP as BigNumber.RoundingMode
 ) => {
   const bnValue = new BigNumber(value);
+  // See formatGasCostUsd: no figure beats an unsubstantiated one (US7).
+  if (!bnValue.isFinite()) {
+    return '';
+  }
   if (bnValue.lt(0)) {
     return `-$${formatNumber(Math.abs(Number(value)))}`;
   }

@@ -14,6 +14,7 @@ import { Table, Col, Row } from './components/Table';
 import * as Values from './components/Values';
 import LogoWithText from './components/LogoWithText';
 import ViewMore from './components/ViewMore';
+import { RedbellyRecipientCheck } from './components/RedbellyRecipientCheck';
 import { SecurityListItem } from './components/SecurityListItem';
 import { SubCol, SubRow, SubTable } from './components/SubTable';
 import { ALIAS_ADDRESS } from '@/constant';
@@ -123,6 +124,9 @@ const Send = ({
           </Row>
         </Col>
         <SubTable target="send-contract">
+          {/* First row on Redbelly: it is the reason this fork exists, and on
+              any other chain it renders nothing. */}
+          <RedbellyRecipientCheck chainId={chain.id} address={actionData.to} />
           <SubCol>
             <SubRow isTitle>{t('page.signTx.addressNote')}</SubRow>
             <SubRow>
