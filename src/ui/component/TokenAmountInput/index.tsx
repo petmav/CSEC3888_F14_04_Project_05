@@ -1,0 +1,616 @@
+/* eslint "react-hooks/exhaustive-deps": ["error"] */
+/* eslint-enable react-hooks/exhaustive-deps */
+import { useSearchTestnetToken } from '@/ui/hooks/useSearchTestnetToken';
+import { useRabbyDispatch, useRabbySelector } from '@/ui/store';
+import { useTokens } from '@/ui/utils/portfolio/token';
+import { findChain, findChainByEnum, findChainByServerID } from '@/utils/chain';
+import { DrawerProps, Input, InputRef, Modal, Skeleton } from 'antd';
+import { TokenItem } from 'background/service/openapi';
+import clsx from 'clsx';
+import uniqBy from 'lodash/uniqBy';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import useSearchToken from 'ui/hooks/useSearchToken';
+import useSortToken from 'ui/hooks/useSortTokens';
+import { formatUsdValue, useWallet } from 'ui/utils';
+import { abstractTokenToTokenItem, getTokenSymbol } from 'ui/utils/token';
+import TokenSelector, { TokenSelectorProps } from '../TokenSelector';
+import TokenWithChain from '../TokenWithChain';
+import './style.less';
+import { normalizeInputNumber } from '@/constant/regexp';
+import { SendMaxButton } from '@/ui/views/SendToken/components/MaxButton';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as RcIconWalletCC } from '@/ui/assets/swap/wallet-cc.svg';
+import { ReactComponent as RcArrowDown } from './icons/arrow-down.svg';
+import { ReactComponent as RcIconAmountModeSwitch } from '@/ui/assets/send-token/amount-mode-switch.svg';
+import styled from 'styled-components';
+import { RiskWarningTitle } from '../RiskWarningTitle';
+import BigNumber from 'bignumber.js';
+import { ChainSelectorInSend } from '@/ui/views/SendToken/components/ChainSelectorInSend';
+import { Chain } from '@debank/common';
+import { concatAndSort } from '@/ui/utils/portfolio/tokenUtils';
+import {
+  AutoSizeAmountInput,
+  AmountInputOverflowPosition,
+} from '../AutoSizeAmountInput';
+
+interface TokenAmountInputProps {
+  token: TokenItem | null;
+  value?: string;
+  isLoading?: boolean;
+  initLoading?: boolean;
+  onChange?(amount: string): void;
+  onTokenChange(token: TokenItem): void;
+  onStartSelectChain?: () => void;
+  amountFocus?: boolean;
+  excludeTokens?: TokenItem['id'][];
+  className?: string;
+  type?: TokenSelectorProps['type'];
+  insufficientError?: boolean;
+  placeholder?: string;
+  getContainer?: DrawerProps['getContainer'];
+  balanceNumText?: string;
+  handleClickMaxButton?: () => void;
+  displayValue?: string;
+  displayValueText?: string;
+  inputPrefixText?: string;
+  quoteText?: string;
+  showQuote?: boolean;
+  canSwitchMode?: boolean;
+  onSwitchMode?: () => void;
+  onInputValueChange?: (amount: string) => string | false | void;
+  amountInputOverflowPosition?: AmountInputOverflowPosition;
+  disableItemCheck?: (
+    token: TokenItem
+  ) => {
+    disable: boolean;
+    cexId?: string;
+    reason: string;
+    shortReason: string;
+  };
+}
+
+const DEFAULT_EXCLUDE_TOKENS: TokenItem['id'][] = [];
+const AMOUNT_MAX_FONT_SIZE = 28;
+const AMOUNT_MIN_FONT_SIZE = 18;
+const AMOUNT_FONT_SIZE_STEP = 2;
+
+const StyledInput = styled(Input)<{
+  $fontSize: number;
+  $hasDisplayText?: boolean;
+}>`
+  color: var(--r-neutral-title1, #192945);
+  font-size: ${({ $fontSize }) => $fontSize}px !important;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 36px;
+  background: transparent !important;
+  min-width: 0;
+  flex: 1;
+  padding-left: 0;
+  padding-right: 0;
+  &::placeholder {
+    color: ${({ $hasDisplayText }) =>
+      $hasDisplayText ? 'transparent' : 'var(--r-neutral-foot, #6a7587)'};
+    font-size: ${({ $fontSize }) => $fontSize}px !important;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 36px;
+  }
+
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+`;
+
+function getDefaultSelectorChainId(
+  chainServerId: Chain['serverId'] | undefined,
+  type: TokenSelectorProps['type']
+) {
+  if (!chainServerId) return '';
+
+  const chain = findChain({ serverId: chainServerId });
+  // Send starts with all mainnets; retain the current testnet tab behavior.
+  return type === 'send' && !chain?.isTestnet ? '' : chainServerId;
+}
+
+const TokenAmountInput = ({
+  token,
+  value,
+  onChange,
+  onTokenChange,
+  onStartSelectChain,
+  // chainId,
+  amountFocus,
+  excludeTokens = DEFAULT_EXCLUDE_TOKENS,
+  className,
+  type = 'default',
+  placeholder,
+  getContainer,
+  balanceNumText,
+  handleClickMaxButton,
+  displayValue,
+  displayValueText,
+  inputPrefixText,
+  quoteText,
+  showQuote = true,
+  canSwitchMode,
+  onSwitchMode,
+  onInputValueChange,
+  amountInputOverflowPosition,
+  insufficientError,
+  isLoading,
+  initLoading,
+  disableItemCheck,
+}: TokenAmountInputProps) => {
+  const tokenInputRef = useRef<InputRef>(null);
+  const [updateNonce, setUpdateNonce] = useState(0);
+  const [tokenSelectorVisible, setTokenSelectorVisible] = useState(false);
+  const selectorOpened = useRef(false);
+  const { currentAccount } = useRabbySelector((s) => ({
+    currentAccount: s.account.currentAccount,
+  }));
+  const wallet = useWallet();
+  const [keyword, setKeyword] = useState('');
+  const [lpTokenMode, setLpTokenMode] = useState(false);
+
+  const isFromMode = useMemo(() => {
+    return type === 'swapFrom' || type === 'bridgeFrom' || type === 'send';
+  }, [type]);
+
+  const chainItemOfToken = useMemo(
+    () =>
+      !token?.chain
+        ? null
+        : findChain({
+            serverId: token?.chain,
+          }),
+    [token?.chain]
+  );
+  const defaultSelectorChainId = getDefaultSelectorChainId(token?.chain, type);
+  const [
+    { mainnet: mainnetChainServerId, testnet: testnetChainServerId },
+    setNetVariedChainServerId,
+  ] = useState({
+    mainnet: chainItemOfToken?.isTestnet ? '' : defaultSelectorChainId,
+    testnet: chainItemOfToken?.isTestnet ? defaultSelectorChainId : '',
+  });
+  // const testnetChainItem = useMemo(
+  //   () =>
+  //     !testnetChainServerId
+  //       ? null
+  //       : findChain({
+  //           serverId: testnetChainServerId,
+  //         }),
+  //   [testnetChainServerId]
+  // );
+  const { t } = useTranslation();
+
+  const setChainServerId = useCallback((chainServerId?: string) => {
+    const foundChainItem = !chainServerId
+      ? null
+      : findChainByServerID(chainServerId);
+    setNetVariedChainServerId((prev) => ({
+      mainnet: foundChainItem?.isTestnet ? '' : chainServerId || '',
+      testnet: foundChainItem?.isTestnet ? chainServerId || '' : '',
+    }));
+  }, []);
+
+  const applyInputValue = useCallback(
+    (rawValue: string) => {
+      if (onInputValueChange) {
+        const nextValue = onInputValueChange(rawValue);
+        if (nextValue === false) {
+          return;
+        }
+
+        if (typeof nextValue === 'string') {
+          onChange?.(nextValue);
+          return;
+        }
+      }
+
+      const nextValue = normalizeInputNumber(rawValue);
+      if (nextValue !== null) {
+        onChange?.(nextValue);
+      }
+    },
+    [onChange, onInputValueChange]
+  );
+
+  useLayoutEffect(() => {
+    if (amountFocus && !tokenSelectorVisible) {
+      tokenInputRef.current?.focus();
+    }
+  }, [amountFocus, tokenSelectorVisible]);
+
+  const handleCurrentTokenChange = useCallback(
+    (token: TokenItem) => {
+      applyInputValue('');
+      onTokenChange(token);
+      setTokenSelectorVisible(false);
+      setLpTokenMode(false);
+      tokenInputRef.current?.focus();
+      setChainServerId(getDefaultSelectorChainId(token.chain, type));
+    },
+    [applyInputValue, onTokenChange, setChainServerId, type]
+  );
+
+  const handleTokenSelectorClose = useCallback(() => {
+    setChainServerId(defaultSelectorChainId);
+    setLpTokenMode(false);
+    setTokenSelectorVisible(false);
+  }, [defaultSelectorChainId, setChainServerId]);
+
+  const checkBeforeConfirm = useCallback(
+    (token: TokenItem) => {
+      const { disable, reason, cexId } = disableItemCheck?.(token) || {};
+      if (disable) {
+        Modal.confirm({
+          width: 340,
+          closable: true,
+          closeIcon: <></>,
+          centered: true,
+          className: 'token-selector-disable-item-tips',
+          title: <RiskWarningTitle />,
+          content: reason,
+          okText: t('global.proceedButton'),
+          cancelText: t('global.cancelButton'),
+          cancelButtonProps: {
+            type: 'ghost',
+            className: 'text-r-blue-default border-r-blue-default',
+          },
+          onOk() {
+            if (cexId) {
+              wallet.openapi.checkCex({
+                chain_id: token.chain,
+                id: token.id,
+                cex_id: cexId,
+              });
+            }
+            handleCurrentTokenChange(token);
+          },
+        });
+        return;
+      }
+      handleCurrentTokenChange(token);
+    },
+    [disableItemCheck, t, wallet, handleCurrentTokenChange]
+  );
+
+  // when no any queryConds
+  const {
+    tokens: allTokens,
+    isLoading: isLoadingAllTokens,
+    isAllTokenLoading, // 包含lpToken
+  } = useTokens(currentAccount?.address, {
+    visible: selectorOpened.current ? tokenSelectorVisible : true,
+    updateNonce,
+    chainServerId: mainnetChainServerId,
+    lpTokensOnly: isFromMode ? lpTokenMode : undefined, // only show lp tokens in from mode
+    searchMode: !!keyword,
+    realtimeMode: true,
+  });
+
+  const handleSelectToken = useCallback(() => {
+    if (type === 'send') {
+      setChainServerId(defaultSelectorChainId);
+    }
+    if (allTokens.length > 0) {
+      setUpdateNonce(updateNonce + 1);
+    }
+    setTokenSelectorVisible(true);
+  }, [allTokens, defaultSelectorChainId, setChainServerId, type, updateNonce]);
+
+  const allDisplayTokens = useMemo(() => {
+    return allTokens.map(abstractTokenToTokenItem);
+  }, [allTokens]);
+
+  const {
+    isLoading: isSearchLoading,
+    list: searchedTokenByQuery,
+  } = useSearchToken(currentAccount?.address, keyword, {
+    chainServerId: mainnetChainServerId,
+    withBalance: true,
+  });
+
+  // const {
+  //   loading: isSearchTestnetLoading,
+  //   testnetTokenList,
+  // } = useSearchTestnetToken({
+  //   address: currentAccount?.address,
+  //   withBalance: true,
+  //   chainId: testnetChainItem?.id,
+  //   q: keyword,
+  //   enabled: testnetChainItem?.isTestnet,
+  // });
+
+  const availableToken = useMemo(() => {
+    const allTokens = mainnetChainServerId
+      ? allDisplayTokens.filter((token) => token.chain === mainnetChainServerId)
+      : allDisplayTokens;
+
+    return uniqBy(
+      keyword
+        ? concatAndSort(
+            searchedTokenByQuery.map(abstractTokenToTokenItem),
+            allTokens,
+            keyword
+          )
+        : allTokens,
+      (token) => {
+        return `${token.chain}-${token.id}`;
+      }
+    ).filter((e) => !excludeTokens.includes(e.id));
+  }, [
+    allDisplayTokens,
+    searchedTokenByQuery,
+    excludeTokens,
+    keyword,
+    mainnetChainServerId,
+  ]);
+  const displayTokenList = useSortToken(availableToken);
+
+  const isListLoading = useMemo(() => {
+    // if (chainItemOfToken?.isTestnet) {
+    //   return isSearchTestnetLoading;
+    // }
+    return keyword ? isSearchLoading : isLoadingAllTokens;
+  }, [
+    keyword,
+    isSearchLoading,
+    isLoadingAllTokens,
+    // isSearchTestnetLoading,
+    // chainItemOfToken?.isTestnet,
+  ]);
+
+  const handleSearchTokens = React.useCallback<
+    React.ComponentProps<typeof TokenSelector>['onSearch'] & object
+  >(
+    async (ctx) => {
+      setKeyword(ctx.keyword);
+      setChainServerId(ctx.chainServerId || '');
+    },
+    [setChainServerId]
+  );
+
+  useEffect(() => {
+    setChainServerId(defaultSelectorChainId);
+  }, [defaultSelectorChainId, setChainServerId]);
+
+  const displayInputValue = displayValue ?? value ?? '';
+  const actualInputValue = displayValueText ? '' : displayInputValue;
+  const amountMeasureValue = displayValueText || displayInputValue || '0';
+  const amountMeasureText = `${inputPrefixText || ''}${amountMeasureValue}`;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    applyInputValue(e.target.value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (displayValueText && (e.key === 'Backspace' || e.key === 'Delete')) {
+      e.preventDefault();
+      applyInputValue('');
+    }
+  };
+
+  const handleInputWrapClick = () => {
+    tokenInputRef.current?.focus();
+  };
+
+  const fallbackQuoteText = useMemo(() => {
+    if (token && value) {
+      return formatUsdValue(
+        new BigNumber(value).multipliedBy(token.price || 0).toString()
+      );
+    }
+    return '$0.00';
+  }, [token, value]);
+  const amountQuoteText = quoteText ?? fallbackQuoteText;
+
+  const chainSelectorRef = useRef<ChainSelectorInSend>(null);
+
+  return (
+    <div className={clsx('token-amount-input flex-col gap-[13px]', className)}>
+      <div className="token-amount-input__main-row flex items-start">
+        <AutoSizeAmountInput
+          inputRef={tokenInputRef}
+          inputValue={actualInputValue}
+          measureText={amountMeasureText}
+          maxFontSize={AMOUNT_MAX_FONT_SIZE}
+          minFontSize={AMOUNT_MIN_FONT_SIZE}
+          fontSizeStep={AMOUNT_FONT_SIZE_STEP}
+          overflowPosition={amountInputOverflowPosition}
+          fontWeight={700}
+          className="right token-amount-input__amount-area relative min-w-0 flex-1 overflow-hidden"
+        >
+          {(amountFontSize) => (
+            <>
+              {!!inputPrefixText && (
+                <span
+                  className={clsx(
+                    'token-amount-input__prefix',
+                    insufficientError && 'text-rabby-red-default'
+                  )}
+                  style={{ fontSize: amountFontSize }}
+                >
+                  {inputPrefixText}
+                </span>
+              )}
+              <div
+                className="token-amount-input__input-wrap"
+                onClick={displayValueText ? handleInputWrapClick : undefined}
+              >
+                {!!displayValueText && (
+                  <span
+                    className={clsx(
+                      'token-amount-input__display-text',
+                      insufficientError && 'text-rabby-red-default'
+                    )}
+                    style={{ fontSize: amountFontSize }}
+                  >
+                    {displayValueText}
+                  </span>
+                )}
+                <StyledInput
+                  ref={tokenInputRef}
+                  placeholder={displayValueText ? '' : '0'}
+                  $fontSize={amountFontSize}
+                  $hasDisplayText={!!displayValueText}
+                  className={clsx(
+                    'h-[36px]',
+                    insufficientError && 'text-rabby-red-default'
+                  )}
+                  autoFocus
+                  value={actualInputValue}
+                  size="large"
+                  onChange={handleChange}
+                  onKeyDown={handleKeyDown}
+                  title={displayValueText || displayInputValue}
+                />
+              </div>
+            </>
+          )}
+        </AutoSizeAmountInput>
+
+        <div className="left shrink-0" onClick={handleSelectToken}>
+          {initLoading ? (
+            <>
+              <Skeleton.Avatar
+                className="bg-r-neutral-line w-[24px] h-[24px] rounded-full"
+                size={24}
+              />
+              <Skeleton.Input className="bg-r-neutral-line w-[58px] h-[20px] rounded-[2px] ml-[6px] mr-[6px]" />
+            </>
+          ) : (
+            <>
+              {!!token && (
+                <TokenWithChain
+                  width="26px"
+                  height="26px"
+                  chainSize={14}
+                  token={token}
+                  // hideChainIcon
+                  hideConer
+                />
+              )}
+              <span
+                className={clsx(
+                  'token-input__symbol',
+                  token ? '' : 'max-w-max leading-[24px]'
+                )}
+                title={
+                  token
+                    ? getTokenSymbol(token)
+                    : t('page.sendToken.selectToken')
+                }
+              >
+                {token
+                  ? getTokenSymbol(token)
+                  : t('page.sendToken.selectToken')}
+              </span>
+            </>
+          )}
+          <div className="text-r-neutral-foot ml-[6px]">
+            {/* <RcIconDownCC width={16} height={16} /> */}
+            <RcArrowDown width={20} height={20} />
+          </div>
+        </div>
+      </div>
+      <div className="token-amount-input__bottom-row flex items-center justify-between">
+        <div className="min-w-0 flex-1">
+          {showQuote && !!amountQuoteText && (
+            <div
+              className={clsx(
+                'token-amount-input__quote',
+                canSwitchMode && 'token-amount-input__quote--clickable'
+              )}
+              title={amountQuoteText}
+              onClick={canSwitchMode ? onSwitchMode : undefined}
+            >
+              <span className="token-amount-input__quote-text">
+                {amountQuoteText}
+              </span>
+              {canSwitchMode && (
+                <RcIconAmountModeSwitch className="token-amount-input__switch-icon" />
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center">
+          <div className="flex items-center">
+            {isLoading ? (
+              <Skeleton.Input active style={{ width: 100 }} />
+            ) : (
+              <div
+                className={clsx(
+                  'flex items-center gap-4',
+                  insufficientError
+                    ? 'text-rabby-red-default'
+                    : 'text-r-neutral-foot'
+                )}
+              >
+                <RcIconWalletCC viewBox="0 0 16 16" className="w-16 h-16" />
+                <span
+                  className={clsx(
+                    'truncate max-w-[90px] text-[13px] font-normal text-r-neutral-foot'
+                  )}
+                  title={balanceNumText}
+                >
+                  {balanceNumText}
+                </span>
+              </div>
+            )}
+            {token && token.amount > 0 && !isLoading && (
+              <SendMaxButton onClick={handleClickMaxButton}>
+                {t('page.sendToken.max')}
+              </SendMaxButton>
+            )}
+          </div>
+        </div>
+      </div>
+      <TokenSelector
+        visible={tokenSelectorVisible}
+        isHideTitle={true}
+        mainnetTokenList={displayTokenList}
+        // testnetTokenList={testnetTokenList}
+        // list={chainItem?.isTestnet ? testnetTokenList : displayTokenList}
+        onConfirm={checkBeforeConfirm}
+        onCancel={handleTokenSelectorClose}
+        onSearch={handleSearchTokens}
+        isLoading={isListLoading || (lpTokenMode && isAllTokenLoading)}
+        type={type}
+        disableItemCheck={disableItemCheck}
+        showCustomTestnetAssetList
+        placeholder={placeholder}
+        chainId={testnetChainServerId || mainnetChainServerId}
+        getContainer={getContainer}
+        onStartSelectChain={() => {
+          chainSelectorRef.current?.toggleShow(true);
+          onStartSelectChain?.();
+        }}
+        lpTokenMode={lpTokenMode}
+        setLpTokenMode={setLpTokenMode}
+        showLpTokenSwitch={isFromMode}
+      />
+      <ChainSelectorInSend
+        ref={chainSelectorRef}
+        hideTestnetTab
+        onChange={(value) => {
+          setChainServerId(findChainByEnum(value)?.serverId || '');
+        }}
+        getContainer={getContainer}
+      />
+    </div>
+  );
+};
+
+export default TokenAmountInput;

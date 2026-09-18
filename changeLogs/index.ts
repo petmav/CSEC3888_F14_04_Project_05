@@ -1,0 +1,85 @@
+import version09318 from './09318.md';
+import version09319 from './09319.md';
+import version09321 from './09321.md';
+import version09323 from './09323.md';
+import version09324 from './09324.md';
+import version09325 from './09325.md';
+import version09327 from './09327.md';
+import version09328 from './09328.md';
+import version09330 from './09330.md';
+import version09331 from './09331.md';
+import version09335 from './09335.md';
+import version09336 from './09336.md';
+import version09338 from './09338.md';
+import version09339 from './09339.md';
+import version09341 from './09341.md';
+import version09343 from './09343.md';
+import version09347 from './09347.md';
+import version09349 from './09349.md';
+import version09350 from './09350.md';
+import version09351 from './09351.md';
+import version09356 from './09356.md';
+import version09361 from './09361.md';
+import version09363 from './09363.md';
+import version09366 from './09366.md';
+import version09367 from './09367.md';
+import version09370 from './09370.md';
+import version09371 from './09371.md';
+import version09377 from './09377.md';
+import version09379 from './09379.md';
+import version09381 from './09381.md';
+import version09384 from './09384.md';
+import version09389 from './09389.md';
+import version09391 from './09391.md';
+import version09393 from './09393.md';
+import version09394 from './09394.md';
+import version09396 from './09396.md';
+import version09397 from './09397.md';
+import version09399 from './09399.md';
+
+const version = process.env.release || '0';
+const versionMap = {
+  '0.93.18': version09318,
+  '0.93.19': version09319,
+  '0.93.21': version09321,
+  '0.93.23': version09323,
+  '0.93.24': version09324,
+  '0.93.25': version09325,
+  '0.93.27': version09327,
+  '0.93.28': version09328,
+  '0.93.30': version09330,
+  '0.93.31': version09331,
+  '0.93.35': version09335,
+  '0.93.36': version09336,
+  '0.93.38': version09338,
+  '0.93.39': version09339,
+  '0.93.41': version09341,
+  '0.93.43': version09343,
+  '0.93.47': version09347,
+  '0.93.49': version09349,
+  '0.93.50': version09350,
+  '0.93.51': version09351,
+  '0.93.56': version09356,
+  '0.93.61': version09361,
+  '0.93.63': version09363,
+  '0.93.66': version09366,
+  '0.93.67': version09367,
+  '0.93.70': version09370,
+  '0.93.71': version09371,
+  '0.93.77': version09377,
+  '0.93.79': version09379,
+  '0.93.81': version09381,
+  '0.93.84': version09384,
+  '0.93.89': version09389,
+  '0.93.91': version09391,
+  '0.93.93': version09393,
+  '0.93.94': version09394,
+  '0.93.96': version09396,
+  '0.93.97': version09397,
+  '0.93.99': version09399,
+};
+export const getUpdateContent = () => {
+  return versionMap[version];
+};
+
+export { default as version0170 } from './0170.md';

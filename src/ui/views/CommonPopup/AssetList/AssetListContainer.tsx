@@ -1,0 +1,260 @@
+import React, { useEffect, useMemo } from 'react';
+import { TokenSearchInput } from './TokenSearchInput';
+import { useRabbySelector } from '@/ui/store';
+import { HomeTokenList } from './TokenList';
+import useSortTokens from 'ui/hooks/useSortTokens';
+import useSearchToken from '@/ui/hooks/useSearchToken';
+import {
+  TokenListSkeleton,
+  TokenListViewSkeleton,
+} from './TokenListViewSkeleton';
+import ProtocolList from './ProtocolList';
+import { useQueryProjects } from 'ui/utils/portfolio';
+import { InputRef } from 'antd';
+import { useFilterProtocolList } from './useFilterProtocolList';
+import { useAppChain } from '@/ui/hooks/useAppChain';
+import { useCommonPopupView } from '@/ui/utils';
+import { useTranslation } from 'react-i18next';
+import { LpTokenSwitch } from '../../DesktopProfile/components/TokensTabPane/components/LpTokenSwitch';
+import { HomePerpsPositionList } from './HomePerpsPositionList';
+import { uniqBy } from 'lodash';
+import omit from 'lodash/omit';
+import { concatAndSort } from '@/ui/utils/portfolio/tokenUtils';
+import { NftPreviewSection } from './NftPreviewSection';
+import type { NftPreviewItem } from './NftPreviewSection';
+import { useNFTCollections } from '@/ui/hooks/useNFTCollections';
+
+interface Props {
+  className?: string;
+  selectChainId: string | null;
+  visible: boolean;
+  onEmptyAssets: (isEmpty: boolean) => void;
+}
+
+export const AssetListContainer: React.FC<Props> = ({
+  className,
+  selectChainId,
+  visible,
+  onEmptyAssets,
+}) => {
+  const { t } = useTranslation();
+  const [search, setSearch] = React.useState<string>('');
+  const [lpTokenMode, setLpTokenMode] = React.useState(false);
+  const handleOnSearch = React.useCallback((value: string) => {
+    setSearch(value);
+  }, []);
+  const { currentAccount } = useRabbySelector((s) => ({
+    currentAccount: s.account.currentAccount,
+  }));
+  const {
+    collections: nftCollections,
+    isLoading: isNftLoading,
+  } = useNFTCollections(currentAccount?.address, {
+    preferCacheOnExists: true,
+    visible,
+  });
+
+  const { setApps } = useCommonPopupView();
+  const {
+    isTokensLoading,
+    isAllTokenLoading,
+    isPortfoliosLoading,
+    portfolios,
+    tokens: tokenList,
+    hasTokens,
+    removeProtocol,
+  } = useQueryProjects(currentAccount?.address, {
+    visible,
+    lpTokenMode: lpTokenMode ? lpTokenMode : undefined,
+    searchMode: !!search,
+  });
+  const {
+    data: appPortfolios,
+    isLoading: isAppPortfoliosLoading,
+  } = useAppChain(currentAccount?.address, visible);
+
+  const inputRef = React.useRef<InputRef>(null);
+  const { isLoading: isSearching, list } = useSearchToken(
+    currentAccount?.address,
+    search,
+    {
+      chainServerId: selectChainId ? selectChainId : undefined,
+      withBalance: true,
+      isTestnet: false,
+    }
+  );
+  const displayTokenList = useMemo(() => {
+    const result = uniqBy(
+      search ? concatAndSort(list, tokenList, search) : tokenList,
+      (token) => {
+        return `${token.chain}-${token.id}`;
+      }
+    );
+    if (selectChainId) {
+      return result.filter((item) => item.chain === selectChainId);
+    }
+    return result;
+  }, [list, tokenList, search, selectChainId]);
+
+  const displayPortfolios = useMemo(() => {
+    const combinedPortfolios = [
+      ...(portfolios || []),
+      ...(appPortfolios || []),
+    ].sort((m, n) => (n.netWorth || 0) - (m.netWorth || 0));
+    if (selectChainId) {
+      return combinedPortfolios?.filter((item) => item.chain === selectChainId);
+    }
+    return combinedPortfolios;
+  }, [portfolios, appPortfolios, selectChainId]);
+  const nftPreviewList = useMemo<NftPreviewItem[]>(() => {
+    const result: NftPreviewItem[] = [];
+
+    nftCollections
+      .filter((collection) => {
+        return !collection.is_hidden && collection.is_core;
+      })
+      .forEach((collection) => {
+        const baseCollection = omit(collection, 'nft_list');
+        collection.nft_list.forEach((nft) => {
+          result.push({
+            nft,
+            collection: baseCollection,
+          });
+        });
+      });
+
+    return result.sort(
+      (a, b) =>
+        (b?.collection?.credit_score || 0) - (a?.collection?.credit_score || 0)
+    );
+  }, [nftCollections]);
+
+  const isEmptyAssets =
+    !isTokensLoading &&
+    !displayTokenList.length &&
+    !isPortfoliosLoading &&
+    !displayPortfolios?.length &&
+    !isAppPortfoliosLoading &&
+    !appPortfolios?.length &&
+    !isNftLoading &&
+    !nftPreviewList.length &&
+    !search;
+
+  React.useEffect(() => {
+    onEmptyAssets(isEmptyAssets && !lpTokenMode);
+  }, [isEmptyAssets, onEmptyAssets, lpTokenMode]);
+
+  const sortTokens = useSortTokens(displayTokenList);
+  const filteredPortfolios = useFilterProtocolList({
+    list: displayPortfolios,
+    kw: search,
+  });
+
+  React.useEffect(() => {
+    if (!visible) {
+      setSearch('');
+      inputRef.current?.focus();
+      inputRef.current?.blur();
+      setLpTokenMode(false);
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (appPortfolios) {
+      setApps(
+        appPortfolios.map((item) => ({
+          logo: item.logo || '',
+          name: item.name,
+          id: item.id,
+          usd_value: item.netWorth || 0,
+        }))
+      );
+    }
+  }, [appPortfolios]);
+  const appIds = useMemo(() => {
+    return [...new Set(appPortfolios?.map((item) => item.id) || [])];
+  }, [appPortfolios]);
+
+  if (isTokensLoading && !hasTokens) {
+    return <TokenListViewSkeleton />;
+  }
+
+  const isNoResults =
+    !isSearching &&
+    !isTokensLoading &&
+    !isPortfoliosLoading &&
+    !isAppPortfoliosLoading &&
+    !!search &&
+    !sortTokens.length &&
+    !filteredPortfolios?.length;
+
+  return (
+    <div className={className}>
+      <div className="flex items-center justify-between gap-x-12 widget-has-ant-input">
+        <div className="flex w-full items-center justify-between">
+          <div className="relative w-[60%] leading-[1]">
+            <TokenSearchInput
+              ref={inputRef}
+              placeholder={t('page.dashboard.assets.searchTokenPlaceholder')}
+              onSearch={handleOnSearch}
+              className="w-full"
+            />
+          </div>
+          <LpTokenSwitch
+            lpTokenMode={lpTokenMode}
+            onLpTokenModeChange={setLpTokenMode}
+          />
+        </div>
+      </div>
+      <div className="flex flex-col gap-24 mt-12">
+        {isTokensLoading ||
+        isSearching ||
+        (lpTokenMode && isAllTokenLoading) ? (
+          <TokenListSkeleton />
+        ) : (
+          <HomeTokenList
+            list={sortTokens}
+            isSearch={!!search}
+            lpTokenMode={lpTokenMode}
+            isNoResults={isNoResults}
+          />
+        )}
+
+        <div
+          className="empty:hidden"
+          style={{
+            display: visible ? 'block' : 'none',
+          }}
+        >
+          {isPortfoliosLoading && isAppPortfoliosLoading ? (
+            <TokenListSkeleton />
+          ) : (
+            <>
+              {visible && !search ? (
+                <HomePerpsPositionList needFetchMarket />
+              ) : null}
+              <ProtocolList
+                removeProtocol={removeProtocol}
+                appIds={appIds}
+                isSearch={!!search}
+                list={filteredPortfolios}
+                className="mt-0"
+              />
+            </>
+          )}
+        </div>
+        <div
+          style={{
+            display: visible && !search && !selectChainId ? 'block' : 'none',
+          }}
+        >
+          <NftPreviewSection
+            className="cursor-pointer"
+            isLoading={isNftLoading}
+            list={nftPreviewList}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};

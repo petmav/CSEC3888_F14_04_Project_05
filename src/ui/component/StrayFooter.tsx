@@ -1,0 +1,115 @@
+import React, { memo, ReactNode } from 'react';
+import { useHistory } from 'react-router-dom';
+import cx from 'clsx';
+import { Button } from 'antd';
+import { twMerge } from 'tailwind-merge';
+
+interface StrayFooterProps {
+  className?: string;
+  children: ReactNode;
+  isFixed?: boolean;
+}
+
+export interface StrayFooterNavProps {
+  onNextClick?(e?: any): void;
+  onBackClick?(): void;
+  backDisabled?: boolean;
+  nextDisabled?: boolean;
+  nextLoading?: boolean;
+  hasBack?: boolean;
+  hasDivider?: boolean;
+  hideNextButton?: boolean;
+  className?: string;
+  NextButtonContent?: React.ReactNode;
+  BackButtonContent?: React.ReactNode;
+  footerFixed?: boolean;
+}
+
+interface CompoundedComponent
+  extends React.MemoExoticComponent<React.FunctionComponent<StrayFooterProps>> {
+  Nav: typeof StrayFooterNav;
+}
+
+const StrayFooter = memo(
+  ({ className, children, isFixed = true }: StrayFooterProps) => {
+    return (
+      <div
+        className={twMerge(
+          'bottom-0 left-0 w-full flex lg:bottom-[-24px]',
+          className,
+          isFixed ? 'fixed' : 'absolute'
+        )}
+      >
+        {children}
+      </div>
+    );
+  }
+) as CompoundedComponent;
+
+const StrayFooterNav = memo(
+  ({
+    onNextClick,
+    onBackClick,
+    backDisabled,
+    nextDisabled,
+    nextLoading,
+    hasBack = false,
+    hasDivider = false,
+    hideNextButton = false,
+    NextButtonContent = 'Next',
+    BackButtonContent = 'Back',
+    className,
+    footerFixed,
+  }: StrayFooterNavProps) => {
+    const history = useHistory();
+
+    const handleBack = async () => {
+      if (onBackClick) {
+        onBackClick();
+        return;
+      }
+
+      history.goBack();
+    };
+
+    return (
+      <StrayFooter className={className} isFixed={footerFixed}>
+        <div
+          className={cx(
+            'py-[18px] px-20 w-full flex justify-center stray-footer-nav',
+            hasDivider &&
+              'bg-transparent border-t-r-neutral-line border-t-[0.5px]'
+          )}
+        >
+          {hasBack && (
+            <Button
+              disabled={backDisabled}
+              onClick={handleBack}
+              size="large"
+              className="flex-1 mr-16 h-[44px]"
+            >
+              {BackButtonContent}
+            </Button>
+          )}
+          {!hideNextButton && (
+            <Button
+              disabled={nextDisabled}
+              htmlType="submit"
+              onClick={onNextClick}
+              size="large"
+              className={cx('h-[44px]', 'flex-1')}
+              type="primary"
+              loading={nextLoading}
+            >
+              {NextButtonContent}
+            </Button>
+          )}
+        </div>
+      </StrayFooter>
+    );
+  }
+);
+
+StrayFooter.Nav = StrayFooterNav;
+
+export default StrayFooter;

@@ -1,0 +1,153 @@
+import React, { lazy, Suspense, useCallback, useEffect } from 'react';
+import {
+  HashRouter as Router,
+  Route,
+  useHistory,
+  useLocation,
+} from 'react-router-dom';
+import { getUiType, useWallet, WalletProvider } from 'ui/utils';
+import { PrivateRoute } from 'ui/component';
+import Dashboard from './Dashboard';
+import Unlock from './Unlock';
+import SortHat from './SortHat';
+import eventBus from '@/eventBus';
+import { EVENTS } from '@/constant';
+import { useIdleTimer } from 'react-idle-timer';
+import { useRabbyDispatch, useRabbySelector } from '../store';
+import { useMount } from 'react-use';
+import { useMemoizedFn } from 'ahooks';
+import { useThemeModeOnMain } from '../hooks/usePreference';
+import {
+  useCurrentAccount,
+  useSubscribeCurrentAccountChanged,
+} from '../hooks/backgroundState/useAccount';
+import { ForgotPassword } from './ForgotPassword/ForgotPassword';
+import { useSyncCurrentAccount } from '../utils/withAccountChange';
+import { useSyncDbHistory } from '@/db/hooks/history';
+import { ScreenshotContextMenu } from '../component/ScreenshotContextMenu';
+const UiType = getUiType();
+const AsyncMainRoute = lazy(() =>
+  UiType.isDesktop ? import('./DesktopRoute') : import('./MainRoute')
+);
+
+const useAutoLock = () => {
+  const history = useHistory();
+  const location = useLocation();
+  const wallet = useWallet();
+  const autoLockTime = useRabbySelector(
+    (state) => state.preference.autoLockTime
+  );
+
+  const dispatch = useRabbyDispatch();
+
+  useMount(() => {
+    dispatch.preference.getPreference('autoLockTime').then((v) => {
+      if (v) {
+        wallet.setLastActiveTime();
+      }
+    });
+  });
+
+  useIdleTimer({
+    onAction() {
+      if (autoLockTime > 0 && location.pathname !== '/unlock') {
+        wallet.setLastActiveTime();
+      }
+    },
+    throttle: 1000,
+  });
+
+  const listener = useMemoizedFn(() => {
+    if (location.pathname !== '/unlock') {
+      if (UiType.isTab || UiType.isDesktop) {
+        history.replace(
+          `/unlock?from=${encodeURIComponent(
+            location.pathname + location.search
+          )}`
+        );
+      } else {
+        history.push('/unlock');
+      }
+    }
+  });
+
+  useEffect(() => {
+    eventBus.addEventListener(EVENTS.LOCK_WALLET, listener);
+    return () => {
+      eventBus.removeEventListener(EVENTS.LOCK_WALLET, listener);
+    };
+  }, [listener]);
+
+  const handleLockShortcut = useMemoizedFn((event: KeyboardEvent) => {
+    if (!(UiType.isPop || UiType.isTab || UiType.isDesktop)) return;
+    if (event.repeat) return;
+    const isLockKey = event.key?.toLowerCase() === 'l' || event.code === 'KeyL';
+    if (!isLockKey) return;
+    if (!event.metaKey && !event.ctrlKey) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    wallet.lockWallet();
+  });
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleLockShortcut, true);
+    return () => {
+      window.removeEventListener('keydown', handleLockShortcut, true);
+    };
+  }, [handleLockShortcut]);
+};
+
+const SyncHook = () => {
+  const account = useCurrentAccount();
+  useSyncDbHistory({
+    account,
+  });
+
+  return null;
+};
+
+const Main = () => {
+  useAutoLock();
+  useThemeModeOnMain();
+  useSubscribeCurrentAccountChanged();
+  useSyncCurrentAccount();
+
+  return (
+    <>
+      <Route exact path="/">
+        <SortHat />
+      </Route>
+
+      <Route exact path="/unlock">
+        <Unlock />
+      </Route>
+
+      <Route exact path="/forgot-password">
+        <ForgotPassword />
+      </Route>
+
+      <PrivateRoute exact path="/dashboard">
+        <Dashboard />
+      </PrivateRoute>
+      <Suspense fallback={null}>
+        <AsyncMainRoute />
+      </Suspense>
+
+      <SyncHook />
+    </>
+  );
+};
+
+const App = ({ wallet }: { wallet: any }) => {
+  return (
+    <WalletProvider wallet={wallet}>
+      <Router>
+        <Main />
+        <ScreenshotContextMenu />
+      </Router>
+    </WalletProvider>
+  );
+};
+
+export default App;

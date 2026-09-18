@@ -1,0 +1,1228 @@
+import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
+import { intToHex, noop, useWallet } from '@/ui/utils';
+import { findChain } from '@/utils/chain';
+import _ from 'lodash';
+
+import { GasSelectorResponse } from '../TxComponents/GasSelectorHeader';
+import SignMainnetGasSelectorHeader from '../TxComponents/GasSelector/SignMainnetGasSelectorHeader';
+import { useEffectiveApprovalGasMethod } from '../TxComponents/GasSelector/useEffectiveApprovalGasMethod';
+import type { ApprovalGasMethod } from '../TxComponents/GasSelector/approvalGasDisplay';
+import BalanceChange from '../TxComponents/BalanceChange';
+import { SpeedUpCancelHeader } from './SpeedUpCancalHeader';
+import { Divide } from '../Divide';
+import { normalizeTxParams } from '../SignTx';
+import { Modal, Popup } from '@/ui/component';
+import { MiniApprovalPopupContainer } from '../Popup/MiniApprovalPopupContainer';
+import { ReactComponent as LedgerSVG } from 'ui/assets/walletlogo/ledger.svg';
+import { ReactComponent as OneKeySVG } from 'ui/assets/walletlogo/onekey.svg';
+import { isLedgerLockError } from '@/ui/utils/ledger';
+import { INTERNAL_REQUEST_SESSION, KEYRING_CLASS } from 'consts';
+import { useThemeMode } from '@/ui/hooks/usePreference';
+import { useAsync } from 'react-use';
+import BigNumber from 'bignumber.js';
+import {
+  useGasAccountInfo,
+  useGasAccountSign,
+} from '@/ui/views/GasAccount/hooks';
+import { BalanceChangeLoading } from './BalanceChangeLoanding';
+import clsx from 'clsx';
+import { checkGasAndNonce, explainGas } from '@/utils/transaction';
+import { MiniFooterBar } from './MiniFooterBar';
+import { useMemoizedFn } from 'ahooks';
+import { ApprovalUtilsProvider } from '../../hooks/useApprovalUtils';
+import {
+  useSignatureInstance,
+  useSignatureStoreOf,
+} from '@/ui/component/MiniSignV2/state';
+import { MiniSecurityHeader } from '@/ui/component/MiniSignV2/components';
+import { TokenDetailPopup } from '@/ui/views/Dashboard/components/TokenDetailPopup';
+import { useRabbySelector } from '@/ui/store';
+import { useSignStore } from '@/ui/state/sign';
+import useSyncStaleValue from '@/ui/hooks/useDebounceValue';
+import { PopupContainer } from '@/ui/hooks/usePopupContainer';
+import { DrawerProps, ModalProps } from 'antd';
+import { useSetReportGasLevel } from '@/ui/hooks/useSetReportGasLevel';
+import {
+  calcTempoMaxGasCostRawAmountIn18,
+  isTempoBatchSupportedAccountType,
+  isTempoChain,
+  listTempoFeeTokenOptionsFromCache,
+  loadTempoFeeTokenOptionsState,
+  TxWithTempoExtras,
+} from '@/utils/tempo';
+import type {
+  GasAccountCheckResult,
+  TokenItem,
+} from '@rabby-wallet/rabby-api/dist/types';
+import { abstractTokenToTokenItem } from '@/ui/utils/token';
+import { GasAccountDepositPopup } from '@/ui/views/GasAccount/components/GasAccountDepositPopup';
+import {
+  buildTopUpResumedTxs,
+  GasAccountTopUpResult,
+} from '@/ui/views/GasAccount/components/topUpContinuation';
+import { useGasAccountDepositFlowActive } from '@/ui/views/GasAccount/hooks/runtime';
+import { supportedHardwareDirectSign } from '@/ui/hooks/useMiniApprovalDirectSign';
+
+const MiniSignTxV2 = ({ isDesktop }: { isDesktop?: boolean }) => {
+  const { t } = useTranslation();
+  const wallet = useWallet();
+  const { isDarkTheme } = useThemeMode();
+  const cachedTokenList = useRabbySelector((s) => s.account.tokens.list);
+  const tokenDetail = useSignStore((state) => state.tokenDetail);
+  const closeTokenDetailPopup = useSignStore(
+    (state) => state.closeTokenDetailPopup
+  );
+  const cachedTokenItems = React.useMemo(
+    () => (cachedTokenList || []).map(abstractTokenToTokenItem),
+    [cachedTokenList]
+  );
+  const instance = useSignatureInstance();
+  const state = useSignatureStoreOf(instance);
+  const [
+    gasAccountDepositVisible,
+    setGasAccountDepositVisible,
+  ] = React.useState(false);
+  const depositFlowActive = useGasAccountDepositFlowActive();
+
+  const { ctx, config, error, status } = state;
+  const currentAccount = config?.account;
+  const shouldShowGasModule = currentAccount?.type !== KEYRING_CLASS.GNOSIS;
+  const gasCalcMethod = useMemoizedFn(async (price: number) => {
+    const nativePrice = ctx?.nativeTokenPrice || 0;
+    const amount =
+      ctx?.txsCalc?.reduce(
+        (acc, i) => acc.plus(new BigNumber(i.gasUsed).times(price).div(1e18)),
+        new BigNumber(0)
+      ) || new BigNumber(0);
+    return { gasCostUsd: amount.times(nativePrice), gasCostAmount: amount };
+  });
+  const _visible = React.useMemo(() => {
+    const isDirectSignAccount = [
+      KEYRING_CLASS.MNEMONIC,
+      KEYRING_CLASS.PRIVATE_KEY,
+    ].includes(config?.account.type as any);
+
+    if (ctx?.mode === 'ui') {
+      return ['ui-open', 'signing', 'error'].includes(status);
+    }
+    if (ctx?.mode === 'direct' && status !== 'ready') {
+      const showPopup =
+        isDirectSignAccount || config?.hiddenHardWareProcess ? false : true;
+      if (isDesktop && !config?.getContainer && !showPopup && error) {
+        return true;
+      }
+      return showPopup;
+    }
+    return false;
+  }, [
+    status,
+    ctx?.mode,
+    config?.hiddenHardWareProcess,
+    config?.account?.type,
+    config?.getContainer,
+    error,
+    isDesktop,
+  ]);
+  const visible = useSyncStaleValue(_visible, 100);
+  const errorPopupVisible = !!error && !!ctx?.signInfo?.status;
+  const loading =
+    status === 'prefetching' || status === 'signing' || !ctx?.txsCalc.length;
+
+  useSetReportGasLevel(ctx?.selectedGas?.level);
+
+  useGasAccountInfo();
+  const { sig, accountId: gasAccountAddress } = useGasAccountSign();
+  const [manualGasMethod, setManualGasMethod] = React.useState<
+    ApprovalGasMethod | undefined
+  >(undefined);
+
+  React.useEffect(() => {
+    if (_visible) {
+      return;
+    }
+
+    setManualGasMethod(undefined);
+  }, [_visible]);
+
+  const { value } = useAsync(() => {
+    let msg = error?.description || '';
+    const getLedgerError = (description: string) => {
+      if (isLedgerLockError(description)) {
+        return t('page.signFooterBar.ledger.unlockAlert');
+      } else if (
+        description.includes('0x6e00') ||
+        description.includes('0x6b00')
+      ) {
+        return t('page.signFooterBar.ledger.updateFirmwareAlert');
+      } else if (description.includes('0x6985')) {
+        return t('page.signFooterBar.ledger.txRejectedByLedger');
+      }
+      return description;
+    };
+    if (currentAccount?.type === KEYRING_CLASS.HARDWARE.LEDGER) {
+      msg = getLedgerError(msg);
+    }
+    return msg
+      ? wallet.getTxFailedResult(msg)
+      : Promise.resolve(['', 'origin']);
+  }, [error, currentAccount?.type]);
+
+  const handleAutoChangeGasMethod = useCallback(
+    async (method: ApprovalGasMethod) => {
+      try {
+        instance.setGasMethod(method);
+      } catch (error) {
+        console.error('Gas method change error:', error);
+      }
+    },
+    [instance]
+  );
+
+  const handleChangeGasMethod = useCallback(
+    async (method: ApprovalGasMethod) => {
+      setManualGasMethod(method);
+      try {
+        instance.setGasMethod(method, { manual: true });
+      } catch (error) {
+        console.error('Gas method change error:', error);
+      }
+    },
+    [instance]
+  );
+
+  const handleGasChange = useCallback(
+    async (gas) => {
+      try {
+        await instance.updateGasLevel(gas, wallet);
+      } catch (error) {
+        console.error('Gas change error:', error);
+      }
+    },
+    [instance, wallet]
+  );
+
+  const handleChangeGasAccount = useMemoizedFn(async () => {
+    await handleChangeGasMethod('gasAccount');
+    if (ctx?.selectedGas) {
+      await handleGasChange(ctx.selectedGas as any);
+    }
+  });
+  const handleOpenGasAccountDeposit = useMemoizedFn(() => {
+    if (
+      isGasAccountTopUpFlow ||
+      gasAccountDepositVisible ||
+      depositFlowActive
+    ) {
+      return;
+    }
+
+    setGasAccountDepositVisible(true);
+  });
+
+  const isReady = (ctx?.txsCalc?.length || 0) > 0;
+  const chain = findChain({ id: ctx?.chainId });
+  const nativeTokenBalance = ctx?.nativeTokenBalance || '0';
+  const gasToken = ctx?.gasToken || {
+    tokenId: chain?.nativeTokenAddress || '',
+    symbol: chain?.nativeTokenSymbol || '',
+    decimals: chain?.nativeTokenDecimals || 18,
+    logoUrl: chain?.nativeTokenLogo || '',
+  };
+  const checkTxValueInBalance = !isTempoChain(chain?.serverId);
+  const support1559 = !!ctx?.is1559;
+  const [tempoGasTokenList, setTempoGasTokenList] = React.useState<TokenItem[]>(
+    []
+  );
+  const [tempoGasTokenLoading, setTempoGasTokenLoading] = React.useState(false);
+  const [
+    tempoPreferredFeeTokenId,
+    setTempoPreferredFeeTokenId,
+  ] = React.useState('');
+  const txFeeToken =
+    (((ctx?.txs?.[0] as unknown) as TxWithTempoExtras)?.feeToken as
+      | string
+      | undefined) || '';
+  const maxGasCostRawAmount = React.useMemo(
+    () =>
+      (ctx?.txsCalc || []).reduce(
+        (sum, item) =>
+          sum.plus(new BigNumber(item.gasCost.maxGasCostRawAmount || 0)),
+        new BigNumber(0)
+      ),
+    [ctx?.txsCalc]
+  );
+  const maxGasCostRawAmountText = React.useMemo(
+    () => maxGasCostRawAmount.toFixed(),
+    [maxGasCostRawAmount]
+  );
+  const maxGasCostRawAmountIn18 = React.useMemo(
+    () => calcTempoMaxGasCostRawAmountIn18(ctx?.txs || []),
+    [ctx?.txs]
+  );
+  const maxGasCostRawAmountIn18Text = React.useMemo(
+    () => maxGasCostRawAmountIn18.toFixed(),
+    [maxGasCostRawAmountIn18]
+  );
+  const currentTempoTokenId =
+    txFeeToken || tempoPreferredFeeTokenId || ctx?.gasToken?.tokenId || '';
+  const showTempoGasTokenSelector =
+    !!chain &&
+    isTempoChain(chain.serverId) &&
+    (manualGasMethod ?? ctx?.gasMethod) !== 'gasAccount' &&
+    isTempoBatchSupportedAccountType(currentAccount?.type);
+
+  const handleSelectTempoGasToken = useCallback(
+    async (
+      token: TokenItem,
+      options?: Parameters<typeof instance.setTempoFeeToken>[1]
+    ) => {
+      instance.setTempoFeeToken(token, options);
+      if (ctx?.selectedGas) {
+        await instance.updateGasLevel(ctx.selectedGas, wallet);
+      }
+    },
+    [ctx?.selectedGas, wallet, instance]
+  );
+
+  React.useEffect(() => {
+    if (!currentAccount?.address || !chain || !showTempoGasTokenSelector) {
+      setTempoGasTokenList([]);
+      setTempoGasTokenLoading(false);
+      return;
+    }
+    let mounted = true;
+    setTempoGasTokenLoading(true);
+    const cachedOptions = listTempoFeeTokenOptionsFromCache({
+      tokenList: cachedTokenItems,
+      chainServerId: chain.serverId,
+      maxGasCostRawAmount,
+      maxGasCostRawAmountDecimals: gasToken.decimals || 18,
+      maxGasCostRawAmountIn18,
+    });
+    if (cachedOptions.length) {
+      setTempoGasTokenList(cachedOptions);
+    }
+    loadTempoFeeTokenOptionsState({
+      wallet,
+      userAddress: currentAccount.address,
+      chainServerId: chain.serverId,
+      tokenList: cachedTokenItems,
+      txFeeToken,
+      maxGasCostRawAmount,
+      maxGasCostRawAmountDecimals: gasToken.decimals || 18,
+      maxGasCostRawAmountIn18,
+    })
+      .then(({ options, preferredTokenId, selectedOption }) => {
+        if (!mounted) return;
+        setTempoPreferredFeeTokenId(preferredTokenId);
+        setTempoGasTokenList(options);
+        if (
+          selectedOption &&
+          currentTempoTokenId.toLowerCase() !== selectedOption.id.toLowerCase()
+        ) {
+          handleSelectTempoGasToken(selectedOption, {
+            applyFeeToken: false,
+            tempoPreferredFeeTokenId: preferredTokenId,
+          });
+        }
+      })
+      .finally(() => {
+        if (mounted) setTempoGasTokenLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [
+    currentAccount?.address,
+    chain?.serverId,
+    wallet,
+    cachedTokenItems,
+    currentTempoTokenId,
+    gasToken.decimals,
+    handleSelectTempoGasToken,
+    maxGasCostRawAmountIn18Text,
+    maxGasCostRawAmountText,
+    showTempoGasTokenSelector,
+  ]);
+
+  const checkGasLevelIsNotEnough = useMemoizedFn(
+    (
+      gas: GasSelectorResponse,
+      type?: 'gasAccount' | 'native'
+    ): Promise<[boolean, number, undefined | GasAccountCheckResult]> => {
+      const initdTxs = ctx?.txsCalc || [];
+      let _txsResult = initdTxs;
+      if (!isReady || !initdTxs.length || !chain) {
+        return Promise.resolve([true, 0, undefined]);
+      }
+
+      return Promise.all(
+        initdTxs.map(async (item) => {
+          const tx = {
+            ...item.tx,
+            ...(ctx?.is1559
+              ? {
+                  maxFeePerGas: intToHex(Math.round(gas.price || 0)),
+                  maxPriorityFeePerGas:
+                    gas.maxPriorityFee < 0
+                      ? item.tx.maxFeePerGas
+                      : intToHex(Math.round(gas.maxPriorityFee)),
+                }
+              : { gasPrice: intToHex(Math.round(gas.price)) }),
+          };
+          return {
+            ...item,
+            tx,
+            gasCost: await explainGas({
+              gasUsed: item.gasUsed,
+              gasPrice: gas.price,
+              chainId: chain.id,
+              nativeTokenPrice: item.preExecResult.native_token.price,
+              wallet,
+              tx,
+              gasLimit: item.gasLimit,
+              account: currentAccount!,
+              preparedL1Fee: item.L1feeCache,
+              gasTokenDecimals: gasToken.decimals || 18,
+            }),
+          };
+        })
+      ).then((arr) => {
+        let balance = ctx?.nativeTokenBalance || '';
+        _txsResult = arr;
+
+        if (!_txsResult.length) {
+          return [true, 0, undefined];
+        }
+
+        if (type === 'native') {
+          const checkResult = _txsResult.map((item, index) => {
+            const result = checkGasAndNonce({
+              recommendGasLimitRatio: item.recommendGasLimitRatio,
+              recommendGasLimit: item.gasLimit,
+              recommendNonce: item.tx.nonce,
+              tx: item.tx,
+              gasLimit: item.gasLimit,
+              nonce: item.tx.nonce,
+              isCancel: isCancel,
+              gasExplainResponse: item.gasCost,
+              isSpeedUp: isSpeedUp,
+              isGnosisAccount: false,
+              nativeTokenBalance: balance,
+              gasTokenDecimals: gasToken.decimals || 18,
+              gasTokenId: gasToken.tokenId,
+              tempoPreferredFeeTokenId:
+                ctx?.tempoPreferredFeeTokenId || tempoPreferredFeeTokenId,
+              checkTxValueInBalance,
+            });
+            const txValueRaw = checkTxValueInBalance
+              ? new BigNumber(item.tx.value || 0)
+              : new BigNumber(0);
+            balance = new BigNumber(balance)
+              .minus(txValueRaw)
+              .minus(new BigNumber(item.gasCost.maxGasCostRawAmount || 0))
+              .toFixed();
+            return result;
+          });
+          return [
+            _.flatten(checkResult)?.some((e) => e.code === 3001),
+            0,
+            undefined,
+          ];
+        }
+        return wallet.openapi
+          .checkGasAccountTxs({
+            sig: sig || '',
+            account_id: gasAccountAddress || config!.account.address,
+            tx_list: arr.map((item, index) => {
+              return {
+                ...item.tx,
+                gas: item.gasLimit,
+                gasPrice: intToHex(gas.price),
+              };
+            }),
+          })
+          .then((gasAccountRes) => {
+            return [
+              !gasAccountRes.balance_is_enough,
+              (gasAccountRes.gas_account_cost.estimate_tx_cost || 0) +
+                (gasAccountRes.gas_account_cost?.gas_cost || 0),
+              gasAccountRes,
+            ];
+          });
+      });
+    }
+  );
+
+  const gasAccountCost = ctx?.gasAccount as any;
+  const gasMethod = ctx?.gasMethod;
+  const effectiveGasMethod = manualGasMethod ?? gasMethod;
+  const canUseGasLess = !!ctx?.gasless?.is_gasless;
+  const isGasNotEnough = !!ctx?.isGasNotEnough;
+  const noCustomRPC = ctx?.noCustomRPC ?? true;
+  const gasAccountChainSupported =
+    noCustomRPC &&
+    !!gasAccountCost?.balance_is_enough &&
+    !gasAccountCost?.chain_not_support &&
+    !!gasAccountCost?.is_gas_account &&
+    !(gasAccountCost as any)?.err_msg;
+  const isMissingRequiredContext =
+    !ctx || !config?.account || !ctx?.txs?.length || !ctx?.chainId || !chain;
+
+  const handleTopUpWaitResult = useMemoizedFn(
+    async (result: GasAccountTopUpResult) => {
+      if (isMissingRequiredContext) {
+        return;
+      }
+
+      const nextTxs = await buildTopUpResumedTxs({
+        txs: ctx.txs,
+        originalAccountAddress: config.account.address,
+        originalChainServerId: chain.serverId,
+        topUpResult: result,
+        wallet,
+      });
+
+      instance.replaceTxs(nextTxs);
+      if (ctx.selectedGas) {
+        await handleGasChange(ctx.selectedGas as any);
+      }
+      setManualGasMethod('gasAccount');
+      instance.setGasMethod('gasAccount', { manual: true });
+    }
+  );
+
+  useEffectiveApprovalGasMethod({
+    isReady,
+    isFirstGasLessLoading: !ctx?.txsCalc?.length,
+    isGasNotEnough,
+    gasAccountChainSupported,
+    noCustomRPC,
+    canUseGasLess,
+    manualGasMethod,
+    gasMethod,
+    setGasMethod: handleAutoChangeGasMethod,
+    isWalletConnect: currentAccount?.type === KEYRING_CLASS.WALLETCONNECT,
+    autoSwitchKey: ctx?.fingerprint,
+  });
+
+  if (
+    !ctx ||
+    !config?.account ||
+    !ctx?.txs?.length ||
+    !ctx?.chainId ||
+    !chain
+  ) {
+    return null;
+  }
+
+  const { swapPreferMEVGuarded, isSpeedUp, isCancel } = normalizeTxParams(
+    ctx.txs[0]
+  );
+  const isGasAccountTopUpFlow =
+    config?.ga?.category === 'GasAccount' && config?.ga?.action === 'deposit';
+
+  const handleToggleGasless = (value) => {
+    instance.toggleGasless(value);
+  };
+  const handleConfirm = (
+    getContainer: ModalProps['getContainer'] | DrawerProps['getContainer']
+  ) => {
+    if (!ctx?.txsCalc?.length) return;
+    instance.send({ wallet, getContainer }).catch(() => undefined);
+  };
+
+  const handleCancel = () => {
+    instance.close();
+  };
+
+  const handleRetry = (
+    getContainer: ModalProps['getContainer'] | DrawerProps['getContainer']
+  ) => {
+    instance.retry({ wallet, getContainer }).catch(() => undefined);
+  };
+
+  const totalGasCost = ctx.txsCalc?.reduce(
+    (sum, item) => {
+      sum.gasCostAmount = sum.gasCostAmount.plus(
+        item.gasCost?.gasCostAmount || 0
+      );
+      sum.gasCostUsd = sum.gasCostUsd.plus(item.gasCost?.gasCostUsd || 0);
+      return sum;
+    },
+    {
+      gasCostUsd: new BigNumber(0),
+      gasCostAmount: new BigNumber(0),
+      success: true,
+    }
+  ) || {
+    gasCostUsd: new BigNumber(0),
+    gasCostAmount: new BigNumber(0),
+    success: true,
+  };
+
+  const [description, retryUpdateType] = value || ['', 'origin'];
+
+  const content = config?.ga?.category
+    ? retryUpdateType
+      ? t('page.signFooterBar.qrcode.retryTxFailedBy', {
+          category: config.ga.category,
+        })
+      : t('page.signFooterBar.qrcode.txFailedBy', {
+          category: config.ga.category,
+        })
+    : t('page.signFooterBar.qrcode.txFailed');
+
+  const brandIcon =
+    currentAccount?.type === KEYRING_CLASS.HARDWARE.LEDGER
+      ? LedgerSVG
+      : currentAccount?.type === KEYRING_CLASS.HARDWARE.ONEKEY
+      ? OneKeySVG
+      : null;
+
+  const hdType =
+    currentAccount!.type === KEYRING_CLASS.HARDWARE.LEDGER
+      ? 'wired'
+      : 'privatekey';
+  let gasLessConfig =
+    canUseGasLess && ctx?.gasless?.promotion
+      ? ctx?.gasless?.promotion?.config
+      : undefined;
+  if (
+    gasLessConfig &&
+    ctx?.gasless?.promotion?.id === '0ca5aaa5f0c9217e6f45fe1d109c24fb'
+  ) {
+    gasLessConfig = { ...gasLessConfig, dark_color: '', theme_color: '' };
+  }
+
+  const useGasLess =
+    (isGasNotEnough || !!gasLessConfig) && !!canUseGasLess && !!ctx?.useGasless;
+
+  const showGasLess = isReady && (isGasNotEnough || !!gasLessConfig);
+
+  const canGotoUseGasAccount =
+    // isSupportedAddr &&
+    noCustomRPC &&
+    !!ctx?.gasAccount?.balance_is_enough &&
+    !ctx?.gasAccount.chain_not_support &&
+    !!ctx?.gasAccount.is_gas_account;
+
+  const canDepositUseGasAccount =
+    // isSupportedAddr &&
+    noCustomRPC &&
+    !!ctx?.gasAccount &&
+    !ctx?.gasAccount?.balance_is_enough &&
+    !ctx?.gasAccount.chain_not_support;
+
+  const gasAccountCanPay =
+    effectiveGasMethod === 'gasAccount' &&
+    // isSupportedAddr &&
+    noCustomRPC &&
+    !!ctx?.gasAccount?.balance_is_enough &&
+    !ctx?.gasAccount.chain_not_support &&
+    !!ctx?.gasAccount.is_gas_account &&
+    !(ctx?.gasAccount as any).err_msg;
+
+  // mock mini sign task
+  const task = {
+    status: ctx.signInfo?.status
+      ? ctx.signInfo?.status === 'signing'
+        ? 'active'
+        : ctx.signInfo?.status
+      : 'idle',
+    error: null,
+    list: [],
+    init: () => {},
+    start: () => Promise.resolve(''),
+    retry: () => Promise.resolve(''),
+    stop: () => {},
+    currentActiveIndex: ctx.signInfo?.currentTxIndex || 0,
+    total: ctx.signInfo?.totalTxs,
+  } as any;
+
+  const directSubmit = ctx.mode === 'direct';
+  const showDirectTransparentOverlay =
+    ctx?.mode === 'direct' &&
+    status !== 'ready' &&
+    !supportedHardwareDirectSign(config?.account.type || '');
+
+  const {
+    enableSecurityEngine,
+    showSimulateChange,
+    onRedirectToDeposit,
+    title,
+    originGasPrice,
+    getContainer,
+    disableSignBtn,
+  } = config;
+  const txsResult = ctx.txsCalc;
+  const txs = ctx.txs;
+  const pushType = swapPreferMEVGuarded ? 'mev' : 'default';
+  const gasLimit = ctx.txs?.[0]?.gas;
+  const gasList = ctx.gasList;
+  const selectedGas = ctx.selectedGas;
+  const recommendGasLimit = ctx.txsCalc?.[0]?.gasLimit;
+  const recommendNonce = ctx.txsCalc?.[0]?.tx?.nonce || '0x1';
+  const chainId = ctx.chainId;
+  const realNonce = ctx.txsCalc?.[0]?.tx?.nonce || '0x1';
+  const isHardware = false;
+  const manuallyChangeGasLimit = false;
+  const checkErrors = ctx.checkErrors || [];
+  const engineResults = ctx.engineResults;
+  const gasPriceMedian = ctx.gasPriceMedian || null;
+  const isGasAccountLogin = !!sig && !!gasAccountAddress;
+  const isWalletConnect = currentAccount?.type === 'WalletConnectKeyring';
+  const isWatchAddr = currentAccount?.type === 'WatchAddressKeyring';
+  const gasLessFailedReason = ctx.gasless?.desc;
+  const securityLevel = ctx.engineResults?.actionRequireData?.[0];
+  const disabledProcess =
+    !!loading ||
+    !ctx?.txsCalc?.length ||
+    !!ctx.checkErrors?.some((e) => e.level === 'forbidden');
+
+  if (isDesktop && !config.getContainer) {
+    const desktopPortalClassName = 'desktop-mini-signer';
+    const desktopMiniSignerGetContainer = `.${desktopPortalClassName}`;
+    return (
+      <>
+        {showDirectTransparentOverlay ? (
+          <Modal
+            getContainer={config.getContainer}
+            transitionName=""
+            visible={true}
+            maskClosable={false}
+            centered
+            cancelText={null}
+            okText={null}
+            footer={null}
+            width={'auto'}
+            closable={false}
+            bodyStyle={{ padding: 0 }}
+            maskStyle={{
+              backgroundColor: 'transparent',
+            }}
+            style={{
+              border: 'none',
+            }}
+          />
+        ) : null}
+        <Popup
+          height={'fit-content'}
+          visible={errorPopupVisible}
+          bodyStyle={{ padding: 0 }}
+          getContainer={desktopMiniSignerGetContainer}
+        >
+          <MiniApprovalPopupContainer
+            hdType={hdType}
+            brandIcon={brandIcon}
+            status={'FAILED'}
+            content={content}
+            description={description}
+            onCancel={handleCancel}
+            onRetry={async () => {
+              await wallet.setRetryTxType(retryUpdateType);
+              handleRetry(desktopMiniSignerGetContainer);
+            }}
+            retryUpdateType={retryUpdateType}
+          />
+        </Popup>
+        <Modal
+          visible={visible}
+          onClose={handleCancel}
+          maskClosable={!loading}
+          closable={false}
+          bodyStyle={{ padding: 0, maxHeight: 600, height: 600 }}
+          destroyOnClose={false}
+          forceRender
+          maskStyle={{
+            background: 'rgba(0,0,0,0.3)',
+            backdropFilter: 'blur(8px)',
+          }}
+          key={`${currentAccount?.address}-${currentAccount?.type}`}
+          width={400}
+          centered
+          content
+          className="modal-support-darkmode"
+        >
+          <PopupContainer>
+            <div className={clsx(desktopPortalClassName)}>
+              <MiniFooterBar
+                className="rounded-none h-[600px] flex flex-col"
+                account={currentAccount || undefined}
+                directSubmit={directSubmit}
+                task={task}
+                Header={
+                  <>
+                    <div
+                      className={clsx(
+                        'flex-1 flex flex-col',
+                        directSubmit &&
+                          'fixed left-[99999px] top-[99999px] z-[-1]',
+                        task.status !== 'idle' && 'pointer-events-none'
+                      )}
+                      key={task.status}
+                    >
+                      {enableSecurityEngine ||
+                      showSimulateChange ||
+                      isSpeedUp ||
+                      isCancel ||
+                      title ? (
+                        <div className="flex-1 flex flex-col gap-[22px] mb-16">
+                          {title}
+
+                          {showSimulateChange ? (
+                            <div className="bg-r-neutral-card-2 px-16 py-12 rounded-[8px]">
+                              {txsResult?.[txsResult?.length - 1]
+                                ?.preExecResult ? (
+                                <BalanceChange
+                                  version={
+                                    txsResult?.[txsResult?.length - 1]
+                                      .preExecResult.pre_exec_version
+                                  }
+                                  data={
+                                    txsResult?.[txsResult?.length - 1]
+                                      .preExecResult.balance_change
+                                  }
+                                />
+                              ) : (
+                                <BalanceChangeLoading />
+                              )}
+                            </div>
+                          ) : null}
+
+                          {engineResults &&
+                          ctx?.txsCalc[txs.length - 1].preExecResult ? (
+                            <ApprovalUtilsProvider>
+                              <MiniSecurityHeader
+                                engineResults={engineResults}
+                                tx={txs[txs.length - 1]}
+                                txDetail={
+                                  ctx?.txsCalc[txs.length - 1].preExecResult
+                                }
+                                account={config.account}
+                                isReady={!!ctx.engineResults}
+                                session={config?.session}
+                              />
+                            </ApprovalUtilsProvider>
+                          ) : null}
+                          <SpeedUpCancelHeader
+                            isSpeedUp={isSpeedUp}
+                            isCancel={isCancel}
+                            originGasPrice={originGasPrice || '0'}
+                            currentGasPrice={
+                              txsResult?.[0]?.tx?.gasPrice ||
+                              txsResult?.[0]?.tx?.maxFeePerGas ||
+                              ''
+                            }
+                          />
+
+                          <Divide className="mt-auto w-[calc(100%+40px)] relative left-[-20px] bg-r-neutral-line" />
+                        </div>
+                      ) : (
+                        <div className="mt-auto" />
+                      )}
+                      {shouldShowGasModule ? (
+                        <SignMainnetGasSelectorHeader
+                          onSignTx
+                          tx={txs[0]}
+                          gasAccountCost={gasAccountCost}
+                          gasMethod={effectiveGasMethod}
+                          onChangeGasMethod={handleChangeGasMethod}
+                          onAutoChangeGasMethod={handleAutoChangeGasMethod}
+                          disableAutoGasLevelSwitch={!!manualGasMethod}
+                          noCustomRPC={noCustomRPC}
+                          isWalletConnect={isWalletConnect}
+                          nativeTokenInsufficient={isGasNotEnough}
+                          freeGasAvailable={canUseGasLess}
+                          pushType={pushType}
+                          disabled={false}
+                          isReady={isReady}
+                          gasLimit={gasLimit}
+                          noUpdate={false}
+                          gasList={gasList}
+                          selectedGas={selectedGas}
+                          version={
+                            txsResult?.[0]?.preExecResult?.pre_exec_version ||
+                            'v0'
+                          }
+                          recommendGasLimit={recommendGasLimit}
+                          recommendNonce={recommendNonce}
+                          chainId={chainId}
+                          onChange={handleGasChange}
+                          nonce={realNonce}
+                          disableNonce={true}
+                          isSpeedUp={isSpeedUp}
+                          isCancel={isCancel}
+                          is1559={support1559}
+                          isHardware={isHardware}
+                          manuallyChangeGasLimit={manuallyChangeGasLimit}
+                          errors={checkErrors}
+                          // engineResults={engineResults}
+                          nativeTokenBalance={nativeTokenBalance}
+                          gasToken={gasToken}
+                          showTempoGasTokenSelector={showTempoGasTokenSelector}
+                          tempoGasTokenList={tempoGasTokenList}
+                          onSelectTempoGasToken={handleSelectTempoGasToken}
+                          tempoGasTokenLoading={tempoGasTokenLoading}
+                          checkTxValueInBalance={checkTxValueInBalance}
+                          gasPriceMedian={gasPriceMedian}
+                          gas={totalGasCost}
+                          gasCalcMethod={gasCalcMethod}
+                          // directSubmit={directSubmit}
+                          directSubmit={true}
+                          checkGasLevelIsNotEnough={checkGasLevelIsNotEnough}
+                          getContainer={desktopMiniSignerGetContainer}
+                        />
+                      ) : null}
+                    </div>
+                    {directSubmit && (
+                      <div className="mt-auto flex-1 flex flex-col" />
+                    )}
+                  </>
+                }
+                noCustomRPC={noCustomRPC}
+                gasMethod={effectiveGasMethod}
+                gasAccountCost={gasAccountCost}
+                gasAccountCanPay={gasAccountCanPay}
+                canGotoUseGasAccount={canGotoUseGasAccount}
+                canDepositUseGasAccount={canDepositUseGasAccount}
+                isGasAccountLogin={isGasAccountLogin}
+                isWalletConnect={isWalletConnect}
+                gasAccountAddress={gasAccountAddress}
+                onChangeGasAccount={handleChangeGasAccount}
+                isWatchAddr={isWatchAddr}
+                gasLessConfig={gasLessConfig}
+                gasLessFailedReason={gasLessFailedReason}
+                canUseGasLess={canUseGasLess}
+                showGasLess={showGasLess}
+                useGasLess={
+                  (isGasNotEnough || !!gasLessConfig) &&
+                  canUseGasLess &&
+                  useGasLess
+                }
+                isGasNotEnough={isGasNotEnough}
+                enableGasLess={() => handleToggleGasless(true)}
+                hasShadow={false}
+                origin={INTERNAL_REQUEST_SESSION.origin}
+                originLogo={INTERNAL_REQUEST_SESSION.icon}
+                // hasUnProcessSecurityResult={hasUnProcessSecurityResult}
+                securityLevel={securityLevel}
+                gnosisAccount={undefined}
+                chain={chain}
+                isTestnet={chain.isTestnet}
+                onCancel={handleCancel}
+                onSubmit={() => handleConfirm(desktopMiniSignerGetContainer)}
+                onIgnoreAllRules={noop}
+                enableTooltip={ctx.checkErrors?.some(
+                  (e) => e.code !== 3001 && e.level === 'forbidden'
+                )}
+                tooltipContent={
+                  checkErrors && checkErrors?.[0]?.code === 3001
+                    ? undefined
+                    : checkErrors.find((item) => item.level === 'forbidden')
+                    ? checkErrors.find((item) => item.level === 'forbidden')!
+                        .msg
+                    : undefined
+                }
+                disabledProcess={disabledProcess}
+                disableSignBtn={disableSignBtn}
+                isFirstGasLessLoading={!ctx?.txsCalc.length}
+                isFirstGasCostLoading={!ctx?.txsCalc.length}
+                disableAutoGasAccountSwitch={!!manualGasMethod}
+                getContainer={desktopMiniSignerGetContainer}
+                onRedirectToDeposit={onRedirectToDeposit}
+                onOpenGasAccountDeposit={handleOpenGasAccountDeposit}
+                disableGasAccountDeposit={
+                  isGasAccountTopUpFlow ||
+                  gasAccountDepositVisible ||
+                  depositFlowActive
+                }
+              />
+            </div>
+          </PopupContainer>
+        </Modal>
+        <GasAccountDepositPopup
+          visible={gasAccountDepositVisible}
+          onCancel={() => setGasAccountDepositVisible(false)}
+          onWaitDepositResult={handleTopUpWaitResult}
+          minDepositPrice={gasAccountCost?.gas_account_cost?.total_cost}
+          disableDirectDeposit
+          getContainer={desktopMiniSignerGetContainer}
+        />
+
+        <TokenDetailPopup
+          token={tokenDetail.selectToken}
+          visible={tokenDetail.popupVisible}
+          onClose={closeTokenDetailPopup}
+          canClickToken={false}
+          hideOperationButtons
+          variant="add"
+          account={currentAccount || undefined}
+          getContainer={desktopMiniSignerGetContainer}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      {showDirectTransparentOverlay ? (
+        <Modal
+          getContainer={config?.getContainer}
+          transitionName=""
+          visible={true}
+          maskClosable={false}
+          centered
+          cancelText={null}
+          okText={null}
+          footer={null}
+          width={'auto'}
+          closable={false}
+          bodyStyle={{ padding: 0 }}
+          maskStyle={{
+            backgroundColor: 'transparent',
+          }}
+          style={{
+            border: 'none',
+          }}
+        />
+      ) : null}
+      <Popup
+        height={'fit-content'}
+        visible={errorPopupVisible}
+        bodyStyle={{ padding: 0 }}
+        getContainer={config?.getContainer}
+        push={false}
+      >
+        <MiniApprovalPopupContainer
+          hdType={hdType}
+          brandIcon={brandIcon}
+          status={'FAILED'}
+          content={content}
+          description={description}
+          onCancel={handleCancel}
+          onRetry={async () => {
+            await wallet.setRetryTxType(retryUpdateType);
+            handleRetry(config?.getContainer);
+          }}
+          retryUpdateType={retryUpdateType}
+        />
+      </Popup>
+
+      <Popup
+        placement="bottom"
+        height="fit-content"
+        className="is-support-darkmode"
+        visible={visible && !errorPopupVisible}
+        onClose={handleCancel}
+        maskClosable={!loading}
+        closable={false}
+        bodyStyle={{ padding: 0 }}
+        push={false}
+        destroyOnClose={false}
+        forceRender
+        maskStyle={{
+          backgroundColor: !isDarkTheme ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.6)',
+        }}
+        getContainer={visible ? config?.getContainer : undefined}
+        key={`${currentAccount?.address}-${currentAccount?.type}`}
+      >
+        <MiniFooterBar
+          account={currentAccount || undefined}
+          directSubmit={directSubmit}
+          task={task}
+          Header={
+            <div
+              className={clsx(
+                directSubmit && 'fixed left-[99999px] top-[99999px] z-[-1]',
+                task.status !== 'idle' && 'pointer-events-none'
+              )}
+              key={task.status}
+            >
+              {enableSecurityEngine ||
+              showSimulateChange ||
+              isSpeedUp ||
+              isCancel ||
+              title ? (
+                <div className="flex flex-col gap-[22px] mb-16">
+                  {title}
+
+                  {showSimulateChange ? (
+                    <div className="bg-r-neutral-card-2 px-16 py-12 rounded-[8px]">
+                      {txsResult?.[txsResult?.length - 1]?.preExecResult ? (
+                        <BalanceChange
+                          version={
+                            txsResult?.[txsResult?.length - 1].preExecResult
+                              .pre_exec_version
+                          }
+                          data={
+                            txsResult?.[txsResult?.length - 1].preExecResult
+                              .balance_change
+                          }
+                        />
+                      ) : (
+                        <BalanceChangeLoading />
+                      )}
+                    </div>
+                  ) : null}
+
+                  {engineResults &&
+                  ctx?.txsCalc[txs.length - 1].preExecResult ? (
+                    <ApprovalUtilsProvider>
+                      <MiniSecurityHeader
+                        engineResults={engineResults}
+                        tx={txs[txs.length - 1]}
+                        txDetail={ctx?.txsCalc[txs.length - 1].preExecResult}
+                        account={config.account}
+                        isReady={!!ctx.engineResults}
+                        session={config?.session}
+                      />
+                    </ApprovalUtilsProvider>
+                  ) : null}
+                  <SpeedUpCancelHeader
+                    isSpeedUp={isSpeedUp}
+                    isCancel={isCancel}
+                    originGasPrice={originGasPrice || '0'}
+                    currentGasPrice={
+                      txsResult?.[0]?.tx?.gasPrice ||
+                      txsResult?.[0]?.tx?.maxFeePerGas ||
+                      ''
+                    }
+                  />
+
+                  <Divide className="w-[calc(100%+40px)] relative left-[-20px] bg-r-neutral-line" />
+                </div>
+              ) : null}
+              {shouldShowGasModule ? (
+                <SignMainnetGasSelectorHeader
+                  onSignTx
+                  tx={txs[0]}
+                  gasAccountCost={gasAccountCost}
+                  gasMethod={effectiveGasMethod}
+                  onChangeGasMethod={handleChangeGasMethod}
+                  onAutoChangeGasMethod={handleAutoChangeGasMethod}
+                  disableAutoGasLevelSwitch={!!manualGasMethod}
+                  noCustomRPC={noCustomRPC}
+                  isWalletConnect={isWalletConnect}
+                  nativeTokenInsufficient={isGasNotEnough}
+                  freeGasAvailable={canUseGasLess}
+                  pushType={pushType}
+                  disabled={false}
+                  isReady={isReady}
+                  gasLimit={gasLimit}
+                  noUpdate={false}
+                  gasList={gasList}
+                  selectedGas={selectedGas}
+                  version={
+                    txsResult?.[0]?.preExecResult?.pre_exec_version || 'v0'
+                  }
+                  recommendGasLimit={recommendGasLimit}
+                  recommendNonce={recommendNonce}
+                  chainId={chainId}
+                  onChange={handleGasChange}
+                  nonce={realNonce}
+                  disableNonce={true}
+                  isSpeedUp={isSpeedUp}
+                  isCancel={isCancel}
+                  is1559={support1559}
+                  isHardware={isHardware}
+                  manuallyChangeGasLimit={manuallyChangeGasLimit}
+                  errors={checkErrors}
+                  // engineResults={engineResults}
+                  nativeTokenBalance={nativeTokenBalance}
+                  gasToken={gasToken}
+                  showTempoGasTokenSelector={showTempoGasTokenSelector}
+                  tempoGasTokenList={tempoGasTokenList}
+                  onSelectTempoGasToken={handleSelectTempoGasToken}
+                  tempoGasTokenLoading={tempoGasTokenLoading}
+                  checkTxValueInBalance={checkTxValueInBalance}
+                  gasPriceMedian={gasPriceMedian}
+                  gas={totalGasCost}
+                  gasCalcMethod={gasCalcMethod}
+                  // directSubmit={directSubmit}
+                  directSubmit={true}
+                  checkGasLevelIsNotEnough={checkGasLevelIsNotEnough}
+                  getContainer={getContainer}
+                />
+              ) : null}
+            </div>
+          }
+          noCustomRPC={noCustomRPC}
+          gasMethod={effectiveGasMethod}
+          gasAccountCost={gasAccountCost}
+          gasAccountCanPay={gasAccountCanPay}
+          canGotoUseGasAccount={canGotoUseGasAccount}
+          canDepositUseGasAccount={canDepositUseGasAccount}
+          isGasAccountLogin={isGasAccountLogin}
+          isWalletConnect={isWalletConnect}
+          gasAccountAddress={gasAccountAddress}
+          onChangeGasAccount={handleChangeGasAccount}
+          isWatchAddr={isWatchAddr}
+          gasLessConfig={gasLessConfig}
+          gasLessFailedReason={gasLessFailedReason}
+          canUseGasLess={canUseGasLess}
+          showGasLess={showGasLess}
+          useGasLess={
+            (isGasNotEnough || !!gasLessConfig) && canUseGasLess && useGasLess
+          }
+          isGasNotEnough={isGasNotEnough}
+          enableGasLess={() => handleToggleGasless(true)}
+          hasShadow={false}
+          origin={INTERNAL_REQUEST_SESSION.origin}
+          originLogo={INTERNAL_REQUEST_SESSION.icon}
+          // hasUnProcessSecurityResult={hasUnProcessSecurityResult}
+          securityLevel={securityLevel}
+          gnosisAccount={undefined}
+          chain={chain}
+          isTestnet={chain.isTestnet}
+          onCancel={handleCancel}
+          onSubmit={() => handleConfirm(getContainer)}
+          onIgnoreAllRules={noop}
+          enableTooltip={ctx.checkErrors?.some(
+            (e) => e.code !== 3001 && e.level === 'forbidden'
+          )}
+          tooltipContent={
+            checkErrors && checkErrors?.[0]?.code === 3001
+              ? undefined
+              : checkErrors.find((item) => item.level === 'forbidden')
+              ? checkErrors.find((item) => item.level === 'forbidden')!.msg
+              : undefined
+          }
+          disabledProcess={disabledProcess}
+          disableSignBtn={disableSignBtn}
+          isFirstGasLessLoading={!ctx?.txsCalc.length}
+          isFirstGasCostLoading={!ctx?.txsCalc.length}
+          disableAutoGasAccountSwitch={!!manualGasMethod}
+          getContainer={getContainer}
+          onRedirectToDeposit={onRedirectToDeposit}
+          onOpenGasAccountDeposit={handleOpenGasAccountDeposit}
+          disableGasAccountDeposit={
+            isGasAccountTopUpFlow ||
+            gasAccountDepositVisible ||
+            depositFlowActive
+          }
+        />
+      </Popup>
+      <GasAccountDepositPopup
+        visible={gasAccountDepositVisible}
+        onCancel={() => setGasAccountDepositVisible(false)}
+        onWaitDepositResult={handleTopUpWaitResult}
+        minDepositPrice={gasAccountCost?.gas_account_cost?.total_cost}
+        disableDirectDeposit
+        getContainer={config?.getContainer}
+      />
+      <TokenDetailPopup
+        token={tokenDetail.selectToken}
+        visible={tokenDetail.popupVisible}
+        onClose={closeTokenDetailPopup}
+        canClickToken={false}
+        hideOperationButtons
+        variant="add"
+        account={currentAccount || undefined}
+      />
+    </>
+  );
+};
+
+export default MiniSignTxV2;

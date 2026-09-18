@@ -1,0 +1,556 @@
+/* eslint "react-hooks/exhaustive-deps": ["error"] */
+/* eslint-enable react-hooks/exhaustive-deps */
+import type { Account } from '@/background/service/preference';
+import { BALANCE_LOADING_CONFS } from '@/constant/timeout';
+import {
+  RcIconArrowRightDashboardCC,
+  RcIconJumpCC,
+} from '@/ui/assets/dashboard';
+import { ReactComponent as UpdateSVG } from '@/ui/assets/dashboard/update.svg';
+import { ReactComponent as WarningSVG } from '@/ui/assets/dashboard/warning-1.svg';
+import { TooltipWithMagnetArrow } from '@/ui/component/Tooltip/TooltipWithMagnetArrow';
+import { useCurrency } from '@/ui/hooks/useCurrency';
+import useCurrentBalance from '@/ui/hooks/useCurrentBalance';
+import { useRabbySelector } from '@/ui/store';
+import { IExtractFromPromise } from '@/ui/utils/type';
+import { findChain } from '@/utils/chain';
+import { ga4 } from '@/utils/ga4';
+import { matomoRequestEvent } from '@/utils/matomo-request';
+import { Chain } from '@debank/common';
+import { Skeleton } from 'antd';
+import clsx from 'clsx';
+import { KEYRING_TYPE } from 'consts';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { useDebounce } from 'react-use';
+import { useCommonPopupView, useWallet } from 'ui/utils';
+import { useQueryProjects } from 'ui/utils/portfolio';
+import { OfflineChainNotify } from '../OfflineChainNotify';
+import { BalanceLabel } from './BalanceLabel';
+import { ChainList } from './ChainList';
+import { CurvePoint, CurveThumbnail } from './CurveView';
+import { formChartData, useCurve } from './useCurve';
+import {
+  useHomeBalanceView,
+  useRefreshHomeBalanceView,
+} from './useHomeBalanceView';
+import { ZeroAssets } from './ZeroAssets';
+
+export const BalanceViewJumpButton = ({
+  className,
+  onClick,
+}: {
+  className?: string;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <button
+      type="button"
+      className={clsx(
+        'balance-view-jump-button hidden shrink-0 items-center justify-center cursor-pointer rounded-[4px] border-0',
+        'bg-[rgba(255,255,255,0.2)] p-[5px] opacity-60',
+        'hover:bg-[rgba(255,255,255,0.1)] hover:opacity-100',
+        className
+      )}
+      aria-label={t('page.dashboard.assets.openInTabV2')}
+      onClick={onClick}
+    >
+      <RcIconJumpCC className="h-[12px] w-[12px] text-r-neutral-title2" />
+    </button>
+  );
+};
+
+export const BalanceView = ({
+  currentAccount,
+  hideJumpButton,
+}: {
+  currentAccount?: Account | null;
+  hideJumpButton?: boolean;
+}) => {
+  const { t } = useTranslation();
+  const { currency, syncCurrencyList } = useCurrency();
+
+  const { currentHomeBalanceCache } = useHomeBalanceView(
+    currentAccount?.address
+  );
+
+  const initHasCacheRef = useRef(!!currentHomeBalanceCache?.balance);
+  const [accountBalanceUpdateNonce, setAccountBalanceUpdateNonce] = useState(
+    initHasCacheRef?.current ? -1 : 0
+  );
+
+  useEffect(() => {
+    if (!initHasCacheRef?.current) return;
+    const timer = setTimeout(() => {
+      setAccountBalanceUpdateNonce((prev) => prev + 1);
+    }, BALANCE_LOADING_CONFS.TIMEOUT);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
+
+  const {
+    balance: latestBalance,
+    evmBalance: latestEvmBalance,
+    appChainIds: latestAppChainIds,
+    matteredChainBalances: latestMatteredChainBalances,
+    chainBalancesWithValue: latestChainBalancesWithValue,
+    success: loadBalanceSuccess,
+    balanceLoading,
+    balanceFromCache,
+    isCurrentBalanceExpired,
+    refreshBalance,
+    missingList,
+  } = useCurrentBalance(currentAccount?.address, {
+    update: true,
+    noNeedBalance: false,
+    nonce: accountBalanceUpdateNonce,
+    initBalanceFromLocalCache: !!currentHomeBalanceCache?.balance,
+  });
+
+  const {
+    curveData: latestCurveData,
+    curveChartData: latestCurveChartData,
+    refresh: refreshCurve,
+    isCurveCollectionExpired,
+    isLoading: curveLoading,
+  } = useCurve(currentAccount?.address, {
+    nonce: accountBalanceUpdateNonce,
+    realtimeNetWorth: latestEvmBalance,
+    initData: currentHomeBalanceCache?.originalCurveData,
+    currency,
+  });
+  const wallet = useWallet();
+  const [gnosisNetworks, setGnosisNetworks] = useState<Chain[]>([]);
+  const [isHover, setHover] = useState(false);
+  const [curvePoint, setCurvePoint] = useState<CurvePoint>();
+  const [isDebounceHover, setIsDebounceHover] = useState(false);
+  const isGnosis = useMemo(() => {
+    return currentAccount?.type === KEYRING_TYPE.GnosisKeyring;
+  }, [currentAccount?.type]);
+
+  const {
+    balance,
+    evmBalance,
+    curveChartData,
+    matteredChainBalances,
+    chainBalancesWithValue,
+    appChainIds,
+  } = useMemo(() => {
+    const balanceValue = latestBalance || currentHomeBalanceCache?.balance;
+    const evmBalanceValue =
+      latestEvmBalance || currentHomeBalanceCache?.evmBalance;
+    const appChainIds = latestAppChainIds?.length
+      ? latestAppChainIds
+      : currentHomeBalanceCache?.appChainIds || [];
+    return {
+      appChainIds,
+      balance: balanceValue,
+      evmBalance: evmBalanceValue,
+      curveChartData:
+        latestCurveChartData ||
+        formChartData(
+          currentHomeBalanceCache?.originalCurveData || [],
+          undefined,
+          undefined,
+          currency
+        ),
+      matteredChainBalances: latestMatteredChainBalances.length
+        ? latestMatteredChainBalances
+        : currentHomeBalanceCache?.matteredChainBalances || [],
+      chainBalancesWithValue: latestChainBalancesWithValue.length
+        ? latestChainBalancesWithValue
+        : currentHomeBalanceCache?.chainBalancesWithValue || [],
+    };
+  }, [
+    latestBalance,
+    latestEvmBalance,
+    latestAppChainIds,
+    latestMatteredChainBalances,
+    latestChainBalancesWithValue,
+    latestCurveChartData,
+    currentHomeBalanceCache,
+    currency,
+  ]);
+
+  const getCacheExpired = useCallback(async () => {
+    const res = {
+      balanceExpired: await isCurrentBalanceExpired(),
+      curveExpired: await isCurveCollectionExpired(),
+      expired: false,
+    };
+    res.expired = res.balanceExpired || res.curveExpired;
+
+    return res;
+  }, [isCurrentBalanceExpired, isCurveCollectionExpired]);
+
+  const { isManualRefreshing, onRefresh } = useRefreshHomeBalanceView({
+    currentAddress: currentAccount?.address,
+    refreshBalance,
+    refreshCurve,
+    isExpired: getCacheExpired,
+  });
+  const { refreshPositions } = useQueryProjects(currentAccount?.address, {
+    visible: true,
+    autoLoad: false,
+  });
+
+  // const refreshTimerlegacy = useRef<NodeJS.Timeout>();
+  // only execute once on component mounted or address changed
+  useEffect(
+    () => {
+      (async () => {
+        let expirationInfo: IExtractFromPromise<
+          ReturnType<typeof getCacheExpired>
+        > | null = null;
+        if (!currentHomeBalanceCache?.balance) {
+          onRefresh({
+            balanceExpired: true,
+            curveExpired: true,
+            isManual: false,
+          });
+        } else if (
+          (expirationInfo = await getCacheExpired()) &&
+          expirationInfo.expired
+        ) {
+          onRefresh({
+            balanceExpired: expirationInfo.balanceExpired,
+            curveExpired: expirationInfo.curveExpired,
+            isManual: false,
+          });
+        }
+      })();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  useEffect(() => {
+    syncCurrencyList();
+  }, [syncCurrencyList]);
+
+  const handleIsGnosisChange = useCallback(async () => {
+    if (!currentAccount) return;
+    const networkIds = await wallet.getGnosisNetworkIds(currentAccount.address);
+    const chains = networkIds
+      .map((networkId) => {
+        return findChain({
+          id: Number(networkId),
+        });
+      })
+      .filter((v) => !!v);
+    setGnosisNetworks(chains as Chain[]);
+  }, [currentAccount, wallet]);
+
+  const handleHoverCurve = (data) => {
+    setCurvePoint(data);
+  };
+
+  const { activePopup, setData, componentName } = useCommonPopupView();
+
+  useEffect(() => {
+    if (componentName === 'AssetList') {
+      setData({
+        matteredChainBalances: chainBalancesWithValue,
+        balance,
+        balanceLoading,
+        isEmptyAssets: !matteredChainBalances.length,
+        isOffline: !loadBalanceSuccess,
+      });
+    }
+  }, [
+    chainBalancesWithValue,
+    matteredChainBalances.length,
+    balance,
+    balanceLoading,
+    componentName,
+    setData,
+    loadBalanceSuccess,
+  ]);
+
+  const hasCustomNetwork = useRabbySelector(
+    (store) => !!store.chains.testnetList?.length
+  );
+
+  useEffect(() => {
+    if (isGnosis) {
+      handleIsGnosisChange();
+    }
+  }, [isGnosis, handleIsGnosisChange]);
+
+  useEffect(() => {
+    if (!isHover) {
+      setCurvePoint(undefined);
+    }
+  }, [isHover]);
+
+  // useEffect(() => {
+  //   if (!balanceLoading && !curveLoading) {
+  //     setIsManualRefreshing(false);
+  //   }
+  // }, [balanceLoading, curveLoading]);
+
+  const onMouseMove = () => {
+    setHover(true);
+  };
+  const onMouseLeave = () => {
+    setHover(false);
+    setIsDebounceHover(false);
+  };
+
+  const handleClickRefresh = () => {
+    refreshPositions();
+    onRefresh({ isManual: true });
+  };
+
+  useDebounce(
+    () => {
+      if (isHover) {
+        setIsDebounceHover(true);
+      }
+    },
+    300,
+    [isHover]
+  );
+
+  const currentHover = isDebounceHover;
+
+  const currentBalance = currentHover ? curvePoint?.value || balance : balance;
+  const currentChangePercent = currentHover
+    ? curvePoint?.changePercent || curveChartData?.changePercent
+    : curveChartData?.changePercent;
+  const currentIsLoss =
+    currentHover && curvePoint ? curvePoint.isLoss : curveChartData?.isLoss;
+  const currentChangeValue = currentHover ? curvePoint?.change : null;
+  const { hiddenBalance } = useRabbySelector((state) => state.preference);
+
+  const shouldShowRefreshButton =
+    isManualRefreshing || balanceLoading || curveLoading;
+
+  const couldShowLoadingDueToBalanceNil =
+    currentBalance === null || (balanceFromCache && currentBalance === 0);
+  // const couldShowLoadingDueToUpdateSource = !balanceFromCache || isManualRefreshing;
+  const couldShowLoadingDueToUpdateSource =
+    !currentHomeBalanceCache?.balance || isManualRefreshing;
+
+  const shouldShowBalanceLoading =
+    couldShowLoadingDueToBalanceNil ||
+    (couldShowLoadingDueToUpdateSource && balanceLoading);
+  const shouldShowCurveLoading =
+    couldShowLoadingDueToBalanceNil ||
+    (couldShowLoadingDueToUpdateSource && curveLoading);
+  const shouldShowLoading = shouldShowBalanceLoading || shouldShowCurveLoading;
+  const shouldHidePercentChange =
+    !currentChangePercent ||
+    hiddenBalance ||
+    shouldShowLoading ||
+    !curveChartData?.startUsdValue;
+
+  const shouldRenderCurve =
+    !shouldShowLoading && !hiddenBalance && !!curveChartData;
+
+  const showAppChainTips = useMemo(() => {
+    return evmBalance !== balance;
+  }, [evmBalance, balance]);
+
+  const onClickViewAssets = () => {
+    if (shouldShowBalanceLoading) {
+      return;
+    }
+    matomoRequestEvent({
+      category: 'Front Page Click',
+      action: 'Click_BalanceCard',
+    });
+    ga4.fireEvent('Click_BalanceCard', {
+      event_category: 'Front Page Click',
+    });
+    activePopup('AssetList');
+    // wallet.openInDesktop('/desktop/profile');
+    // window.close();
+  };
+
+  const onClickOpenInDesktop = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    wallet.openInDesktop('/desktop/profile');
+    window.close();
+  };
+
+  if (
+    !balanceLoading &&
+    !isGnosis &&
+    !hasCustomNetwork &&
+    !chainBalancesWithValue?.length &&
+    !balance
+  ) {
+    return <ZeroAssets />;
+  }
+
+  return (
+    <div onMouseLeave={onMouseLeave} className={clsx('w-full')}>
+      <div
+        className={clsx(
+          'balance-view-card group/balance-card relative min-h-[132px] w-full cursor-pointer rounded-[8px]',
+          'bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)]',
+          '[&:has(.balance-view-jump-button:hover)]:bg-[rgba(255,255,255,0.05)]'
+        )}
+        onClick={onClickViewAssets}
+      >
+        {!hideJumpButton && (
+          <BalanceViewJumpButton
+            className="absolute right-[8px] top-[8px] z-[1] group-hover/balance-card:flex"
+            onClick={onClickOpenInDesktop}
+          />
+        )}
+        <div className="group flex w-full items-end pl-[12px] pr-[42px] pt-[10px]">
+          <div
+            className={clsx(
+              'text-r-neutral-title2 text-[30px] leading-[36px] font-bold max-w-full'
+            )}
+          >
+            {shouldShowBalanceLoading ? (
+              <Skeleton.Input
+                active
+                className="w-[200px] h-[36px] rounded block"
+              />
+            ) : (
+              <BalanceLabel
+                // isCache={balanceFromCache}
+                balanceUsd={currentBalance || 0}
+                currency={currency}
+              />
+            )}
+          </div>
+          <div
+            className="flex flex-end items-center gap-[8px] mb-[4px] ml-[8px] min-h-[20px] cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleClickRefresh();
+            }}
+          >
+            <div
+              className={clsx(
+                currentIsLoss ? 'text-r-red-default' : 'text-r-green-default',
+                'text-[15px] leading-[18px] font-medium truncate',
+                {
+                  hidden: shouldHidePercentChange,
+                }
+              )}
+            >
+              {currentIsLoss ? '-' : '+'}
+              {currentChangePercent === '0%' ? '0.00%' : currentChangePercent}
+              {currentChangeValue ? (
+                <span className="ml-4">({currentChangeValue})</span>
+              ) : null}
+            </div>
+            {missingList?.length ? (
+              <TooltipWithMagnetArrow
+                overlayClassName="rectangle font-normal whitespace-pre-wrap"
+                title={t('page.dashboard.home.missingDataTooltip', {
+                  text:
+                    missingList.join(t('page.dashboard.home.chain')) +
+                    t('page.dashboard.home.chainEnd'),
+                })}
+              >
+                <div onClick={(evt) => evt.stopPropagation()}>
+                  <WarningSVG />
+                </div>
+              </TooltipWithMagnetArrow>
+            ) : null}
+            <div
+              className={clsx({
+                'block animate-spin': shouldShowRefreshButton,
+                hidden: !shouldShowRefreshButton,
+                'group-hover:block': !hiddenBalance,
+              })}
+            >
+              <UpdateSVG />
+            </div>
+          </div>
+        </div>
+        <div
+          onMouseMove={onMouseMove}
+          onMouseLeave={onMouseLeave}
+          className={clsx('mt-[2px]', 'relative cursor-pointer')}
+        >
+          {/* <img
+            src={ArrowNextSVG}
+            className={clsx(
+              'absolute w-[20px] h-[20px] top-[8px] right-[10px]',
+              !currentHover && 'opacity-80'
+              // balanceFromCache
+              //   ? !currentHover && 'opacity-0'
+              //   : !currentHover && 'opacity-80'
+            )}
+          /> */}
+          {!shouldShowLoading && (
+            <div className={clsx('px-[12px] pointer-events-none')}>
+              {!loadBalanceSuccess ? null : chainBalancesWithValue.length >
+                0 ? (
+                <div
+                  className={clsx(
+                    'w-full flex items-center gap-[4px]',
+                    !currentHover && 'opacity-50'
+                  )}
+                >
+                  <ChainList
+                    isGnosis={isGnosis}
+                    matteredChainBalances={chainBalancesWithValue.slice(0)}
+                    gnosisNetworks={gnosisNetworks}
+                  />
+                  <RcIconArrowRightDashboardCC className="w-[18px] h-[18px] text-r-neutral-title2" />
+                </div>
+              ) : (
+                <div
+                  className={clsx(
+                    'w-full flex items-center gap-[4px]',
+                    !currentHover && 'opacity-50'
+                  )}
+                >
+                  <div
+                    className={clsx(
+                      'text-[12px] leading-[14px] text-r-neutral-title-2'
+                    )}
+                  >
+                    {t('page.dashboard.assets.noAssets')}
+                  </div>
+                  <RcIconArrowRightDashboardCC className="w-[18px] h-[18px] text-r-neutral-title2" />
+                </div>
+              )}
+            </div>
+          )}
+          <div className={clsx('h-[66px] w-full relative')}>
+            {!!shouldRenderCurve && !!curveChartData && (
+              <CurveThumbnail
+                isHover={currentHover}
+                data={curveChartData}
+                showAppChainTips={showAppChainTips}
+                appChainIds={appChainIds}
+                onHover={handleHoverCurve}
+              />
+            )}
+            {!!shouldShowLoading && (
+              <div className="flex">
+                <Skeleton.Input
+                  active
+                  className="mx-auto mt-[4px] w-[344px] h-[66px] rounded block"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <OfflineChainNotify />
+    </div>
+  );
+};

@@ -1,0 +1,188 @@
+import { CHAINS, CHAINS_ENUM, KEYRING_CLASS, KEYRING_TYPE } from '@/constant';
+import React from 'react';
+import { ChainList } from './ChainList';
+import { AddressInput } from './AddressInput';
+import { Button, message } from 'antd';
+import clsx from 'clsx';
+import { Header } from './Header';
+import { getUiType, useApproval, useWallet } from '@/ui/utils';
+import { isAddress } from 'viem';
+import { SelectAddressPopup } from './SelectAddressPopup';
+import { useHistory, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { findChainByID } from '@/utils/chain';
+import { useRepeatImportConfirm } from '@/ui/utils/useRepeatImportConfirm';
+import { safeJSONParse } from '@/utils';
+import { UI_TYPE } from '@/constant/ui';
+import qs from 'qs';
+import { useCreateAddressActions } from '../AddAddress/useCreateAddress';
+
+type Type = 'select-chain' | 'add-address' | 'select-address';
+
+export const ImportCoboArgus: React.FC<{
+  isInModal?: boolean;
+  onBack?(): void;
+  onNavigate?(type: string, state?: Record<string, any>): void;
+}> = ({ isInModal, onBack, onNavigate }) => {
+  const { state } = useLocation<{
+    address: string;
+    chainId: number | string;
+  }>();
+  const { t } = useTranslation();
+  const [selectedChain, setSelectedChain] = React.useState<
+    CHAINS_ENUM | string
+  >();
+  const [inputAddress, setInputAddress] = React.useState<string>('');
+  const [step, setStep] = React.useState<Type>('select-chain');
+  const [error, setError] = React.useState<string>('');
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const [safeAddress, setSafeAddress] = React.useState<string>('');
+  const wallet = useWallet();
+  const history = useHistory();
+  const [hasImportError, setHasImportError] = React.useState<boolean>(false);
+  const { show, contextHolder } = useRepeatImportConfirm();
+  const isByImportAddressEvent = !!state;
+
+  const { openSuccessPage } = useCreateAddressActions({
+    onNavigate,
+  });
+
+  const handleNext = React.useCallback(async () => {
+    if (selectedChain && step === 'select-chain') {
+      setStep('add-address');
+    } else if (step === 'add-address') {
+      if (!isAddress(inputAddress)) {
+        setError(t('page.newAddress.coboSafe.invalidAddress'));
+        return;
+      }
+      try {
+        setIsLoading(true);
+        const accountAddress = await wallet.coboSafeGetAccountAddress({
+          chainServerId: CHAINS[selectedChain!].serverId,
+          coboSafeAddress: inputAddress,
+        });
+        setSafeAddress(accountAddress);
+        setStep('select-address');
+      } catch (e) {
+        setError(t('page.newAddress.coboSafe.invalidAddress'));
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  }, [selectedChain, step, inputAddress]);
+
+  const handleDone = React.useCallback(async () => {
+    try {
+      const accounts = await wallet.coboSafeImport({
+        address: safeAddress,
+        networkId: CHAINS[selectedChain!].serverId,
+        safeModuleAddress: inputAddress,
+      });
+      openSuccessPage({
+        addresses: accounts.map((item) => ({
+          address: item.address,
+          alias: '',
+        })),
+        publicKey: '',
+        title: t('page.newAddress.addressAdded'),
+      });
+    } catch (e) {
+      if (e.message?.includes?.('DuplicateAccountError')) {
+        const address = safeJSONParse(e.message)?.address;
+        show({
+          address,
+          type: KEYRING_CLASS.CoboArgus,
+        });
+      } else {
+        message.error(e.message);
+      }
+    }
+  }, [selectedChain, safeAddress, inputAddress]);
+
+  const [, , rejectApproval] = useApproval();
+  const handleClose = React.useCallback(() => {
+    rejectApproval();
+  }, [rejectApproval]);
+
+  React.useEffect(() => {
+    if (!state) return;
+    const { chainId, address } = state;
+    const chain = findChainByID(
+      typeof chainId === 'number' ? chainId : parseInt(chainId, 10)
+    );
+
+    if (chain) {
+      setStep('add-address');
+      setSelectedChain(chain.enum);
+      setInputAddress(address);
+    }
+  }, []);
+
+  return (
+    <section
+      className={clsx(
+        'bg-r-neutral-bg-2 relative container-section',
+        isInModal ? 'h-[600px] overflow-auto' : ''
+      )}
+    >
+      {contextHolder}
+      <Header hasBack={!isByImportAddressEvent} onBack={onBack}>
+        {step === 'select-chain' &&
+          t('page.newAddress.coboSafe.whichChainIsYourCoboAddressOn')}
+        {(step === 'add-address' || step === 'select-address') &&
+          t('page.newAddress.coboSafe.addCoboArgusAddress')}
+      </Header>
+      <div
+        className={clsx(
+          'p-20 overflow-y-scroll pb-[100px]',
+          isInModal ? 'h-[339px]' : 'h-[calc(100vh-261px)]'
+        )}
+      >
+        {step === 'select-chain' && (
+          <ChainList checked={selectedChain} onChecked={setSelectedChain} />
+        )}
+        {(step === 'add-address' || step === 'select-address') &&
+          selectedChain && (
+            <AddressInput
+              chainEnum={selectedChain}
+              value={inputAddress}
+              onChange={(val) => {
+                setInputAddress(val);
+                setError('');
+              }}
+              error={error}
+            />
+          )}
+        {selectedChain && (
+          <SelectAddressPopup
+            address={safeAddress}
+            onCancel={() => setStep('add-address')}
+            onConfirm={handleDone}
+            visible={step === 'select-address'}
+            getContainer={'.container-section'}
+          />
+        )}
+      </div>
+      <footer
+        className={clsx(
+          'flex px-[20px] py-[18px]',
+          'border-t border-t-r-neutral-line',
+          'bg-transparent'
+        )}
+      >
+        <Button
+          disabled={
+            (step === 'select-chain' && !selectedChain) ||
+            (step === 'add-address' && !inputAddress)
+          }
+          className="w-full h-[44px] m-auto"
+          type="primary"
+          onClick={hasImportError ? handleClose : handleNext}
+          loading={isLoading}
+        >
+          {hasImportError ? t('global.ok') : t('global.next')}
+        </Button>
+      </footer>
+    </section>
+  );
+};

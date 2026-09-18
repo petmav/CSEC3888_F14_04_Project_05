@@ -1,0 +1,916 @@
+/* eslint "react-hooks/exhaustive-deps": ["error"] */
+/* eslint-enable react-hooks/exhaustive-deps */
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Input,
+  Drawer,
+  Skeleton,
+  Tooltip,
+  DrawerProps,
+  Modal,
+  Button,
+} from 'antd';
+import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
+import { useAsync, useDebounce } from 'react-use';
+import TokenWithChain from '../TokenWithChain';
+import { TokenItem, TokenItemWithEntity } from 'background/service/openapi';
+import {
+  formatLargeTokenAmount,
+  formatPrice,
+  formatUsdValue,
+} from 'ui/utils/number';
+import { getTokenSymbol } from 'ui/utils/token';
+import './style.less';
+import BigNumber from 'bignumber.js';
+import stats from '@/stats';
+import { CHAINS_ENUM, Chain } from '@debank/common';
+import { findChain, findChainByServerID } from '@/utils/chain';
+
+import MatchImage from 'ui/assets/match.svg';
+import IconSearch from 'ui/assets/search.svg';
+import { ReactComponent as RcIconCloseCC } from 'ui/assets/component/close-cc.svg';
+import { ReactComponent as RcIconMatchCC } from '@/ui/assets/match-cc.svg';
+import { ReactComponent as AssetEmptySVG } from '@/ui/assets/dashboard/asset-empty.svg';
+import { ReactComponent as RcIconWarningCC } from '@/ui/assets/riskWarning-cc.svg';
+import { useCurrentAccount } from '@/ui/hooks/backgroundState/useAccount';
+import { getUiType, useWallet } from '@/ui/utils';
+import { useRabbySelector } from '@/ui/store';
+import { TokenDetailPopup } from '@/ui/views/Dashboard/components/TokenDetailPopup';
+import { TokenDetailInTokenSelectProviderContext } from './context';
+import NetSwitchTabs, {
+  useSwitchNetTab,
+} from 'ui/component/PillsSwitch/NetSwitchTabs';
+import { useSearchTestnetToken } from '@/ui/hooks/useSearchTestnetToken';
+import { useHistory } from 'react-router-dom';
+import { ExchangeLogos } from './CexLogos';
+import { LpTokenSwitch } from '@/ui/views/DesktopProfile/components/TokensTabPane/components/LpTokenSwitch';
+import { isLpToken, isUnknownToken } from '@/ui/utils/portfolio/lpToken';
+import { LpTokenTag } from '@/ui/views/DesktopProfile/components/TokensTabPane/components/LpTokenTag';
+import { ChainFilterV2Line } from './ChainFilterV2Line';
+import { isNil, isNumber } from 'lodash';
+import { ExternalTokenRow } from './ExternalToken';
+import { getCexIds } from '@/ui/utils/portfolio/tokenUtils';
+import { UnknownTag } from '@/ui/component';
+
+const isTab = getUiType().isTab;
+
+export const isSwapTokenType = (s: string) =>
+  ['swapFrom', 'swapTo'].includes(s);
+
+export interface SearchCallbackCtx {
+  chainServerId: Chain['serverId'] | null;
+  // chainItem: Chain | null | undefined;
+}
+export interface TokenSelectorProps {
+  visible: boolean;
+  isHideTitle?: boolean;
+  // list: TokenItem[];
+  mainnetTokenList: TokenItem[];
+  // testnetTokenList: TokenItem[];
+  isLoading?: boolean;
+  onConfirm(item: TokenItem): void;
+  onCancel(): void;
+  onSearch(
+    ctx: SearchCallbackCtx & {
+      keyword: string;
+    }
+  ): any;
+  onRemoveChainFilter?(ctx: SearchCallbackCtx): any;
+  onStartSelectChain?: () => void;
+  type?: 'default' | 'swapFrom' | 'swapTo' | 'bridgeFrom' | 'bridgeTo' | 'send';
+  placeholder?: string;
+  chainId?: string;
+  disabledTips?: React.ReactNode;
+  supportChains?: CHAINS_ENUM[] | undefined;
+  drawerHeight?: number | string;
+  excludeTokens?: TokenItem['id'][];
+  getContainer?: DrawerProps['getContainer'];
+  showCustomTestnetAssetList?: boolean;
+  disableItemCheck?: (
+    token: TokenItem
+  ) => {
+    disable: boolean;
+    reason: string;
+    shortReason: string;
+  };
+  lpTokenMode?: boolean;
+  setLpTokenMode?: (value: boolean) => void;
+  showLpTokenSwitch?: boolean;
+  onSelectRecentToken?: (token: TokenItem) => void;
+}
+
+const filterTestnetTokenItem = (token: TokenItem) => {
+  return !findChainByServerID(token.chain)?.isTestnet;
+};
+
+const defaultExcludeTokens = [];
+
+const TokenSelector = ({
+  visible,
+  isHideTitle,
+  mainnetTokenList,
+  // testnetTokenList,
+  onConfirm,
+  onCancel,
+  onSearch,
+  onRemoveChainFilter,
+  onStartSelectChain,
+  isLoading = false,
+  type = 'default',
+  placeholder,
+  chainId: chainServerId,
+  disabledTips,
+  supportChains,
+  drawerHeight = '540px',
+  excludeTokens = defaultExcludeTokens,
+  getContainer,
+  disableItemCheck,
+  showCustomTestnetAssetList,
+  lpTokenMode,
+  setLpTokenMode,
+  showLpTokenSwitch,
+}: TokenSelectorProps) => {
+  const { t } = useTranslation();
+  const tokenListRef = React.useRef<HTMLUListElement>(null);
+  const [query, setQuery] = useState('');
+  const [isInputActive, setIsInputActive] = useState(false);
+  const history = useHistory();
+
+  const { currentAccount } = useRabbySelector((s) => ({
+    currentAccount: s.account.currentAccount,
+  }));
+
+  const { chainItem, isTestnet } = useMemo(() => {
+    const chain = !chainServerId
+      ? null
+      : findChain({ serverId: chainServerId });
+    return {
+      chainItem: chain,
+      isTestnet: !!chain?.isTestnet,
+    };
+  }, [chainServerId]);
+
+  const [tokenDetailOpen, setTokenDetailOpen] = useState(false);
+  const [tokenDetail, setTokenDetail] = useState<TokenItemWithEntity>();
+
+  useDebounce(
+    () => {
+      onSearch({
+        chainServerId: /* type === 'send' ? '' :  */ chainServerId || '',
+        // chainItem: chainItem,
+        keyword: query,
+      });
+    },
+    150,
+    [chainItem, query]
+  );
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+  };
+
+  const { selectedTab, onTabChange } = useSwitchNetTab();
+
+  useEffect(() => {
+    if (visible) {
+      tokenListRef.current?.scrollTo({ top: 0 });
+    }
+  }, [visible, chainServerId, lpTokenMode, selectedTab]);
+
+  const {
+    testnetTokenList: customTestnetTokenList,
+    loading: customTestnetTokenListLoading,
+    hasData: hasCustomTestnetTokenData,
+  } = useSearchTestnetToken({
+    address: currentAccount?.address,
+    q: query,
+    withBalance: true,
+    enabled: showCustomTestnetAssetList && visible,
+  });
+
+  useEffect(() => {
+    if (!visible) {
+      onTabChange(
+        chainServerId && findChain({ serverId: chainServerId })?.isTestnet
+          ? 'testnet'
+          : 'mainnet'
+      );
+    }
+  }, [visible, onTabChange, chainServerId]);
+
+  const emptyTestnetTokenList = useMemo(() => {
+    return (
+      showCustomTestnetAssetList &&
+      selectedTab === 'testnet' &&
+      customTestnetTokenList?.length === 0 &&
+      !query &&
+      !customTestnetTokenListLoading
+    );
+  }, [
+    customTestnetTokenList,
+    showCustomTestnetAssetList,
+    selectedTab,
+    query,
+    customTestnetTokenListLoading,
+  ]);
+
+  const displayList = useMemo(() => {
+    if (showCustomTestnetAssetList && selectedTab === 'testnet') {
+      return customTestnetTokenList || [];
+    }
+
+    if (!supportChains?.length) {
+      const resultList = mainnetTokenList || [];
+      if (!chainServerId) return resultList.filter(filterTestnetTokenItem);
+
+      return resultList;
+    }
+
+    const varied = (mainnetTokenList || []).reduce(
+      (accu, token) => {
+        const chainItem = findChainByServerID(token.chain);
+        const disabled =
+          !!supportChains?.length &&
+          chainItem &&
+          !supportChains.includes(chainItem.enum);
+
+        if (!disabled) {
+          accu.natural.push(token);
+        } else if (chainItem?.isTestnet && !chainServerId) {
+          accu.ignored.push(token);
+        } else {
+          accu.disabled.push(token);
+        }
+
+        return accu;
+      },
+      {
+        natural: [] as TokenItem[],
+        disabled: [] as TokenItem[],
+        ignored: [] as TokenItem[],
+      }
+    );
+
+    return [...varied.natural, ...varied.disabled];
+  }, [
+    mainnetTokenList,
+    supportChains,
+    chainServerId,
+    selectedTab,
+    showCustomTestnetAssetList,
+    customTestnetTokenList,
+  ]);
+
+  const handleInputFocus = () => {
+    setIsInputActive(true);
+  };
+
+  const handleInputBlur = () => {
+    setIsInputActive(false);
+  };
+
+  useEffect(() => {
+    if (!visible) {
+      setQuery('');
+    }
+  }, [visible]);
+
+  const isEmpty = useMemo(() => {
+    if (showCustomTestnetAssetList && selectedTab === 'testnet') {
+      return customTestnetTokenList?.length <= 0;
+    }
+    return mainnetTokenList.length <= 0;
+  }, [
+    mainnetTokenList,
+    showCustomTestnetAssetList,
+    selectedTab,
+    customTestnetTokenList,
+  ]);
+
+  const isSwapType = isSwapTokenType(type);
+
+  const isSearchAddr = useMemo(() => {
+    const v = query?.trim() || '';
+    return v.length === 42 && v.toLowerCase().startsWith('0x');
+  }, [query]);
+
+  const isSwapOrBridge = useMemo(
+    () => ['bridgeFrom', 'bridgeTo', 'swapFrom', 'swapTo'].includes(type),
+    [type]
+  );
+
+  const showChainFilterV2 = useMemo(() => {
+    return (
+      ['send', 'bridgeFrom', 'swapFrom'].includes(type) &&
+      selectedTab !== 'testnet'
+    );
+  }, [type, selectedTab]);
+
+  const swapAndBridgeNoDataTip = useMemo(() => {
+    if (isSwapOrBridge) {
+      return (
+        <div className="no-token w-full">
+          <RcIconMatchCC
+            className="w-[32px] h-[32px] text-r-neutral-foot"
+            viewBox="0 0 33 32"
+          />
+
+          <p className="text-r-neutral-foot text-14 mt-8 text-center mb-0">
+            {lpTokenMode
+              ? t('component.TokenSelector.noLpTokens')
+              : t('component.TokenSelector.noTokens')}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  }, [isSwapOrBridge, t, lpTokenMode]);
+
+  const NoDataUI = useMemo(
+    () =>
+      (
+        selectedTab === 'mainnet' ? isLoading : customTestnetTokenListLoading
+      ) ? (
+        <div>
+          {Array(isSwapType ? 8 : 10)
+            .fill(1)
+            .map((_, i) => (
+              <DefaultLoading key={i} type={type} />
+            ))}
+        </div>
+      ) : isSwapOrBridge ? (
+        <>{swapAndBridgeNoDataTip}</>
+      ) : (
+        <div
+          className={clsx(
+            'no-token w-full',
+            selectedTab === 'mainnet' ? '' : 'hidden'
+          )}
+        >
+          <img
+            className={
+              !query || isSearchAddr
+                ? 'w-[100px] h-[100px]'
+                : 'w-[52px] h-[52px]'
+            }
+            src={!query || isSearchAddr ? '/images/nodata-tx.png' : MatchImage}
+            alt="no site"
+          />
+
+          {!query || isSearchAddr ? (
+            <p className="text-r-neutral-foot text-14 mt-12 text-center mb-0">
+              {lpTokenMode
+                ? t('component.TokenSelector.noLpTokens')
+                : t('component.TokenSelector.noTokens')}
+            </p>
+          ) : (
+            <>
+              <p className="text-r-neutral-foot text-14 mt-12 text-center mb-0">
+                {t('component.TokenSelector.noMatch')}
+              </p>
+              <p className="text-r-neutral-foot text-14 mt-0 text-center">
+                {/* Try to search contract address on {{ chainName }} */}
+                {t('component.TokenSelector.noMatchSuggestion', {
+                  chainName:
+                    findChain({
+                      serverId: chainServerId,
+                    })?.name || 'chain',
+                })}
+              </p>
+            </>
+          )}
+        </div>
+      ),
+    [
+      selectedTab,
+      isLoading,
+      customTestnetTokenListLoading,
+      isSwapType,
+      isSwapOrBridge,
+      swapAndBridgeNoDataTip,
+      query,
+      isSearchAddr,
+      lpTokenMode,
+      t,
+      chainServerId,
+      type,
+    ]
+  );
+
+  useEffect(() => {
+    if (query && isSwapType && displayList.length === 0) {
+      stats.report('swapTokenSearchFailure', {
+        chainId: chainServerId || '',
+        searchType: type === 'swapFrom' ? 'fromToken' : 'toToken',
+        keyword: query,
+      });
+    }
+  }, [type, query, isSwapType, displayList, chainServerId]);
+
+  const isSwapTo = type === 'swapTo';
+  const isBridgeTo = type === 'bridgeTo';
+
+  const tokenDetailsTips = useMemo(() => {
+    if (isSwapTo || isBridgeTo || !tokenDetail) {
+      return;
+    }
+    const chainItem = findChainByServerID(tokenDetail?.chain);
+    const isDisabled =
+      !!supportChains?.length &&
+      ((!!chainItem && !supportChains.includes(chainItem.enum)) || !chainItem);
+    return isDisabled
+      ? t('component.TokenSelector.chainNotSupport')
+      : undefined;
+  }, [tokenDetail, supportChains, isBridgeTo, isSwapTo, t]);
+
+  const commonItemRender = React.useCallback(
+    (
+      token: TokenItem,
+      _type: typeof type,
+      updateToken?: boolean,
+      checkItem?: (
+        token: TokenItem
+      ) => {
+        disable: boolean;
+        reason: string;
+        shortReason: string;
+      }
+    ) => {
+      if (!visible && updateToken) {
+        return null;
+      }
+      const { disable, shortReason } = checkItem?.(token) || {};
+      return (
+        <CommonTokenItem
+          key={`${token.chain}-${token.id}`}
+          onConfirm={onConfirm}
+          warningText={disable ? shortReason : undefined}
+          token={token}
+          type={_type}
+          externalMode={!!query}
+          hideUsdValue={showCustomTestnetAssetList && selectedTab === 'testnet'}
+          supportChains={supportChains}
+          updateToken={updateToken}
+          openTokenDetail={() => {
+            setTokenDetail(token);
+            setTokenDetailOpen(true);
+          }}
+        />
+      );
+    },
+    [
+      visible,
+      onConfirm,
+      query,
+      showCustomTestnetAssetList,
+      selectedTab,
+      supportChains,
+    ]
+  );
+
+  const handleInTokenDetails = useCallback(
+    (token: TokenItemWithEntity) => {
+      onConfirm(token);
+    },
+    [onConfirm]
+  );
+
+  return (
+    <TokenDetailInTokenSelectProviderContext.Provider
+      value={handleInTokenDetails}
+    >
+      <Drawer
+        className="token-selector custom-popup is-support-darkmode is-new"
+        height={drawerHeight}
+        placement="bottom"
+        visible={visible}
+        onClose={onCancel}
+        closeIcon={
+          <RcIconCloseCC className="w-[20px] h-[20px] text-r-neutral-foot" />
+        }
+        closable={!isHideTitle}
+        getContainer={getContainer}
+      >
+        {/* Select a token */}
+        {isHideTitle ? null : (
+          <div className="header">
+            {t('component.TokenSelector.header.title')}
+          </div>
+        )}
+        {showCustomTestnetAssetList && hasCustomTestnetTokenData && (
+          <NetSwitchTabs value={selectedTab} onTabChange={onTabChange} />
+        )}
+        <div
+          className={clsx(
+            'mt-[120px]',
+            emptyTestnetTokenList ? 'block' : 'hidden'
+          )}
+        >
+          <AssetEmptySVG className="m-auto" />
+          <div>
+            <div className="mt-0 text-r-neutral-foot text-[14px] text-center">
+              {t('page.dashboard.assets.noTestnetAssets')}
+            </div>
+            <div className="text-center mt-[50px]">
+              <Button
+                type="primary"
+                onClick={() => {
+                  onCancel?.();
+                  history.push('/custom-testnet');
+                }}
+                className="w-[200px] h-[44px]"
+              >
+                {t('component.ChainSelectorModal.addTestnet')}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={clsx(
+            'input-wrapper',
+            emptyTestnetTokenList ? 'hidden' : 'block'
+          )}
+        >
+          <Input
+            className={clsx({ active: isInputActive })}
+            size="large"
+            prefix={<img src={IconSearch} />}
+            // Search by Name / Address
+            placeholder={
+              placeholder ??
+              t('component.TokenSelector.searchInput.placeholder1')
+            }
+            allowClear
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            autoFocus={!isTab}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+          />
+        </div>
+
+        {showChainFilterV2 && (
+          <div className="filters-wrapper flex items-center justify-between">
+            <ChainFilterV2Line
+              selectedChain={chainItem?.isTestnet ? null : chainItem || null}
+              onStartSelectChain={onStartSelectChain}
+              onClearFilterChain={() => {
+                onRemoveChainFilter?.({
+                  chainServerId: chainServerId || '',
+                  // chainItem,
+                });
+                onSearch({
+                  // chainItem: null,
+                  chainServerId: '',
+                  keyword: query,
+                });
+              }}
+            />
+            {showLpTokenSwitch && (
+              <LpTokenSwitch
+                className="ml-auto"
+                lpTokenMode={lpTokenMode}
+                onLpTokenModeChange={setLpTokenMode}
+              />
+            )}
+          </div>
+        )}
+
+        <ul
+          ref={tokenListRef}
+          className={clsx('token-list', { empty: isEmpty })}
+        >
+          {isEmpty
+            ? NoDataUI
+            : displayList.map((token) => {
+                return commonItemRender(
+                  token,
+                  type,
+                  undefined,
+                  disableItemCheck
+                );
+              })}
+        </ul>
+      </Drawer>
+      <TokenDetailPopup
+        variant="add"
+        visible={tokenDetailOpen}
+        onClose={() => {
+          setTokenDetailOpen(false);
+        }}
+        token={tokenDetail}
+        tipsFromTokenSelect={tokenDetailsTips}
+      />
+    </TokenDetailInTokenSelectProviderContext.Provider>
+  );
+};
+
+const DefaultLoading = ({ type }: { type: TokenSelectorProps['type'] }) => (
+  <div className="flex justify-between items-center py-10 pl-[20px] pr-[17px] bg-r-neutral-card1 mx-16 rounded mt-8">
+    <div className="gap-x-12 flex">
+      <Skeleton.Input
+        active
+        className="rounded-full w-[24px] h-[24px] bg-r-neutral-bg-1"
+      />
+      <div className="gap-y-2 flex flex-col">
+        <Skeleton.Input
+          active
+          className="bg-r-neutral-bg-1 rounded-[2px] w-[72px] h-[15px]"
+        />
+        <Skeleton.Input
+          active
+          className="bg-r-neutral-bg-1 rounded-[2px] w-[44px] h-[10px]"
+        />
+      </div>
+    </div>
+    <div></div>
+    <div>
+      <Skeleton.Input
+        active
+        className="bg-r-neutral-bg-1 rounded-[2px] w-[72px] h-[20px]"
+      />
+    </div>
+  </div>
+);
+
+function CommonTokenItem(props: {
+  externalMode?: boolean;
+  token: TokenItemWithEntity & {
+    trade_volume_level?: 'low' | 'high';
+  };
+  disabledTips?: React.ReactNode;
+  disabled?: boolean;
+  warningText?: string;
+  onConfirm: (token: TokenItem) => void;
+  updateToken?: boolean;
+  supportChains?: CHAINS_ENUM[];
+  type: TokenSelectorProps['type'];
+  openTokenDetail: () => void;
+  hideUsdValue?: boolean;
+}) {
+  const {
+    externalMode,
+    token,
+    disabledTips,
+    supportChains,
+    disabled: disabledFromProps,
+    warningText,
+    onConfirm,
+    updateToken,
+    type,
+    openTokenDetail,
+    hideUsdValue,
+  } = props;
+
+  const { t } = useTranslation();
+
+  const wallet = useWallet();
+
+  const currentAccount = useCurrentAccount();
+
+  const chainItem = useMemo(() => findChain({ serverId: token.chain }), [
+    token?.chain,
+  ]);
+
+  const isSwapTo = type === 'swapTo';
+  const isBridgeTo = type === 'bridgeTo';
+
+  const onClickTokenSymbol: React.MouseEventHandler<HTMLSpanElement> = useCallback(
+    (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      openTokenDetail();
+    },
+    [openTokenDetail]
+  );
+
+  const disabled = useMemo(() => {
+    if (isSwapTo || isBridgeTo) {
+      return false;
+    }
+
+    return (
+      !!supportChains?.length &&
+      ((!!chainItem && !supportChains.includes(chainItem.enum)) || !chainItem)
+    );
+  }, [isSwapTo, isBridgeTo, supportChains, chainItem]);
+
+  const { value: remoteValue, loading, error } = useAsync(async () => {
+    if (updateToken && currentAccount?.address) {
+      const data = await wallet.openapi.getToken(
+        currentAccount?.address,
+        token.chain,
+        token.id
+      );
+      return data;
+    }
+    return undefined;
+  }, [currentAccount?.address, updateToken, token?.chain, token?.id]);
+
+  const value = useMemo(() => {
+    return remoteValue ? remoteValue : token;
+  }, [remoteValue, token]);
+
+  const tips = useMemo(() => {
+    return disabled ? t('component.TokenSelector.chainNotSupport') : undefined;
+  }, [disabled, t]);
+
+  const cexIds = useMemo(() => {
+    return getCexIds(token);
+  }, [token]);
+
+  const showExchangeLogos = useMemo(() => {
+    return (isBridgeTo || isSwapTo) && !!cexIds?.length;
+  }, [isBridgeTo, isSwapTo, cexIds?.length]);
+
+  const handleTokenPress = useCallback(() => {
+    if (disabled) {
+      return;
+    }
+    onConfirm(value || token);
+  }, [disabled, value, token, onConfirm]);
+
+  if (externalMode && !hideUsdValue) {
+    return (
+      <Tooltip
+        trigger={['click', 'hover']}
+        mouseEnterDelay={3}
+        overlayClassName={clsx('rectangle')}
+        placement="top"
+        title={tips}
+        visible={disabled ? undefined : false}
+        align={{ targetOffset: [0, -30] }}
+      >
+        <ExternalTokenRow
+          data={token}
+          onTokenPress={handleTokenPress}
+          onClickTokenSymbol={onClickTokenSymbol}
+        />
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Tooltip
+      trigger={['click', 'hover']}
+      mouseEnterDelay={3}
+      overlayClassName={clsx('rectangle')}
+      placement="top"
+      title={tips}
+      visible={disabled ? undefined : false}
+      align={{ targetOffset: [0, -30] }}
+    >
+      <li
+        className={clsx(
+          'token-list__item',
+          (disabledFromProps || disabled) && 'token-disabled',
+          {
+            'opacity-80': !!warningText,
+          }
+        )}
+        onClick={handleTokenPress}
+      >
+        <div className="token-info">
+          <div>
+            <TokenWithChain
+              token={value || token}
+              width="32px"
+              height="32px"
+              hideConer
+              chainSize={hideUsdValue ? 16 : 14}
+              isShowChainTooltip
+            />
+            <div className="flex flex-col gap-2">
+              {showExchangeLogos ? (
+                <div className="flex overflow-visible items-center">
+                  <span
+                    className="symbol_click overflow-hidden truncate flex-1"
+                    onClick={onClickTokenSymbol}
+                  >
+                    {getTokenSymbol(token)}
+                  </span>
+                  {isUnknownToken(token) && <UnknownTag className="ml-4" />}
+                  {isLpToken(token) && (
+                    <LpTokenTag
+                      size={14}
+                      inModal
+                      iconClassName="text-r-neutral-foot shrink-0"
+                      protocolName={token.protocol_id || ''}
+                    />
+                  )}
+                  <ExchangeLogos cexIds={cexIds} />
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <span
+                    className="symbol_click overflow-hidden truncate"
+                    onClick={onClickTokenSymbol}
+                  >
+                    {getTokenSymbol(token)}
+                  </span>
+                  {isUnknownToken(token) && !isBridgeTo && <UnknownTag />}
+                  {isLpToken(token) && (
+                    <LpTokenTag
+                      size={14}
+                      inModal
+                      iconClassName="text-r-neutral-foot shrink-0"
+                      protocolName={token.protocol_id || ''}
+                    />
+                  )}
+                </div>
+              )}
+              {hideUsdValue ? (
+                <span className="symbol text-13 font-normal text-r-neutral-foot mb-2 leading-[14px] truncate">
+                  {chainItem?.name}
+                </span>
+              ) : isBridgeTo ? (
+                isUnknownToken(token) ? (
+                  <UnknownTag className="ml-10 w-min" />
+                ) : (
+                  <div
+                    className={clsx(
+                      'flex items-center justify-center',
+                      'ml-10 py-2 px-8 rounded-[4px] w-max',
+                      'font-normal',
+                      token.trade_volume_level === 'high'
+                        ? 'bg-r-green-light'
+                        : 'bg-r-orange-light',
+                      token.trade_volume_level === 'high'
+                        ? 'text-r-green-default'
+                        : 'text-r-orange-default'
+                    )}
+                  >
+                    <span className="text-[11px] leading-[11px]">
+                      {token?.trade_volume_level === 'high'
+                        ? t('component.TokenSelector.bridge.high')
+                        : t('component.TokenSelector.bridge.low')}
+                    </span>
+                  </div>
+                )
+              ) : (
+                <span className="symbol text-13 font-normal text-r-neutral-foot mb-2">
+                  {formatLargeTokenAmount(value?.amount || 0)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col"></div>
+
+          <div className="flex flex-col text-right items-end">
+            {!hideUsdValue ? (
+              <>
+                <div className={clsx('token_usd_value')}>
+                  {formatUsdValue(
+                    new BigNumber(value?.price || 0)
+                      .times(value?.amount || 0)
+                      .toFixed()
+                  )}
+                </div>
+                <div className="flex flex-row gap-4 items-center">
+                  <div className="text-r-neutral-foot text-13 font-normal leading-[14px]">
+                    ${formatPrice(value?.price || 0)}
+                  </div>
+                  {isNumber(value?.price_24h_change) && (
+                    <div
+                      className={clsx('font-normal text-13 leading-[14px]', {
+                        'text-green': value?.price_24h_change > 0,
+                        'text-red-forbidden': value?.price_24h_change < 0,
+                      })}
+                    >
+                      ({value?.price_24h_change > 0 ? '+' : ''}
+                      {(value?.price_24h_change * 100).toFixed(2)}%)
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className={clsx('token_usd_value')}>
+                {formatLargeTokenAmount(value?.amount || 0)}
+              </div>
+            )}
+          </div>
+        </div>
+        {!!warningText && (
+          <div
+            className={`
+            gap-2 rounded-[4px] bg-r-red-light
+            h-[31px] mt-[-2px] mb-16
+            flex justify-center items-center`}
+          >
+            <div className="text-r-red-default">
+              <RcIconWarningCC />
+            </div>
+            <span className="text-[13px] font-medium text-r-red-default">
+              {warningText}
+            </span>
+          </div>
+        )}
+      </li>
+    </Tooltip>
+  );
+}
+
+export default TokenSelector;

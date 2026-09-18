@@ -1,0 +1,130 @@
+.token-amount-input {
+  padding: 13px 12px 9px;
+  background: var(--r-neutral-card-2, #f2f4f7);
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 15px;
+  line-height: 18px;
+  color: var(--r-neutral-title-1, #192945);
+  display: flex;
+  margin-bottom: 6px;
+
+  &__main-row {
+    gap: 12px;
+    height: 36px;
+  }
+
+  &__bottom-row {
+    gap: 16px;
+    min-height: 18px;
+  }
+
+  &__amount-area {
+    display: flex;
+    align-items: center;
+    height: 36px;
+  }
+
+  &__prefix {
+    flex-shrink: 0;
+    font-weight: 700;
+    line-height: 36px;
+    color: var(--r-neutral-title1, #192945);
+  }
+
+  &__input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+    height: 36px;
+    cursor: text;
+  }
+
+  &__display-text {
+    flex-shrink: 0;
+    height: 36px;
+    line-height: 36px;
+    font-weight: 700;
+    color: var(--r-neutral-title1, #192945);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  &__quote {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    gap: 4px;
+    color: var(--r-neutral-foot, #6a7587);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 18px;
+  }
+
+  &__quote--clickable {
+    cursor: pointer;
+  }
+
+  &__quote--clickable:hover {
+    .token-amount-input__switch-icon rect {
+      fill: var(--rb-blue-light-1);
+    }
+  }
+
+  &__quote-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__switch-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+
+  .left {
+    display: flex;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    width: fit-content;
+    &:hover {
+      background: var(--r-blue-light2, #eef1ff);
+    }
+    .token-input__symbol {
+      max-width: 50px;
+      margin-left: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .icon-arrow-down {
+      width: 12px;
+      height: 12px;
+    }
+  }
+  .right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+    .ant-input {
+      padding: 0;
+      font-weight: 700;
+      font-size: 28px;
+      line-height: 36px;
+      border-radius: 0;
+      border-width: 0;
+      background: transparent;
+      color: var(--r-neutral-title-1, #192945);
+      &:hover,
+      &:focus {
+        border-right-width: 0px !important;
+        border-color: transparent !important;
+      }
+    }
+  }
+}

@@ -1,0 +1,1087 @@
+import { KEYRING_TYPE, ThemeIconType } from '@/constant';
+import RateModal from '@/ui/component/RateModal/RateModal';
+import ThemeIcon from '@/ui/component/ThemeMode/ThemeIcon';
+import { useRabbyDispatch, useRabbySelector } from '@/ui/store';
+import { usePerpsHomePnl } from '@/ui/views/Perps/hooks/usePerpsHomePnl';
+import { appIsDev } from '@/utils/env';
+import { ga4 } from '@/utils/ga4';
+import { matomoRequestEvent } from '@/utils/matomo-request';
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  MeasuringStrategy,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { Badge, Skeleton, Tooltip } from 'antd';
+import clsx from 'clsx';
+import React, {
+  createContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { useHistory } from 'react-router-dom';
+import { useAsync } from 'react-use';
+import { createGlobalStyle } from 'styled-components';
+import IconAlertRed from 'ui/assets/alert-red.svg';
+import { ReactComponent as RcIconEco } from 'ui/assets/dashboard/icon-eco.svg';
+import { ReactComponent as RcIconGift } from 'ui/assets/gift-14.svg';
+import { RcIconJumpCC } from '@/ui/assets/dashboard';
+
+import {
+  RcIconApprovalsCC,
+  RcIconBridgeCC,
+  RcIconDappsCC,
+  RcIconManageCC,
+  RcIconMobileSyncCC,
+  RcIconPerpsCC,
+  RcIconPointsCC,
+  RcIconReceiveCC,
+  RcIconSearchCC,
+  RcIconSendCC,
+  RcIconSettingCC,
+  RcIconSwapCC,
+  RcIconTransactionsCC,
+  RcIconConvertDustCC,
+  RcIconStakingCC,
+} from 'ui/assets/dashboard/panel';
+
+import { useThemeMode } from '@/ui/hooks/usePreference';
+import { usePerpsDefaultAccount } from '@/ui/views/Perps/hooks/usePerpsDefaultAccount';
+import { useMemoizedFn, useMount, useScroll } from 'ahooks';
+import { isEqual } from 'lodash';
+import {
+  formatUsdValue,
+  openInTab,
+  openInternalPageInTab,
+  splitNumberByStep,
+  useWallet,
+} from 'ui/utils';
+import { ClaimRabbyFreeGasBadgeModal } from '../ClaimRabbyBadgeModal/freeGasBadgeModal';
+import { EcologyPopup } from '../EcologyPopup';
+import { RabbyPointsPopup } from '../RabbyPointsPopup';
+import { RecentConnectionsPopup } from '../RecentConnections';
+import BigNumber from 'bignumber.js';
+
+export const DragOverlayContext = createContext(false);
+
+const SCROLLBAR_TRACK_HEIGHT = 80;
+const SCROLLBAR_THUMB_HEIGHT = 50;
+const SCROLLBAR_THUMB_MAX_OFFSET =
+  SCROLLBAR_TRACK_HEIGHT - SCROLLBAR_THUMB_HEIGHT;
+const SCROLLBAR_HIT_AREA_WIDTH = 13;
+
+const GlobalStyle = createGlobalStyle`
+  .rabby-dashboard-panel-container {
+    .dashboard-panel-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+
+      scroll-snap-align: end;
+    }
+
+    .panel-item {
+      height: 88px;
+      width: 100%;
+
+      background: var(--r-neutral-card1, #fff);
+
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+
+      &:hover {
+        background: var(--r-blue-light1, #edf0ff);
+      }
+
+      &:has(.panel-item-jump-button:hover) {
+        background: var(--r-neutral-card1, #fff);
+      }
+
+      &-jump-button {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        z-index: 1;
+
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 5px;
+
+        color: var(--r-neutral-title1, #192945);
+        background: var(--r-neutral-card3, #f7fafc);
+        border: 0;
+        border-radius: 4px;
+        cursor: pointer;
+
+        &:hover {
+          color: var(--r-blue-default, #4c65ff);
+          background: var(--r-blue-light1, #edf0ff);
+        }
+      }
+
+      &:hover > .panel-item-jump-button {
+        display: flex;
+      }
+
+      &-icon {
+        width: 24px;
+        height: 24px;
+        justify-self: center;
+        margin-bottom: 6px;
+        color: var(--r-neutral-title1, #192945);
+
+        &.icon-spin {
+          animation: icn-spin 1.5s linear infinite;
+        }
+
+        &.icon-rabby-mobile {
+          width: 24px;
+          height: 24px;
+          margin-bottom: 4px;
+        }
+
+        &.icon-points {
+          width: 24px;
+          height: 24px;
+          margin-bottom: 4px;
+        }
+      }
+
+      &-label {
+        font-weight: 500;
+        font-size: 13px;
+        line-height: 16px;
+        color: var(--r-neutral-title-1, rgba(25, 41, 69, 1));
+        text-align: center;
+      }
+
+      @keyframes icn-spin {
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .icon-alert {
+        position: absolute;
+        right: 33px;
+        top: 7px;
+      }
+    }
+
+    .ant-badge {
+      .ant-badge-count {
+        background-color: var(--r-blue-default, #7084ff);
+        padding: 2px 6px;
+        font-size: 13px;
+        line-height: 1;
+        height: 18px;
+        border-radius: 90px;
+        box-shadow: none;
+      }
+      &.alert .ant-badge-count {
+        background-color: #ec5151;
+      }
+      &.round .ant-badge-count {
+        padding: 2px 4.5px !important;
+      }
+    }
+  }
+`;
+
+type IPanelItem = {
+  icon: ThemeIconType;
+  content: string;
+  onClick: import('react').MouseEventHandler<HTMLElement>;
+  badge?: number;
+  badgeAlert?: boolean;
+  badgeClassName?: string;
+  iconSpin?: boolean;
+  showAlert?: boolean;
+  disabled?: boolean;
+  commingSoonBadge?: boolean;
+  disableReason?: string;
+  eventKey: string;
+  iconClassName?: string;
+  subContent?: React.ReactNode;
+  isFullscreen?: boolean;
+  onOpenInDesktop?: () => void;
+};
+
+const SortablePanelItem: React.FC<{
+  panelKey: string;
+  item: IPanelItem;
+  index: number;
+}> = ({ panelKey, item, index }) => {
+  const { t } = useTranslation();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: panelKey,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    cursor: isDragging ? 'grabbing' : 'pointer',
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="bg-r-neutral-bg-2"
+    >
+      {item.disabled ? (
+        <Tooltip
+          {...(item.commingSoonBadge && { visible: false })}
+          title={item.disableReason || t('page.dashboard.home.comingSoon')}
+          overlayClassName="rectangle direction-tooltip"
+          autoAdjustOverflow={false}
+        >
+          <div key={index} className="disable-direction">
+            <ThemeIcon src={item.icon} className="images" />
+            <div className="panel-item-label">{item.content} </div>
+          </div>
+        </Tooltip>
+      ) : (
+        <div
+          key={index}
+          onClick={(evt) => {
+            matomoRequestEvent({
+              category: 'Dashboard',
+              action: 'clickEntry',
+              label: item.eventKey,
+            });
+
+            ga4.fireEvent(`Entry_${item.eventKey}`, {
+              event_category: 'Dashboard',
+            });
+
+            item?.onClick(evt);
+          }}
+          className="panel-item group"
+        >
+          {item.onOpenInDesktop && (
+            <button
+              type="button"
+              className="panel-item-jump-button"
+              aria-label={t('page.dashboard.assets.openInTabV2')}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                item.onOpenInDesktop?.();
+              }}
+            >
+              <RcIconJumpCC width={12} height={12} />
+            </button>
+          )}
+          {item.showAlert && (
+            <ThemeIcon src={IconAlertRed} className="icon icon-alert" />
+          )}
+          {item.badge ? (
+            <Badge
+              count={item.badge}
+              size="small"
+              className={clsx(
+                {
+                  alert: item.badgeAlert && !item.badgeClassName,
+                },
+                item.badgeClassName
+              )}
+            >
+              <ThemeIcon
+                src={item.icon}
+                className={clsx([
+                  item.iconSpin && 'icon-spin',
+                  'panel-item-icon',
+                ])}
+              />
+            </Badge>
+          ) : (
+            <ThemeIcon
+              src={item.icon}
+              className={clsx(['panel-item-icon', item.iconClassName])}
+            />
+          )}
+          <div className="panel-item-label">{item.content}</div>
+          {item.subContent}
+          {item.commingSoonBadge && (
+            <div className="coming-soon-badge">
+              {t('page.dashboard.home.soon')}
+            </div>
+          )}
+          {/* {item.isFullscreen && (
+            <div className="absolute top-[6px] right-[6px] opacity-50 text-r-neutral-foot hidden group-hover:block">
+              <RcIconExternal1CC />
+            </div>
+          )} */}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
+  onSettingClick,
+}) => {
+  const { t } = useTranslation();
+  const history = useHistory();
+  usePerpsDefaultAccount({
+    isPro: false,
+  });
+  // useCheckBridgePendingItem();
+
+  const wallet = useWallet();
+
+  const openPanelInDesktop = useMemoizedFn((path: string) => {
+    wallet.openInDesktop(path);
+    window.close();
+  });
+
+  const [badgeModalVisible, setBadgeModalVisible] = useState(false);
+
+  const [isShowEcology, setIsShowEcologyModal] = useState(false);
+
+  const [isShowRabbyPoints, setIsShowRabbyPoints] = useState(false);
+
+  const [isShowDappsPopup, setIsShowDappsPopup] = useState(false);
+
+  const account = useRabbySelector((state) => state.account.currentAccount);
+  const dashboardPanelOrder = useRabbySelector(
+    (state) => state.preference.dashboardPanelOrder
+  );
+
+  const dispatch = useRabbyDispatch();
+
+  const [approvalRiskAlert, setApprovalRiskAlert] = useState(0);
+
+  const { value: approvalState } = useAsync(async () => {
+    if (
+      account?.address &&
+      (account.type !== KEYRING_TYPE.WatchAddressKeyring || appIsDev)
+    ) {
+      const data = await wallet.openapi.approvalStatus(account.address);
+      return data;
+    }
+    return;
+  }, [account?.address]);
+
+  // const isGnosis = useMemo(() => {
+  //   return account?.type === KEYRING_TYPE.GnosisKeyring;
+  // }, [account]);
+
+  useEffect(() => {
+    if (approvalState) {
+      setApprovalRiskAlert(
+        approvalState.reduce(
+          (pre, now) =>
+            pre + now.nft_approval_danger_cnt + now.token_approval_danger_cnt,
+          0
+        )
+      );
+    } else {
+      setApprovalRiskAlert(0);
+    }
+  }, [approvalState]);
+
+  type IPanelItem = {
+    icon: ThemeIconType;
+    content: string;
+    onClick: import('react').MouseEventHandler<HTMLElement>;
+    badge?: number;
+    badgeAlert?: boolean;
+    badgeClassName?: string;
+    iconSpin?: boolean;
+    hideForGnosis?: boolean;
+    showAlert?: boolean;
+    disabled?: boolean;
+    commingSoonBadge?: boolean;
+    disableReason?: string;
+    eventKey: string;
+    iconClassName?: string;
+    subContent?: React.ReactNode;
+    isFullscreen?: boolean;
+    onOpenInDesktop?: () => void;
+  };
+
+  const IconPerps = RcIconPerpsCC;
+
+  const hiddenBalance = useRabbySelector((s) => s.preference.hiddenBalance);
+
+  const {
+    availableBalance,
+    perpsPositionInfo,
+    isFetching: perpsFetching,
+    positionPnl,
+  } = usePerpsHomePnl();
+
+  const perpsSubContentNode = useMemo<React.ReactNode>(() => {
+    if (hiddenBalance) {
+      return (
+        <div
+          className={clsx(
+            'absolute bottom-[6px] text-[11px] leading-[13px] font-medium text-r-neutral-foot'
+          )}
+        >
+          *****
+        </div>
+      );
+    }
+    if (perpsFetching) {
+      return (
+        <div className="absolute bottom-[6px] text-[11px] font-medium">
+          <Skeleton.Button
+            active={true}
+            className="h-[10px] block rounded-[2px]"
+            style={{ width: 42 }}
+          />
+        </div>
+      );
+    }
+    if (perpsPositionInfo?.assetPositions?.length) {
+      return (
+        <div
+          className={clsx(
+            'absolute bottom-[6px] text-[11px] leading-[13px] font-medium',
+            positionPnl && positionPnl > 0
+              ? 'text-r-green-default'
+              : 'text-r-red-default'
+          )}
+        >
+          {positionPnl && positionPnl >= 0 ? '+' : '-'}$
+          {splitNumberByStep(Math.abs(positionPnl || 0).toFixed(2))}
+        </div>
+      );
+    }
+    return (
+      <div
+        className={clsx(
+          'absolute bottom-[6px] text-[11px] leading-[13px] font-medium text-r-neutral-foot'
+        )}
+      >
+        {formatUsdValue(availableBalance || 0, BigNumber.ROUND_DOWN)}
+      </div>
+    );
+  }, [
+    hiddenBalance,
+    perpsFetching,
+    availableBalance,
+    perpsPositionInfo,
+    positionPnl,
+  ]);
+
+  const panelItems = {
+    swap: {
+      icon: RcIconSwapCC,
+      eventKey: 'Swap',
+      content: t('page.dashboard.home.panel.swap'),
+      onClick: () => {
+        history.push('/dex-swap?rbisource=dashboard');
+      },
+      onOpenInDesktop: () => {
+        openPanelInDesktop('/desktop/profile?action=swap&rbisource=dashboard');
+      },
+    } as IPanelItem,
+    send: {
+      icon: RcIconSendCC,
+      eventKey: 'Send',
+      content: t('page.dashboard.home.panel.send'),
+      onClick: () => {
+        history.push('/send-token?rbisource=dashboard');
+      },
+      onOpenInDesktop: () => {
+        openPanelInDesktop('/desktop/profile?action=send&rbisource=dashboard');
+      },
+    } as IPanelItem,
+    bridge: {
+      icon: RcIconBridgeCC,
+      eventKey: 'Bridge',
+      content: t('page.dashboard.home.panel.bridge'),
+      onClick: () => {
+        history.push('/bridge');
+      },
+      onOpenInDesktop: () => {
+        openPanelInDesktop(
+          '/desktop/profile?action=bridge&rbisource=dashboard'
+        );
+      },
+    } as IPanelItem,
+    receive: {
+      icon: RcIconReceiveCC,
+      eventKey: 'Receive',
+      content: t('page.dashboard.home.panel.receive'),
+      onClick: () => {
+        history.push('/receive?rbisource=dashboard');
+      },
+    } as IPanelItem,
+    // queue: {
+    //   icon: RcIconTransactionsCC,
+    //   eventKey: 'Queue',
+    //   content: t('page.dashboard.home.panel.queue'),
+    //   badge: gnosisPendingCount,
+    //   onClick: () => {
+    //     history.push('/gnosis-queue');
+    //   },
+    // } as IPanelItem,
+    transactions: {
+      icon: RcIconTransactionsCC,
+      eventKey: 'Transactions',
+      content: t('page.dashboard.home.panel.transactions'),
+      onClick: () => {
+        history.push('/history');
+      },
+      onOpenInDesktop: () => {
+        openPanelInDesktop('/desktop/profile/transactions');
+      },
+    } as IPanelItem,
+    security: {
+      icon: RcIconApprovalsCC,
+      eventKey: 'Approvals',
+      content: t('page.dashboard.home.panel.approvals'),
+      onClick: async (evt) => {
+        history.push('/revoke-approvals');
+        // openInternalPageInTab('approval-manage');
+        // await wallet.openInDesktop('/desktop/profile/approvals');
+        // window.close();
+      },
+      badge: approvalRiskAlert,
+      badgeAlert: approvalRiskAlert > 0,
+      isFullscreen: true,
+      onOpenInDesktop: () => {
+        openPanelInDesktop('/desktop/manage-approvals');
+      },
+    } as IPanelItem,
+    more: {
+      icon: RcIconSettingCC,
+      eventKey: 'More',
+      content: t('page.dashboard.home.panel.settings'),
+      onClick: onSettingClick,
+    } as IPanelItem,
+    ecology: {
+      icon: RcIconEco,
+      eventKey: 'Ecology',
+      content: t('page.dashboard.home.panel.ecology'),
+      onClick: () => {
+        setIsShowEcologyModal(true);
+      },
+    } as IPanelItem,
+
+    points: {
+      icon: RcIconPointsCC,
+      eventKey: 'Rabby Points',
+      content: t('page.dashboard.home.panel.rabbyPoints'),
+      onClick: () => {
+        setIsShowRabbyPoints(true);
+      },
+    } as IPanelItem,
+    mobile: {
+      icon: RcIconMobileSyncCC,
+      eventKey: 'Rabby Mobile',
+      content: t('page.dashboard.home.panel.mobile'),
+      onClick: () => {
+        openInternalPageInTab('sync');
+      },
+      isFullscreen: true,
+    } as IPanelItem,
+    perps: {
+      icon: IconPerps,
+      eventKey: 'Perps',
+      iconClassName: 'icon-perps',
+      subContent: perpsSubContentNode,
+      content: t('page.dashboard.home.panel.perps'),
+      onClick: async () => {
+        // await wallet.openInDesktop('/desktop/perps');
+        history.push('/perps');
+        // window.close();
+      },
+      onOpenInDesktop: () => {
+        openPanelInDesktop('/desktop/perps');
+      },
+      // isFullscreen: true,
+    } as IPanelItem,
+    searchDapp: {
+      icon: RcIconSearchCC,
+      eventKey: 'Search Dapp',
+      content: t('page.dashboard.home.panel.searchDapp'),
+      onClick: () => {
+        openInternalPageInTab('dapp-search');
+      },
+      isFullscreen: true,
+    } as IPanelItem,
+    dapps: {
+      icon: RcIconDappsCC,
+      eventKey: 'Dapps ',
+      content: t('page.dashboard.home.panel.dapps'),
+      onClick: () => {
+        setIsShowDappsPopup(true);
+      },
+    } as IPanelItem,
+    manageAddress: {
+      icon: RcIconManageCC,
+      eventKey: 'Manage Address',
+      content: t('page.dashboard.home.panel.manageAddress'),
+      onClick: () => {
+        history.push('/settings/address');
+      },
+    } as IPanelItem,
+    convertDust: {
+      icon: RcIconConvertDustCC,
+      eventKey: 'Convert Dust',
+      content: t('page.dashboard.home.panel.convertDust'),
+      onClick: async () => {
+        openInTab('desktop.html#/desktop/small-swap', true);
+        // await wallet.openInDesktop('/desktop/small-swap');
+        // window.close();
+      },
+      isFullscreen: true,
+    } as IPanelItem,
+    staking: {
+      icon: RcIconStakingCC,
+      eventKey: 'Staking',
+      content: t('page.dashboard.home.panel.staking'),
+      onClick: () => {
+        history.push('/staking');
+      },
+    } as IPanelItem,
+  };
+
+  const defaultPanelKeys = useMemo<(keyof typeof panelItems)[]>(() => {
+    return [
+      'swap',
+      'send',
+      'bridge',
+      'receive',
+      'transactions',
+      'security',
+      'perps',
+      'staking',
+      'mobile',
+      'dapps',
+      'convertDust',
+      'points',
+    ];
+  }, []);
+
+  const getPanelKeys = useMemoizedFn(() => {
+    const orders = dashboardPanelOrder as (keyof typeof panelItems)[];
+    const validKeys = orders.filter(
+      (key) => panelItems[key] && defaultPanelKeys.includes(key)
+    );
+    defaultPanelKeys.forEach((key, index) => {
+      if (!validKeys.includes(key)) {
+        validKeys.splice(index, 0, key);
+      }
+    });
+    return validKeys;
+  });
+
+  const pickedPanelKeys = useMemo(() => {
+    return getPanelKeys();
+  }, [dashboardPanelOrder]);
+
+  const placeholderCount = useMemo(() => {
+    return (3 - (pickedPanelKeys.length % 3)) % 3;
+  }, [pickedPanelKeys.length]);
+
+  const setPickedPanelKeys = useMemoizedFn(
+    (keys: (keyof typeof panelItems)[]) => {
+      dispatch.preference.setField({
+        dashboardPanelOrder: keys,
+      });
+      wallet.updateDashboardPanelOrder(keys);
+    }
+  );
+
+  useMount(() => {
+    const panelKeys = getPanelKeys();
+    if (!isEqual(dashboardPanelOrder, panelKeys)) {
+      setPickedPanelKeys(panelKeys);
+    }
+  });
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
+      setActiveId(null);
+      return;
+    }
+
+    const oldIndex = pickedPanelKeys.findIndex((key) => key === active.id);
+    const newIndex = pickedPanelKeys.findIndex((key) => key === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const newKeys = [...pickedPanelKeys];
+      const [removed] = newKeys.splice(oldIndex, 1);
+      newKeys.splice(newIndex, 0, removed);
+      setPickedPanelKeys(newKeys);
+    }
+    setActiveId(null);
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 3,
+      },
+    })
+  );
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const handleDragStart = useMemoizedFn((event: DragStartEvent) => {
+    setActiveId(event.active.id);
+  });
+
+  const handleDragCancel = useMemoizedFn(() => {
+    setActiveId(null);
+  });
+
+  const activeItem = useMemo(() => {
+    if (!activeId) return null;
+    return panelItems[activeId as keyof typeof panelItems] as
+      | IPanelItem
+      | undefined;
+  }, [activeId, panelItems]);
+
+  const ref = useRef<HTMLDivElement | null>(null);
+  const scrollbarTrackRef = useRef<HTMLDivElement | null>(null);
+  const scrollbarThumbRef = useRef<HTMLDivElement | null>(null);
+  const scrollbarDragOffsetRef = useRef(SCROLLBAR_THUMB_HEIGHT / 2);
+  const isScrollbarDraggingRef = useRef(false);
+  const [isScrollbarDragging, setIsScrollbarDragging] = useState(false);
+  const scroll = useScroll(ref);
+  const scrollRatio = useMemo(() => {
+    const top = scroll?.top ?? 0;
+    const height = ref.current?.clientHeight ?? 0;
+    const scrollHeight = ref.current?.scrollHeight ?? 0;
+    const maxScrollTop = scrollHeight - height;
+
+    if (maxScrollTop <= 0) {
+      return 0;
+    }
+
+    const ratio = top / maxScrollTop;
+    return Math.min(Math.max(ratio, 0), 1);
+  }, [scroll?.top]);
+
+  const scrollPanelFromScrollbar = useMemoizedFn((clientY: number) => {
+    const scrollContainer = ref.current;
+    const track = scrollbarTrackRef.current;
+
+    if (!scrollContainer || !track) {
+      return;
+    }
+
+    const maxScrollTop =
+      scrollContainer.scrollHeight - scrollContainer.clientHeight;
+
+    if (maxScrollTop <= 0 || SCROLLBAR_THUMB_MAX_OFFSET <= 0) {
+      return;
+    }
+
+    const trackTop = track.getBoundingClientRect().top;
+    const nextThumbOffset = Math.min(
+      Math.max(clientY - trackTop - scrollbarDragOffsetRef.current, 0),
+      SCROLLBAR_THUMB_MAX_OFFSET
+    );
+
+    scrollContainer.scrollTop =
+      (nextThumbOffset / SCROLLBAR_THUMB_MAX_OFFSET) * maxScrollTop;
+  });
+
+  const handleScrollbarPointerDown = useMemoizedFn(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const scrollContainer = ref.current;
+      const track = scrollbarTrackRef.current;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (
+        !scrollContainer ||
+        !track ||
+        scrollContainer.scrollHeight <= scrollContainer.clientHeight
+      ) {
+        return;
+      }
+
+      const trackTop = track.getBoundingClientRect().top;
+      const isThumbTarget =
+        scrollbarThumbRef.current?.contains(event.target as Node) ?? false;
+
+      if (isThumbTarget) {
+        const currentThumbOffset = scrollRatio * SCROLLBAR_THUMB_MAX_OFFSET;
+        scrollbarDragOffsetRef.current = Math.min(
+          Math.max(event.clientY - trackTop - currentThumbOffset, 0),
+          SCROLLBAR_THUMB_HEIGHT
+        );
+      } else {
+        scrollbarDragOffsetRef.current = SCROLLBAR_THUMB_HEIGHT / 2;
+      }
+
+      isScrollbarDraggingRef.current = true;
+      setIsScrollbarDragging(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
+      scrollPanelFromScrollbar(event.clientY);
+    }
+  );
+
+  const handleScrollbarPointerMove = useMemoizedFn(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!isScrollbarDraggingRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      scrollPanelFromScrollbar(event.clientY);
+    }
+  );
+
+  const handleScrollbarPointerEnd = useMemoizedFn(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!isScrollbarDraggingRef.current) {
+        return;
+      }
+
+      isScrollbarDraggingRef.current = false;
+      setIsScrollbarDragging(false);
+
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    }
+  );
+
+  const { isDarkTheme } = useThemeMode();
+
+  return (
+    <div
+      className={clsx(
+        'relative px-[16px] pt-[14px] pb-[12px]',
+        'rabby-dashboard-panel-container'
+      )}
+    >
+      <GlobalStyle />
+      <div
+        className="overflow-auto rounded-[8px] bg-r-neutral-card-2"
+        style={{
+          height: 264,
+        }}
+        ref={ref}
+      >
+        <div
+          style={{
+            backgroundColor: isDarkTheme ? 'rgb(41,43,57)' : 'unset',
+          }}
+        >
+          <DndContext
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+            measuring={{
+              droppable: { strategy: MeasuringStrategy.Always },
+            }}
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            autoScroll={{
+              threshold: {
+                x: 0.2,
+                y: 0.2,
+              },
+              acceleration: 10,
+            }}
+          >
+            <SortableContext items={pickedPanelKeys}>
+              <div className="dashboard-panel-grid">
+                {pickedPanelKeys.map((panelKey, index) => {
+                  const item = panelItems[panelKey] as IPanelItem;
+                  if (!item) {
+                    return null;
+                  }
+                  return (
+                    <SortablePanelItem
+                      key={panelKey}
+                      panelKey={panelKey}
+                      item={item}
+                      index={index}
+                    />
+                  );
+                })}
+                {Array.from({ length: placeholderCount }).map((_, index) => (
+                  <div
+                    key={`dashboard-panel-placeholder-${index}`}
+                    className="bg-r-neutral-bg-2"
+                    aria-hidden="true"
+                  >
+                    <div className="panel-item pointer-events-none" />
+                  </div>
+                ))}
+              </div>
+            </SortableContext>
+            <DragOverlay
+              dropAnimation={{
+                duration: 200,
+                easing: 'ease',
+              }}
+              style={{
+                cursor: 'grabbing',
+              }}
+            >
+              <>
+                {activeId && activeItem ? (
+                  <div>
+                    <div
+                      className={clsx(
+                        'panel-item group',
+                        'rounded-[8px] bg-r-blue-light1',
+                        'border border-rabby-blue-default'
+                      )}
+                      style={{
+                        boxShadow: '0 4px 16px 0 rgba(0, 0, 0, 0.13)',
+                      }}
+                    >
+                      {activeItem.showAlert && (
+                        <ThemeIcon
+                          src={IconAlertRed}
+                          className="icon icon-alert"
+                        />
+                      )}
+                      {activeItem.badge ? (
+                        <Badge
+                          count={activeItem.badge}
+                          size="small"
+                          className={clsx(
+                            {
+                              alert:
+                                activeItem.badgeAlert &&
+                                !activeItem.badgeClassName,
+                            },
+                            activeItem.badgeClassName
+                          )}
+                        >
+                          <ThemeIcon
+                            src={activeItem.icon}
+                            className={clsx([
+                              activeItem.iconSpin && 'icon-spin',
+                              'panel-item-icon',
+                            ])}
+                          />
+                        </Badge>
+                      ) : (
+                        <ThemeIcon
+                          src={activeItem.icon}
+                          className={clsx([
+                            'panel-item-icon',
+                            activeItem.iconClassName,
+                          ])}
+                        />
+                      )}
+                      <div className="panel-item-label">
+                        {activeItem.content}
+                      </div>
+                      <DragOverlayContext.Provider value={true}>
+                        {activeItem.subContent}
+                      </DragOverlayContext.Provider>
+                      {activeItem.commingSoonBadge && (
+                        <div className="coming-soon-badge">
+                          {t('page.dashboard.home.soon')}
+                        </div>
+                      )}
+                      {/* {{activeItem.isFullscreen && (
+                        <div className="absolute top-[6px] right-[6px] opacity-50 text-r-neutral-foot hidden group-hover:block">
+                          <RcIconExternal1CC />
+                        </div>
+                      )}} */}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            </DragOverlay>
+          </DndContext>
+        </div>
+      </div>
+      <div className="absolute right-[3px] top-[50%] translate-y-[-50%] h-[92px] w-[13px]">
+        <div
+          ref={scrollbarTrackRef}
+          className={clsx(
+            'absolute right-0 top-[6px] h-[80px] cursor-pointer select-none',
+            isScrollbarDragging && 'cursor-grabbing'
+          )}
+          style={{
+            touchAction: 'none',
+            width: SCROLLBAR_HIT_AREA_WIDTH,
+          }}
+          onPointerDown={handleScrollbarPointerDown}
+          onPointerMove={handleScrollbarPointerMove}
+          onPointerUp={handleScrollbarPointerEnd}
+          onPointerCancel={handleScrollbarPointerEnd}
+          onLostPointerCapture={() => {
+            isScrollbarDraggingRef.current = false;
+            setIsScrollbarDragging(false);
+          }}
+        >
+          <div
+            ref={scrollbarThumbRef}
+            className={clsx(
+              'absolute right-[5px] top-0 z-10 h-[50px] w-[3px] rounded-full bg-r-blue-default',
+              isScrollbarDragging ? 'cursor-grabbing' : 'cursor-grab'
+            )}
+            style={{
+              transform: `translateY(${
+                scrollRatio * SCROLLBAR_THUMB_MAX_OFFSET
+              }px)`,
+            }}
+          ></div>
+          <div className="absolute bottom-0 right-[5px] top-0 w-[3px] rounded-full bg-r-blue-disable opacity-50"></div>
+        </div>
+      </div>
+
+      <ClaimRabbyFreeGasBadgeModal
+        visible={badgeModalVisible}
+        onCancel={() => {
+          setBadgeModalVisible(false);
+        }}
+      />
+      <EcologyPopup
+        visible={isShowEcology}
+        onClose={() => setIsShowEcologyModal(false)}
+      />
+      <RabbyPointsPopup
+        visible={isShowRabbyPoints}
+        onClose={() => setIsShowRabbyPoints(false)}
+      />
+      <RateModal />
+
+      <RecentConnectionsPopup
+        visible={isShowDappsPopup}
+        onClose={() => {
+          setIsShowDappsPopup(false);
+        }}
+      />
+    </div>
+  );
+};

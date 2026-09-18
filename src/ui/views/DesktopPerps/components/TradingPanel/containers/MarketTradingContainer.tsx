@@ -1,0 +1,647 @@
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useRabbySelector } from '@/ui/store';
+import { OrderSide, TradingContainerProps } from '../../../types';
+import { TPSLSettings } from '../components/TPSLSettings';
+import { OrderInfoGrid } from '../components/OrderInfoGrid';
+import { usePerpsProPosition } from '../../../hooks/usePerpsProPosition';
+import { useMemoizedFn, useRequest } from 'ahooks';
+import { OrderSideAndFunds } from '../components/OrderSideAndFunds';
+import { PositionSizeInputAndSliderV2 as PositionSizeInputAndSlider } from '../components/PositionSizeInputAndSliderV2';
+import { usePerpsTradingState } from '../../../hooks/usePerpsTradingState';
+import { PerpsCheckbox } from '../components/PerpsCheckbox';
+import { EditMarketSlippage } from '../components/EditMarketSlippage';
+import { TradingButtons } from '../components/TradingButtons';
+import BigNumber from 'bignumber.js';
+import { formatPercent } from '@/ui/views/Perps/utils';
+import stats from '@/stats';
+import { formatPerpsCoin, getStatsReportSide } from '../../../utils';
+import { resolveTpSlTrigger } from '../../../tpslTrigger';
+import { calcAmountFromPercentage } from '../utils';
+import { useDirectionMaxGate } from '../hooks/useDirectionMaxGate';
+import { perpsToast } from '../../PerpsToast';
+import { useOrderConfirm } from '../../../modal/OrderConfirmProvider';
+import type { OrderConfirmContent } from '../../../modal/OrderConfirmProvider';
+import {
+  ConfirmAmount,
+  LiveLiquidation,
+  LiveMarkPrice,
+  LiveTpSlTrigger,
+} from '../../../modal/OrderConfirmLiveValues';
+import type {
+  OrderConfirmRow,
+  OrderConfirmSection,
+} from '../../../modal/OrderConfirmModal';
+
+/** The numbers an order actually sends, frozen at click time. */
+interface MarketOrderSnapshot {
+  size: string;
+}
+
+/** TP/SL triggers resolved for one side, shared by the submit and its stats. */
+interface TpSlTriggers {
+  tpTriggerPx?: string;
+  slTriggerPx?: string;
+}
+
+export const MarketTradingContainer: React.FC<TradingContainerProps> = () => {
+  const { t } = useTranslation();
+
+  // Get slippage from Redux
+  const marketSlippage = useRabbySelector(
+    (state) => state.perps.marketSlippage
+  );
+
+  const estPrice = useRabbySelector((state) => state.perps.marketEstPrice);
+
+  // Get data from perpsState
+  const {
+    currentPerpsAccount,
+    selectedCoin,
+    positionSize,
+    setPositionSize,
+    currentPosition,
+    markPrice,
+    midPrice,
+    szDecimals,
+    pxDecimals,
+    leverage,
+    leverageType,
+    availableBalance,
+    quoteAsset,
+    reduceOnly,
+    setReduceOnly,
+    tradeUsdAmount,
+    marginRequired,
+    tradeSize,
+    buyInfo,
+    sellInfo,
+    maxBuyTradeSize,
+    maxSellTradeSize,
+    currentMarketData,
+    percentage,
+    setPercentage,
+    tpslConfig,
+    tpslConfigHasError,
+    setTpslConfig,
+    handleTPSLEnabledChange,
+    resetForm,
+    validateTpslForSide,
+    sizeDisplayUnit,
+    setSizeDisplayUnit,
+    reduceOnlyBuyDisabled,
+    reduceOnlySellDisabled,
+  } = usePerpsTradingState();
+
+  const [slippageVisible, setSlippageVisible] = React.useState(false);
+
+  // Form validation (direction-agnostic; the per-side max gate lives at the buttons)
+  const validation = React.useMemo(() => {
+    let error: string = '';
+    const size = Number(positionSize.amount) || 0;
+    const notionalNum = size * Number(markPrice || 0);
+
+    if (notionalNum === 0) {
+      return { isValid: false, error: '' };
+    }
+
+    // Check minimum order size ($10)
+    if (notionalNum < 10) {
+      error = t('page.perpsPro.tradingPanel.minimumOrderSize');
+      return { isValid: false, error };
+    }
+
+    // Check maximum position size
+    const maxUsdValue = Number(currentMarketData?.maxUsdValueSize || 1000000);
+    if (notionalNum > maxUsdValue) {
+      error =
+        t('page.perpsPro.tradingPanel.maximumOrderSize', {
+          amount: `$${maxUsdValue}`,
+        }) || `Maximum order size is $${maxUsdValue}`;
+      return { isValid: false, error };
+    }
+
+    return {
+      isValid: error === '',
+      error,
+    };
+  }, [
+    markPrice,
+    positionSize.amount,
+    tradeSize,
+    currentMarketData,
+    percentage,
+    t,
+  ]);
+
+  // Direction-specific validation
+  const { handleOpenMarketOrder } = usePerpsProPosition();
+
+  // Deliberately not snapshotted: in `pnl`/`roi` mode the panel re-derives the
+  // trigger from the streaming order price, so a trigger frozen at click time
+  // goes stale within seconds. The dialog reads the same live `tpslConfig`
+  // through `LiveTpSlTrigger`, so what is shown is what this resolves at send.
+  const getTpSlTriggerPrices = useMemoizedFn(
+    (isBuy: boolean): TpSlTriggers => {
+      if (!tpslConfig.enabled) {
+        return { tpTriggerPx: undefined, slTriggerPx: undefined };
+      }
+      const { takeProfit, stopLoss } = tpslConfig;
+      return {
+        tpTriggerPx: resolveTpSlTrigger(takeProfit, isBuy) || undefined,
+        slTriggerPx: resolveTpSlTrigger(stopLoss, isBuy) || undefined,
+      };
+    }
+  );
+
+  const reportOrderStats = (
+    isBuy: boolean,
+    totalSz: string,
+    avgPx: string,
+    triggers: TpSlTriggers
+  ) => {
+    stats.report('perpsTradeHistory', {
+      created_at: new Date().getTime(),
+      user_addr: currentPerpsAccount?.address || '',
+      trade_type: 'market',
+      leverage: leverage.toString(),
+      trade_side: getStatsReportSide(isBuy, reduceOnly),
+      margin_mode: leverageType === 'cross' ? 'cross' : 'isolated',
+      coin: selectedCoin,
+      size: totalSz,
+      price: avgPx,
+      trade_usd_value: new BigNumber(avgPx).times(totalSz).toFixed(2),
+      service_provider: 'hyperliquid',
+      app_version: process.env.release || '0',
+      address_type: currentPerpsAccount?.type || '',
+    });
+
+    if (tpslConfig.enabled) {
+      const { tpTriggerPx, slTriggerPx } = triggers;
+      if (tpTriggerPx) {
+        stats.report('perpsTradeHistory', {
+          created_at: new Date().getTime(),
+          user_addr: currentPerpsAccount?.address || '',
+          trade_type: 'take profit in market',
+          leverage: leverage.toString(),
+          trade_side: getStatsReportSide(!isBuy, reduceOnly),
+          margin_mode: leverageType === 'cross' ? 'cross' : 'isolated',
+          coin: selectedCoin,
+          size: totalSz,
+          price: tpTriggerPx,
+          trade_usd_value: new BigNumber(tpTriggerPx).times(totalSz).toFixed(2),
+          service_provider: 'hyperliquid',
+          app_version: process.env.release || '0',
+          address_type: currentPerpsAccount?.type || '',
+        });
+      }
+      if (slTriggerPx) {
+        stats.report('perpsTradeHistory', {
+          created_at: new Date().getTime(),
+          user_addr: currentPerpsAccount?.address || '',
+          trade_type: 'stop loss in market',
+          leverage: leverage.toString(),
+          trade_side: getStatsReportSide(!isBuy, reduceOnly),
+          margin_mode: leverageType === 'cross' ? 'cross' : 'isolated',
+          coin: selectedCoin,
+          size: totalSz,
+          price: slTriggerPx,
+          trade_usd_value: new BigNumber(slTriggerPx).times(totalSz).toFixed(2),
+          service_provider: 'hyperliquid',
+          app_version: process.env.release || '0',
+          address_type: currentPerpsAccount?.type || '',
+        });
+      }
+    }
+  };
+
+  // Get direction-specific trade size: percentage mode recalculates per direction
+  const getDirectionTradeSize = (isBuy: boolean): string => {
+    if (positionSize.inputSource === 'slider') {
+      const dirMax = isBuy ? maxBuyTradeSize : maxSellTradeSize;
+      return calcAmountFromPercentage(percentage, dirMax, szDecimals);
+    }
+    return tradeSize;
+  };
+
+  // `size` is re-derived from the streaming balance, while the dialog's rows are
+  // built once at click time and `submit` runs whenever the user confirms.
+  // Freezing it is what keeps the size that is sent identical to the one shown.
+  const buildOrderSnapshot = useMemoizedFn(
+    (isBuy: boolean): MarketOrderSnapshot => ({
+      size: getDirectionTradeSize(isBuy),
+    })
+  );
+
+  // Runs twice per submit: at click time, so an invalid form never opens the
+  // confirmation dialog, and again inside the handler, which also guards submits
+  // that skip the dialog.
+  //
+  // `reportError` toasts rather than leaving it to the inline field error: the
+  // trigger is checked against the streaming mark price, so the second pass can
+  // fail while the dialog is up and its inline error sits behind the mask.
+  const validateTpslForDirection = useMemoizedFn(
+    (isBuy: boolean, reportError = false) => {
+      if (!tpslConfig.enabled) return true;
+
+      const tpslValidation = validateTpslForSide(
+        isBuy ? OrderSide.BUY : OrderSide.SELL
+      );
+      if (tpslValidation.valid) return true;
+
+      if (reportError) {
+        perpsToast.error({
+          title: t('page.perps.toast.orderError'),
+          description: tpslValidation.errors.tp || tpslValidation.errors.sl,
+        });
+      }
+
+      setTpslConfig({
+        ...tpslConfig,
+        takeProfit: {
+          ...tpslConfig.takeProfit,
+          error: tpslValidation.errors.tp || '',
+        },
+        stopLoss: {
+          ...tpslConfig.stopLoss,
+          error: tpslValidation.errors.sl || '',
+        },
+      });
+      return false;
+    }
+  );
+
+  const createOrderHandler = (isBuy: boolean) => async (
+    snapshot: MarketOrderSnapshot
+  ) => {
+    if (!validateTpslForDirection(isBuy, true)) {
+      throw new Error('TP/SL validation failed');
+    }
+
+    // Resolved here rather than read off the snapshot so the triggers sent are
+    // the ones the dialog is showing at the moment the user confirms.
+    const triggers = getTpSlTriggerPrices(isBuy);
+
+    const res = await handleOpenMarketOrder({
+      coin: selectedCoin,
+      dex: currentMarketData?.dexId ?? '',
+      isBuy,
+      size: snapshot.size,
+      // Deliberately not snapshotted: `midPx` is the reference the slippage
+      // bound is priced against, so it has to be the freshest one available.
+      midPx: midPrice.toString(),
+      tpTriggerPx: triggers.tpTriggerPx,
+      slTriggerPx: triggers.slTriggerPx,
+      reduceOnly,
+      slippage: marketSlippage,
+    });
+
+    if (res) {
+      const { totalSz, avgPx } = res;
+      reportOrderStats(isBuy, totalSz, avgPx, triggers);
+    }
+  };
+
+  // `runAsync` (not `run`) so the confirmation dialog can await the submission
+  // and keep itself open when it rejects.
+  const { runAsync: handleBuyOrder, loading: buyLoading } = useRequest(
+    createOrderHandler(true),
+    {
+      manual: true,
+      onSuccess: () => {
+        resetForm();
+      },
+      onError: () => {},
+    }
+  );
+
+  const { runAsync: handleSellOrder, loading: sellLoading } = useRequest(
+    createOrderHandler(false),
+    {
+      manual: true,
+      onSuccess: () => {
+        resetForm();
+      },
+      onError: () => {},
+    }
+  );
+
+  const requestConfirm = useOrderConfirm();
+
+  const buildConfirmContent = useMemoizedFn(
+    (isBuy: boolean, snapshot: MarketOrderSnapshot): OrderConfirmContent => {
+      const coinLabel = formatPerpsCoin(selectedCoin);
+      const markPriceNum = Number(markPrice || 0);
+      const rows: OrderConfirmRow[] = [
+        {
+          key: 'price',
+          label: t('page.perpsPro.orderConfirm.price'),
+          value: t('page.perpsPro.orderConfirm.marketPrice'),
+        },
+      ];
+
+      // Whether the row exists is still decided at click time, but its value is
+      // a live reference the user reads while deciding — not part of the payload.
+      if (markPriceNum > 0) {
+        rows.push({
+          key: 'markPrice',
+          label: t('page.perpsPro.orderConfirm.markPrice'),
+          value: (
+            <LiveMarkPrice
+              coin={selectedCoin}
+              fallback={markPriceNum}
+              pxDecimals={pxDecimals}
+              quoteAsset={quoteAsset}
+            />
+          ),
+        });
+      }
+
+      if (Number(snapshot.size) > 0) {
+        rows.push({
+          key: 'amount',
+          label: t('page.perpsPro.orderConfirm.amount'),
+          // Snapshot size, only re-unitised: `price` matches what the panel's
+          // own OrderInfoGrid converts with, so both read the same.
+          value: (
+            <ConfirmAmount
+              amount={snapshot.size}
+              coin={selectedCoin}
+              price={midPrice}
+              quoteAsset={quoteAsset}
+            />
+          ),
+        });
+      }
+
+      // Always shown; `LiveLiquidation` renders `-` when there is no
+      // liquidation price (a reduce-only order, or one that nets the position
+      // flat). Both values track the mark price, because a market order's entry
+      // *is* the mark — so the liquidation price moves along with its distance.
+      rows.push(
+        {
+          key: 'estLiqPrice',
+          label: t('page.perpsPro.orderConfirm.estLiqPrice'),
+          value: (
+            <LiveLiquidation
+              direction={isBuy ? 'Long' : 'Short'}
+              size={snapshot.size}
+              pxDecimals={pxDecimals}
+              variant="price"
+            />
+          ),
+        },
+        {
+          key: 'estLiqDistance',
+          label: t('page.perpsPro.orderConfirm.estLiqDistance'),
+          value: (
+            <LiveLiquidation
+              direction={isBuy ? 'Long' : 'Short'}
+              size={snapshot.size}
+              pxDecimals={pxDecimals}
+              variant="distance"
+            />
+          ),
+        }
+      );
+
+      rows.push({
+        key: 'reduceOnly',
+        label: t('page.perpsPro.orderConfirm.reduceOnly'),
+        value: reduceOnly
+          ? t('page.perpsPro.orderConfirm.true')
+          : t('page.perpsPro.orderConfirm.false'),
+      });
+
+      const sections: OrderConfirmSection[] = [{ key: 'main', rows }];
+
+      // Whether a TP/SL side has rows is settled at click time, but its trigger
+      // is not: `pnl`/`roi` mode re-derives it from the streaming order price.
+      // The submit resolves it from the same `tpslConfig`, so the two agree.
+      const { tpTriggerPx, slTriggerPx } = getTpSlTriggerPrices(isBuy);
+      const markPriceLabel = t('page.perpsPro.orderConfirm.markPrice');
+      const tpslRows: OrderConfirmRow[] = [];
+
+      if (tpTriggerPx && Number(tpTriggerPx) > 0) {
+        tpslRows.push(
+          {
+            key: 'tp',
+            label: t('page.perpsPro.orderConfirm.takeProfitMarket'),
+            value: t('page.perpsPro.orderConfirm.marketPrice'),
+          },
+          {
+            key: 'tpTrigger',
+            label: t('page.perpsPro.orderConfirm.trigger'),
+            value: (
+              <LiveTpSlTrigger
+                side="tp"
+                isBuy={isBuy}
+                quoteAsset={quoteAsset}
+                markPriceLabel={markPriceLabel}
+              />
+            ),
+          }
+        );
+      }
+
+      if (slTriggerPx && Number(slTriggerPx) > 0) {
+        tpslRows.push(
+          {
+            key: 'sl',
+            label: t('page.perpsPro.orderConfirm.stopLossMarket'),
+            value: t('page.perpsPro.orderConfirm.marketPrice'),
+          },
+          {
+            key: 'slTrigger',
+            label: t('page.perpsPro.orderConfirm.trigger'),
+            value: (
+              <LiveTpSlTrigger
+                side="sl"
+                isBuy={isBuy}
+                quoteAsset={quoteAsset}
+                markPriceLabel={markPriceLabel}
+              />
+            ),
+          }
+        );
+      }
+
+      if (tpslRows.length > 0) {
+        sections.push({
+          key: 'tpsl',
+          heading: t('page.perpsPro.orderConfirm.tpSl'),
+          rows: tpslRows,
+        });
+      }
+
+      return {
+        title: `${coinLabel}-${quoteAsset}`,
+        titleSuffix: isBuy
+          ? { text: t('page.perpsPro.orderConfirm.buyLong'), tone: 'up' }
+          : { text: t('page.perpsPro.orderConfirm.sellShort'), tone: 'down' },
+        sections,
+      };
+    }
+  );
+
+  const checkDirectionMax = useDirectionMaxGate({
+    positionSize,
+    maxBuyTradeSize,
+    maxSellTradeSize,
+  });
+
+  const handleSubmitClick = useMemoizedFn((isBuy: boolean) => {
+    if (!checkDirectionMax(isBuy)) return;
+    // Keep the direction-specific TP/SL check ahead of the dialog: otherwise the
+    // user would confirm an order that can only fail validation.
+    if (!validateTpslForDirection(isBuy)) return;
+
+    const snapshot = buildOrderSnapshot(isBuy);
+
+    requestConfirm({
+      type: 'market',
+      content: () => buildConfirmContent(isBuy, snapshot),
+      dontShowAgainText: t('page.perpsPro.orderConfirm.dontShowAgain', {
+        orderType: t('page.perpsPro.orderConfirm.orderTypeName.market'),
+      }),
+      submit: () =>
+        isBuy ? handleBuyOrder(snapshot) : handleSellOrder(snapshot),
+    });
+  });
+
+  const slippageDisplay = useMemo(() => {
+    // const estSlippage =
+    //   estPrice && Number(positionSize.amount) > 0
+    //     ? (Number(estPrice) - Number(midPrice)) / Number(midPrice)
+    //     : 0;
+
+    // return `Est. ${formatPercent(
+    //   Math.abs(estSlippage),
+    //   4
+    // )} / Max ${formatPercent(marketSlippage, 0)}`;
+    return `Max ${formatPercent(marketSlippage, 2)}`;
+  }, [estPrice, positionSize.amount, midPrice, marketSlippage]);
+
+  const handleSetSlippage = () => {
+    setSlippageVisible(true);
+  };
+
+  const buyDisabled =
+    !validation.isValid || tpslConfigHasError || reduceOnlyBuyDisabled;
+  const sellDisabled =
+    !validation.isValid || tpslConfigHasError || reduceOnlySellDisabled;
+
+  return (
+    <>
+      <div className="flex flex-col gap-[12px]">
+        {/* Available Funds */}
+        <OrderSideAndFunds
+          availableBalance={availableBalance}
+          quoteAsset={quoteAsset}
+        />
+
+        {/* Position Size Input — 18px above (Funds → Size) */}
+        <div className="mt-[6px]">
+          <PositionSizeInputAndSlider
+            price={midPrice}
+            maxBuyTradeSize={maxBuyTradeSize}
+            maxSellTradeSize={maxSellTradeSize}
+            positionSize={positionSize}
+            setPositionSize={setPositionSize}
+            percentage={percentage}
+            setPercentage={setPercentage}
+            baseAsset={selectedCoin}
+            quoteAsset={quoteAsset}
+            szDecimals={szDecimals}
+            sizeDisplayUnit={sizeDisplayUnit}
+            onUnitChange={setSizeDisplayUnit}
+            reduceOnly={reduceOnly}
+          />
+        </div>
+
+        <div className="h-[1px] bg-rb-neutral-line my-[12px]" />
+
+        {/* TP/SL, Reduce Only, and Slippage */}
+        <div className="flex flex-col gap-[8px]">
+          <PerpsCheckbox
+            checked={tpslConfig.enabled}
+            onChange={(enabled) => {
+              handleTPSLEnabledChange(enabled);
+              if (enabled) {
+                setReduceOnly(false);
+              }
+            }}
+            tooltipText={t('page.perpsPro.tradingPanel.tpSlTips')}
+            title={t('page.perpsPro.tradingPanel.tpSl')}
+            disabled={reduceOnly}
+          />
+          {/* TP/SL Settings Expanded */}
+          {tpslConfig.enabled && (
+            <TPSLSettings
+              config={tpslConfig}
+              setConfig={setTpslConfig}
+              szDecimals={szDecimals}
+              price={midPrice}
+              leverage={leverage}
+              tradeSize={tradeSize}
+            />
+          )}
+        </div>
+
+        <div className="flex items-center justify-between">
+          <PerpsCheckbox
+            checked={reduceOnly}
+            onChange={(checked) => {
+              setReduceOnly(checked);
+              if (checked) {
+                handleTPSLEnabledChange(false);
+              }
+            }}
+            tooltipText={t('page.perpsPro.tradingPanel.reduceOnlyTips')}
+            title={t('page.perpsPro.tradingPanel.reduceOnly')}
+            disabled={!currentPosition}
+          />
+          <div className="ml-auto flex items-center gap-[4px]">
+            <span className="text-rb-neutral-secondary text-12">
+              {t('page.perpsPro.tradingPanel.slippage')}
+            </span>
+            <span
+              onClick={handleSetSlippage}
+              className="text-r-neutral-body text-12 cursor-pointer underline decoration-dashed underline-offset-2"
+            >
+              {slippageDisplay}
+            </span>
+          </div>
+        </div>
+
+        {/* Buy/Sell Buttons */}
+        <TradingButtons
+          onBuyClick={() => handleSubmitClick(true)}
+          onSellClick={() => handleSubmitClick(false)}
+          buyLoading={buyLoading}
+          sellLoading={sellLoading}
+          buyDisabled={buyDisabled}
+          sellDisabled={sellDisabled}
+          buyError={validation.error || undefined}
+          sellError={validation.error || undefined}
+        />
+
+        {/* Order Info Grid */}
+        <OrderInfoGrid
+          buy={buyInfo}
+          quoteAsset={quoteAsset}
+          sell={sellInfo}
+          displayUnit={sizeDisplayUnit}
+          selectedCoin={selectedCoin}
+          reduceOnly={reduceOnly}
+          price={midPrice}
+        />
+      </div>
+
+      <EditMarketSlippage
+        visible={slippageVisible}
+        onCancel={() => setSlippageVisible(false)}
+      />
+    </>
+  );
+};

@@ -1,0 +1,3457 @@
+/* eslint "react-hooks/exhaustive-deps": ["error"] */
+/* eslint-enable react-hooks/exhaustive-deps */
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react';
+import clsx from 'clsx';
+import BigNumber from 'bignumber.js';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useLocation } from 'react-router-dom';
+import { matomoRequestEvent } from '@/utils/matomo-request';
+import { useAsyncFn, usePrevious } from 'react-use';
+import { Form, message, Modal } from 'antd';
+import abiCoderInst, { AbiCoder } from 'web3-eth-abi';
+import { useMemoizedFn } from 'ahooks';
+import {
+  isValidAddress,
+  intToHex,
+  zeroAddress,
+  toChecksumAddress,
+} from '@ethereumjs/util';
+import { globalSupportCexList } from '@/ui/state/exchange';
+
+import {
+  CHAINS_ENUM,
+  KEYRING_CLASS,
+  MINIMUM_GAS_LIMIT,
+  CAN_ESTIMATE_L1_FEE_CHAINS,
+  CAN_NOT_SPECIFY_INTRINSIC_GAS_CHAINS,
+  KEYRING_TYPE,
+} from 'consts';
+import { connectStore, useRabbySelector } from 'ui/store';
+import {
+  getUiType,
+  isSameAddress,
+  openInternalPageInTab,
+  useWallet,
+} from 'ui/utils';
+import { obj2query, query2obj } from 'ui/utils/url';
+import {
+  coerceFloat,
+  formatTokenAmount,
+  formatUsdValue,
+  normalizeAmountInputValue,
+} from 'ui/utils/number';
+import TokenAmountInput from 'ui/component/TokenAmountInput';
+import {
+  Cex,
+  GasLevel,
+  TokenItem,
+  TokenItemWithEntity,
+  Tx,
+} from 'background/service/openapi';
+import { PageHeader } from 'ui/component';
+// import { ReactComponent as RcIconSwitchCC } from '@/ui/assets/send-token/switch-cc.svg';
+
+import './style.less';
+import { getKRCategoryByType } from '@/utils/transaction';
+import { filterRbiSource, useRbiSource } from '@/ui/utils/ga-event';
+import { findChain, findChainByEnum, findChainByID } from '@/utils/chain';
+import { Chain } from '@debank/common';
+import {
+  checkIfTokenBalanceEnough,
+  customTestnetTokenToTokenItem,
+  getChainDefaultToken,
+  getTokenSymbol,
+  tokenAmountBn,
+} from '@/ui/utils/token';
+import {
+  GasLevelType,
+  SendReserveGasPopup,
+} from '../Swap/Component/ReserveGasPopup';
+import { RcIconJumpBoldCC } from '@/ui/assets/dashboard';
+import { withAccountChange } from '@/ui/utils/withAccountChange';
+import { useRequest } from 'ahooks';
+import { FullscreenContainer } from '@/ui/component/FullscreenContainer';
+import { useAddressInfo } from '@/ui/hooks/useAddressInfo';
+import { ellipsisAddress } from '@/ui/utils/address';
+import { useInitCheck } from './useInitCheck';
+import { useMiniSigner } from '@/ui/hooks/useSigner';
+import { MINI_SIGN_ERROR } from '@/ui/component/MiniSignV2/state/SignatureManager';
+import {
+  DirectSubmitProvider,
+  supportedDirectSign,
+  supportedHardwareDirectSign,
+} from '@/ui/hooks/useMiniApprovalDirectSign';
+import { DirectSignToConfirmBtn } from '@/ui/component/ToConfirmButton';
+import { ShowMoreOnSend } from './components/SendShowMore';
+import { PendingTxItem } from '../Swap/Component/PendingTxItem';
+import { SendTxHistoryItem } from '@/background/service/transactionHistory';
+import { useCurrentAccount } from '@/ui/hooks/backgroundState/useAccount';
+import ChainSelectorInForm from '@/ui/component/ChainSelector/InForm';
+import styled from 'styled-components';
+import { TDisableCheckChainFn } from '@/ui/component/ChainSelector/components/SelectChainItem';
+import { AddressInfoFrom } from '@/ui/component/SendLike/AddressInfoFrom';
+import { AddressInfoTo } from '@/ui/component/SendLike/AddressInfoTo';
+import BottomArea from './components/BottomArea';
+import {
+  RiskType,
+  sortRisksDesc,
+  useAddressRisks,
+} from '@/ui/hooks/useAddressRisk';
+import {
+  isGasAccountDepositFlowActive,
+  useGasAccountDepositFlowActive,
+} from '@/ui/views/GasAccount/hooks/runtime';
+// import { SendSlider } from '@/ui/component/SendLike/Slider';
+import { appIsDebugPkg } from '@/utils/env';
+import { add, debounce } from 'lodash';
+import useSyncStaleValue from '@/ui/hooks/useDebounceValue';
+import { useToAddressPositiveTips } from '@/ui/component/SendLike/hooks/useRecentSend';
+import { ChainSelectorInSend } from './components/ChainSelectorInSend';
+import { getCexIds } from '@/ui/utils/portfolio/tokenUtils';
+import { resolveTempoDefaultTokenId } from '@/utils/tempo';
+import {
+  FormAmountMode,
+  FormValuesOnSubmit,
+  createAmountComparer,
+  shouldIgnoreAmountChangeInMaxMode,
+} from '@/ui/utils/form';
+import { normalizeInputNumber } from '@/constant/regexp';
+import {
+  AmountInputMode,
+  SendAmountInputUrlState,
+  USD_INPUT_RE,
+  applyAmountInputUrlStateToSearchParams,
+  buildAmountInputQueryFields,
+  chooseRestoredUsdAmountInputState,
+  createUsdAmountInputUrlState,
+  getNextUsdPriceSnapshot,
+  getUsdAmountInputDisplayState,
+  isValidUsdPrice,
+  normalizeUsdAmountInputUrlStateForTokenAmount,
+  normalizeAmountInputTokenKey,
+  parseAmountInputUrlState,
+  shouldDisplaySmallUsdMaxAmount,
+} from './amountInputState';
+import {
+  GNOSIS_REPLACE_QUERY_KEY,
+  GnosisSendReplaceContext,
+  isGnosisSendReplaceTargetMatched,
+  parseGnosisSendReplaceContext,
+} from '@/ui/utils/gnosisReplace';
+
+const isTab = getUiType().isTab;
+const isDesktop = getUiType().isDesktop;
+
+const getContainer =
+  isTab || isDesktop ? '.js-rabby-popup-container' : undefined;
+
+const abiCoder = (abiCoderInst as unknown) as AbiCoder;
+
+function findInstanceLevel(gasList: GasLevel[]) {
+  if (!gasList.length) return;
+
+  return gasList.reduce((prev, current) =>
+    prev.price >= current.price ? prev : current
+  );
+}
+
+const DEFAULT_GAS_USED = 21000;
+
+const DEFAULT_TOKEN: TokenItem = {
+  id: 'eth',
+  chain: 'eth',
+  name: 'ETH',
+  symbol: 'ETH',
+  display_symbol: null,
+  optimized_symbol: 'ETH',
+  decimals: 18,
+  logo_url:
+    'https://static.debank.com/image/coin/logo_url/eth/6443cdccced33e204d90cb723c632917.png',
+  price: 0,
+  is_verified: true,
+  is_core: true,
+  is_wallet: true,
+  time_at: 0,
+  amount: 0,
+  cex_ids: [],
+};
+
+type FormSendToken = {
+  to: string;
+  amount: string;
+};
+
+const SMALL_USD_AMOUNT_TEXT = '<0.01';
+const AMOUNT_BALANCE_ERROR_QUERY_KEY = 'amountBalanceError';
+
+type SendTopUpSnapshot = {
+  amount: string;
+  amountMode?: FormAmountMode;
+};
+
+function getSendAmountTokenKey(token?: Pick<TokenItem, 'chain' | 'id'> | null) {
+  return token
+    ? normalizeAmountInputTokenKey(`${token.chain}:${token.id}`)
+    : '';
+}
+
+function getSafeAmountBn(amount?: string | number | BigNumber | null) {
+  const bn = new BigNumber(amount || 0);
+  return bn.isFinite() && !bn.isNaN() ? bn : new BigNumber(0);
+}
+
+function isSendAmountGreaterThanBalance(
+  amount: string | number | BigNumber,
+  token?: TokenItem | null
+) {
+  if (!token) {
+    return false;
+  }
+
+  const amountBn = getSafeAmountBn(amount);
+  const balanceBn = new BigNumber(token.raw_amount_hex_str || 0).div(
+    10 ** token.decimals
+  );
+
+  return amountBn.gt(balanceBn);
+}
+
+function getValidTokenDecimals(decimals?: number | null) {
+  return typeof decimals === 'number' &&
+    Number.isFinite(decimals) &&
+    decimals > 0
+    ? Math.floor(decimals)
+    : 0;
+}
+
+function formatTokenQuoteValueText(value: string | number | BigNumber) {
+  const bn = getSafeAmountBn(value);
+
+  if (bn.isZero()) {
+    return '0';
+  }
+
+  const displayBn = bn.decimalPlaces(6, BigNumber.ROUND_DOWN);
+  if (displayBn.isZero()) {
+    return formatTokenAmount(bn.toFixed(), 8);
+  }
+
+  return displayBn.toFormat();
+}
+
+function getUsdValueFromTokenAmount(tokenAmount: string, price: number | null) {
+  if (!tokenAmount || !isValidUsdPrice(price)) {
+    return null;
+  }
+
+  const usdValue = new BigNumber(tokenAmount).times(price || 0);
+  if (!usdValue.isFinite() || usdValue.isNaN()) {
+    return null;
+  }
+
+  return usdValue;
+}
+
+function formatUsdInputValueFromTokenAmount(
+  tokenAmount: string,
+  price: number
+) {
+  const usdValue = getUsdValueFromTokenAmount(tokenAmount, price);
+  if (!usdValue) {
+    return '';
+  }
+
+  return usdValue.decimalPlaces(2, BigNumber.ROUND_DOWN).toFixed();
+}
+
+function formatAmountString(
+  amount: number | string | BigNumber,
+  decimals: number = 4
+) {
+  const amountBigNumber = new BigNumber(
+    BigNumber.isBigNumber(amount) ? amount : coerceFloat(amount)
+  );
+
+  return amountBigNumber.lt(0.0001)
+    ? amountBigNumber.toString(10)
+    : new BigNumber(amountBigNumber.toFixed(decimals, 1)).toString(10);
+}
+
+function getSliderPercent(
+  amountValue: string | number,
+  inputs: {
+    token?: TokenItem | null;
+  }
+) {
+  const { token } = inputs || {};
+
+  let balanceBigNum = new BigNumber(0);
+  if (token) {
+    balanceBigNum = new BigNumber(token.raw_amount_hex_str || 0).div(
+      10 ** token.decimals
+    );
+
+    if (balanceBigNum.isZero()) return 0;
+
+    const val =
+      coerceFloat(
+        new BigNumber(coerceFloat(amountValue, 0)).div(balanceBigNum).toFixed(2)
+      ) * 100;
+
+    return Math.max(0, Math.min(100, val));
+  }
+
+  return 0;
+}
+
+function encodeTokenParam(currentToken: Pick<TokenItem, 'chain' | 'id'>) {
+  return `${currentToken.chain}:${currentToken.id}`;
+}
+
+function decodeTokenParam(tokenParam: string) {
+  const [chain, id] = tokenParam.split(':');
+  return { chain, id };
+}
+
+function normalizeSearchString(search = '') {
+  if (!search) return '';
+  return search.startsWith('?') ? search : `?${search}`;
+}
+
+const ChainSelectWrapper = styled.div`
+  border: 1px solid transparent;
+  border-bottom: 0.5px solid var(--r-neutral-line, rgba(255, 255, 255, 0.1));
+  &:hover {
+    border: 1px solid var(--r-blue-default, #7084ff);
+    background-color: var(--r-blue-light-1, #eef1ff);
+    border-radius: 8px;
+  }
+`;
+
+const SendToken = () => {
+  const { useForm } = Form;
+  const { t } = useTranslation();
+  const history = useHistory();
+  const rbisource = useRbiSource();
+  const { search } = useLocation();
+  const wallet = useWallet();
+
+  // UI States
+  const [
+    /** @deprecated */ reserveGasOpen,
+    /** @deprecated */ setReserveGasOpen,
+  ] = useState(false);
+  const [refreshId, setRefreshId] = useState(0);
+
+  // Core States
+  const [form] = useForm<FormSendToken>();
+  const {
+    toAddress,
+    toAddressType,
+    paramAmount,
+    paramAmountInputState,
+    paramAmountBalanceError,
+  } = useMemo(() => {
+    const query = new URLSearchParams(search);
+    return {
+      toAddress: query.get('to') || '',
+      toAddressType: query.get('type') || '',
+      paramAmount: query.get('amount') || '',
+      paramAmountInputState: parseAmountInputUrlState(query),
+      paramAmountBalanceError:
+        query.get(AMOUNT_BALANCE_ERROR_QUERY_KEY) === '1',
+    };
+  }, [search]);
+  const currentAccount = useCurrentAccount();
+  const currentAccountAddress = currentAccount?.address;
+  const [chain, setChain] = useState(CHAINS_ENUM.ETH);
+  const chainItem = useMemo(() => findChain({ enum: chain }), [chain]);
+  const [currentToken, setCurrentToken] = useState<TokenItem | null>(
+    DEFAULT_TOKEN
+  );
+  const [amountInputMode, setAmountInputMode] = useState<AmountInputMode>(() =>
+    paramAmountInputState ? 'usd' : 'token'
+  );
+  const [usdInputValue, setUsdInputValue] = useState(
+    () => paramAmountInputState?.usdInputValue || ''
+  );
+  const [isUsdMaxAmountActive, setIsUsdMaxAmountActive] = useState(
+    () => paramAmountInputState?.isUsdMaxAmountActive || false
+  );
+  const amountInputUrlStateRef = useRef<SendAmountInputUrlState | null>(
+    paramAmountInputState
+  );
+  const shouldClearAmountForAccountChangeRef = useRef(false);
+  const persistPageStateCacheQueueRef = useRef<Promise<void>>(
+    Promise.resolve()
+  );
+  const [usdPriceSnapshot, setUsdPriceSnapshot] = useState<{
+    tokenKey: string;
+    price: number | null;
+  }>(() => ({
+    tokenKey: paramAmountInputState?.tokenKey || '',
+    price: paramAmountInputState?.usdPrice || null,
+  }));
+
+  const gnosisReplaceContextResult = useMemo(
+    () => parseGnosisSendReplaceContext(search),
+    [search]
+  );
+  const gnosisReplaceContext =
+    gnosisReplaceContextResult.status === 'valid'
+      ? gnosisReplaceContextResult.context
+      : null;
+  const gnosisReplaceQueryValue = new URLSearchParams(search).get(
+    GNOSIS_REPLACE_QUERY_KEY
+  );
+
+  const [inited, setInited] = useState(false);
+  const [initLoading, setInitLoading] = useState(true);
+  const [cacheAmount, setCacheAmount] = useState('0');
+  const [isLoading, setIsLoading] = useState(true);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
+  const [
+    balanceErrorDisplayOverride,
+    setBalanceErrorDisplayOverride,
+  ] = useState(() => paramAmountBalanceError);
+
+  useEffect(() => {
+    setBalanceErrorDisplayOverride(paramAmountBalanceError);
+  }, [paramAmountBalanceError]);
+
+  const persistPageStateCache = useCallback(
+    (
+      nextStateCache?: {
+        values?: FormSendToken;
+        currentToken?: TokenItem | null;
+        fromGasAccountRedirect?: boolean;
+        topUpSnapshot?: SendTopUpSnapshot;
+        amountInputState?: SendAmountInputUrlState | null;
+      },
+      options?: {
+        search?: string;
+      }
+    ) => {
+      const nextTask = persistPageStateCacheQueueRef.current
+        .catch(() => undefined)
+        .then(() =>
+          wallet.setPageStateCache({
+            path: '/send-token',
+            search: normalizeSearchString(
+              options?.search ?? history.location.search
+            ),
+            params: {},
+            states: {
+              values: form.getFieldsValue(),
+              currentToken,
+              amountInputState: amountInputUrlStateRef.current,
+              ...nextStateCache,
+            },
+          })
+        );
+
+      persistPageStateCacheQueueRef.current = nextTask.catch(() => undefined);
+      return nextTask;
+    },
+    [wallet, history, form, currentToken]
+  );
+
+  const [
+    { showGasReserved, clickedMax, isEstimatingGas },
+    setSendMaxInfo,
+  ] = useState({
+    /** @deprecated */
+    showGasReserved: false,
+    clickedMax: false,
+    isEstimatingGas: false,
+  });
+
+  const setShowGasReserved = useCallback((show: boolean) => {
+    setSendMaxInfo((prev) => ({
+      ...prev,
+      showGasReserved: show,
+    }));
+  }, []);
+  const cancelClickedMax = useCallback(() => {
+    setSendMaxInfo((prev) => ({ ...prev, clickedMax: false }));
+  }, []);
+
+  const topUpFormValuesRef = useRef(
+    new FormValuesOnSubmit<SendTopUpSnapshot>({
+      comparers: {
+        amount: createAmountComparer<string>(),
+      },
+    })
+  );
+  const [awaitingTopUpResume, setAwaitingTopUpResume] = useState(false);
+  const depositFlowActive = useGasAccountDepositFlowActive();
+  const buildTopUpSnapshot = useCallback(
+    (): SendTopUpSnapshot => ({
+      amount: form.getFieldValue('amount') || '',
+      amountMode: clickedMax ? 'max' : 'exact',
+    }),
+    [clickedMax, form]
+  );
+  const { instance, openDirect, prefetch, close: closeSign } = useMiniSigner({
+    account: currentAccount!,
+    chainServerId: chainItem?.serverId,
+    autoResetGasStoreOnChainChange: true,
+  });
+  const prefetchDirectSendTx = useCallback(
+    (tx: Tx) => {
+      prefetch({
+        txs: [tx],
+        ga: {
+          category: 'Send',
+          source: 'sendToken',
+          trigger: filterRbiSource('sendToken', rbisource) && rbisource,
+        },
+        getContainer,
+      }).catch((error) => {
+        if (error !== MINI_SIGN_ERROR.PREFETCH_FAILURE) {
+          console.error('send token prefetch error', error);
+        }
+      });
+    },
+    [prefetch, rbisource]
+  );
+  const consumeTopUpResumeGuard = useCallback(() => {
+    const snapshot = topUpFormValuesRef.current.getSnapshot();
+    if (!snapshot) {
+      setAwaitingTopUpResume(false);
+      return false;
+    }
+
+    const currentValues = buildTopUpSnapshot();
+    const comparison = topUpFormValuesRef.current.compare(currentValues);
+    const shouldIgnore = shouldIgnoreAmountChangeInMaxMode(
+      comparison,
+      snapshot,
+      currentValues
+    );
+
+    topUpFormValuesRef.current.clear();
+    setAwaitingTopUpResume(false);
+
+    if (comparison.isChanged && !shouldIgnore) {
+      closeSign();
+      return true;
+    }
+
+    return false;
+  }, [buildTopUpSnapshot, closeSign]);
+
+  const handleReserveGasClose = useCallback(() => {
+    setReserveGasOpen(false);
+  }, []);
+
+  const [selectedGasLevel, setSelectedGasLevel] = useState<GasLevel | null>(
+    null
+  );
+  const [chainTokenGasFees, setChainTokenGasFees] = useState<{
+    gasLimit: number;
+    maybeL1Fee: BigNumber | null;
+  }>({
+    gasLimit: MINIMUM_GAS_LIMIT,
+    maybeL1Fee: null,
+  });
+
+  const isGnosisSafe = useMemo(() => {
+    return currentAccount?.type === KEYRING_CLASS.GNOSIS;
+  }, [currentAccount?.type]);
+
+  useEffect(() => {
+    const values = form.getFieldsValue();
+    form.setFieldsValue({
+      ...values,
+      to: toAddress,
+    });
+  }, [toAddress, history, search, form]);
+
+  const {
+    targetAccount,
+    isMyImported,
+    addressDesc,
+    loading: loadingToAddressDesc,
+  } = useAddressInfo(toAddress, {
+    type: toAddressType,
+  });
+  useInitCheck(addressDesc);
+
+  const disableItemCheck = useCallback(
+    (
+      token: TokenItemWithEntity
+    ): {
+      disable: boolean;
+      reason: string;
+      shortReason: string;
+      cexId?: string;
+    } => {
+      if (!addressDesc) {
+        return {
+          disable: false,
+          cexId: '',
+          reason: '',
+          shortReason: '',
+        };
+      }
+
+      // 当 token 还在加载时，不执行检查，避免用不完整数据判断导致错误闪现
+      if (initLoading) {
+        return {
+          disable: false,
+          cexId: '',
+          reason: '',
+          shortReason: '',
+        };
+      }
+
+      const toCexId = addressDesc?.cex?.id;
+      const isSupportCEX = globalSupportCexList.find(
+        (cex) => cex.id === toCexId
+      );
+      if (toCexId && isSupportCEX) {
+        const cex_ids = getCexIds(token);
+        const noSupportToken = cex_ids?.every?.(
+          (id) => id.toLowerCase() !== toCexId.toLowerCase()
+        );
+        if (!cex_ids?.length || noSupportToken) {
+          return {
+            disable: true,
+            cexId: toCexId,
+            reason: t('page.sendToken.noSupprotTokenForDex'),
+            shortReason: t('page.sendToken.noSupprotTokenForDex_short'),
+          };
+        }
+      } else {
+        const safeChains = Object.entries(addressDesc?.contract || {})
+          .filter(([, contract]) => {
+            return contract.multisig;
+          })
+          .map(([chain]) => chain?.toLowerCase());
+        if (
+          safeChains.length > 0 &&
+          !safeChains.includes(token?.chain?.toLowerCase())
+        ) {
+          return {
+            disable: true,
+            reason: t('page.sendToken.noSupprotTokenForSafe'),
+            shortReason: t('page.sendToken.noSupprotTokenForSafe_short'),
+          };
+        }
+        const contactChains = Object.entries(
+          addressDesc?.contract || {}
+        ).map(([chain]) => chain?.toLowerCase());
+        if (
+          contactChains.length > 0 &&
+          !contactChains.includes(token?.chain?.toLowerCase())
+        ) {
+          return {
+            disable: true,
+            reason: t('page.sendToken.noSupportTokenForChain'),
+            shortReason: t('page.sendToken.noSupportTokenForChain_short'),
+          };
+        }
+      }
+      return {
+        disable: false,
+        cexId: '',
+        reason: '',
+        shortReason: '',
+      };
+    },
+    [addressDesc, initLoading, t]
+  );
+
+  const disableChainCheck: TDisableCheckChainFn = useCallback(
+    (chain) => {
+      // do not check cex
+      if (!addressDesc || addressDesc.cex?.id) {
+        return {
+          disable: false,
+          reason: '',
+          shortReason: '',
+        };
+      }
+
+      const safeChains = Object.entries(addressDesc?.contract || {})
+        .filter(([, contract]) => {
+          return contract.multisig;
+        })
+        .map(([chain]) => chain?.toLowerCase());
+      if (safeChains.length > 0 && !safeChains.includes(chain?.toLowerCase())) {
+        return {
+          disable: true,
+          reason: t('page.sendToken.noSupprotTokenForSafe'),
+          shortReason: t('page.sendToken.noSupprotTokenForSafe_short'),
+        };
+      }
+      const contactChains = Object.entries(
+        addressDesc?.contract || {}
+      ).map(([chain]) => chain?.toLowerCase());
+      if (
+        contactChains.length > 0 &&
+        !contactChains.includes(chain?.toLowerCase())
+      ) {
+        return {
+          disable: true,
+          reason: t('page.sendToken.noSupportTokenForChain'),
+          shortReason: t('page.sendToken.noSupportTokenForChain_short'),
+        };
+      }
+
+      return {
+        disable: false,
+        reason: '',
+        shortReason: '',
+      };
+    },
+    [addressDesc, t]
+  );
+
+  const [agreeRequiredChecks, setAgreeRequiredChecks] = useState({
+    forToAddress: false,
+    forToken: false,
+  });
+  const { loading: loadingRisks, risks } = useAddressRisks({
+    toAddress: toAddress || '',
+    fromAddress: currentAccount?.address,
+    forbiddenCheck: useMemo(() => {
+      return {
+        user_addr: currentAccount?.address || '',
+        to_addr: toAddress || '',
+        chain_id: chainItem?.serverId,
+        id: currentToken?.id || '',
+      };
+    }, [
+      currentAccount?.address,
+      toAddress,
+      chainItem?.serverId,
+      currentToken?.id,
+    ]),
+    onLoadFinished: useCallback(() => {
+      setAgreeRequiredChecks((prev) => ({ ...prev, forToAddress: false }));
+    }, []),
+    scene: 'send-token',
+  });
+
+  const toAddressPositiveTips = useToAddressPositiveTips({
+    toAddress,
+    isMyImported,
+  });
+
+  const {
+    mostImportantRisks,
+    hasRiskForToAddress,
+    hasRiskForToken,
+  } = React.useMemo(() => {
+    const ret = {
+      risksForToAddress: [] as { value: string }[],
+      risksForToken: [] as { value: string }[],
+      mostImportantRisks: [] as { value: string }[],
+    };
+    if (risks.length) {
+      const sorted = (!toAddressPositiveTips.hasPositiveTips
+        ? [...risks]
+        : [...risks].filter((item) => item.type !== RiskType.NEVER_SEND)
+      ).sort(sortRisksDesc);
+
+      ret.risksForToAddress = sorted
+        .slice(0, 1)
+        .map((item) => ({ value: item.value }));
+    }
+
+    if (!ret.risksForToAddress.length) {
+      const disableCheck = currentToken ? disableItemCheck(currentToken) : null;
+
+      if (disableCheck?.disable) {
+        ret.risksForToken.push({ value: disableCheck.shortReason });
+      }
+    }
+
+    if (appIsDebugPkg) {
+      if (ret.risksForToAddress.length && ret.risksForToken.length) {
+        throw new Error(
+          'Address risk and Token risk should not appear at the same time'
+        );
+      }
+    }
+
+    ret.mostImportantRisks = [
+      ...ret.risksForToAddress,
+      ...ret.risksForToken,
+    ].slice(0, 1);
+
+    return {
+      mostImportantRisks: ret.mostImportantRisks,
+      hasRiskForToAddress: !!ret.risksForToAddress.length,
+      hasRiskForToken: !!ret.risksForToken.length,
+    };
+  }, [
+    toAddressPositiveTips.hasPositiveTips,
+    currentToken,
+    risks,
+    disableItemCheck,
+  ]);
+
+  const agreeRequiredChecked =
+    (hasRiskForToAddress && agreeRequiredChecks.forToAddress) ||
+    (hasRiskForToken && agreeRequiredChecks.forToken);
+
+  const currentTokenChainId = useMemo(
+    () =>
+      currentToken
+        ? findChain({ serverId: currentToken.chain })?.id
+        : undefined,
+    [currentToken]
+  );
+  const isGnosisReplaceContextReady =
+    gnosisReplaceContextResult.status === 'absent' ||
+    (gnosisReplaceContextResult.status === 'valid' &&
+      currentAccount?.type === KEYRING_CLASS.GNOSIS &&
+      isGnosisSendReplaceTargetMatched(gnosisReplaceContextResult.context, {
+        safeAddress: currentAccountAddress,
+        chainId: currentTokenChainId,
+      }));
+
+  const canSubmitBasic =
+    isValidAddress(form.getFieldValue('to')) &&
+    !!currentToken &&
+    isGnosisReplaceContextReady &&
+    !balanceError &&
+    new BigNumber(form.getFieldValue('amount')).gte(0) &&
+    !isLoading;
+
+  const canSubmit =
+    canSubmitBasic &&
+    !loadingRisks &&
+    (!hasRiskForToAddress || agreeRequiredChecked) &&
+    (!hasRiskForToken || agreeRequiredChecked);
+
+  const isNativeToken =
+    !!chainItem && currentToken?.id === chainItem.nativeTokenAddress;
+
+  const getParams = React.useCallback(
+    ({ amount }: FormSendToken) => {
+      if (!currentToken || !currentAccountAddress) {
+        return {};
+      }
+      const chain = findChain({
+        serverId: currentToken.chain,
+      })!;
+      const sendValue = new BigNumber(amount || 0)
+        .multipliedBy(10 ** currentToken.decimals)
+        .decimalPlaces(0, BigNumber.ROUND_DOWN);
+      const dataInput = [
+        {
+          name: 'transfer',
+          type: 'function',
+          inputs: [
+            {
+              type: 'address',
+              name: 'to',
+            },
+            {
+              type: 'uint256',
+              name: 'value',
+            },
+          ] as any[],
+        } as const,
+        [
+          toChecksumAddress(
+            toAddress || '0x0000000000000000000000000000000000000000'
+          ),
+          sendValue.toFixed(0),
+        ] as any[],
+      ] as const;
+      const params: Record<string, any> = {
+        chainId: chain.id,
+        from: currentAccountAddress,
+        to: currentToken.id,
+        value: '0x0',
+        data: abiCoder.encodeFunctionCall(dataInput[0], dataInput[1]),
+        isSend: true,
+      };
+      if (gnosisReplaceContext) {
+        if (
+          currentAccount?.type !== KEYRING_CLASS.GNOSIS ||
+          !isGnosisSendReplaceTargetMatched(gnosisReplaceContext, {
+            safeAddress: currentAccountAddress,
+            chainId: chain.id,
+          })
+        ) {
+          return {};
+        }
+        params.chainId = gnosisReplaceContext.chainId;
+        params.nonce = intToHex(gnosisReplaceContext.nonce);
+      }
+      if (isNativeToken) {
+        params.to = toAddress;
+        delete params.data;
+
+        params.value = `0x${sendValue.toString(16)}`;
+      }
+
+      return params;
+    },
+    [
+      currentAccountAddress,
+      currentToken,
+      currentAccount?.type,
+      gnosisReplaceContext,
+      isNativeToken,
+      toAddress,
+    ]
+  );
+
+  const fetchGasList = useCallback(async () => {
+    const values = form.getFieldsValue();
+    const params = getParams(values) as Tx;
+
+    const list: GasLevel[] = chainItem?.isTestnet
+      ? await wallet.getCustomTestnetGasMarket({ chainId: chainItem.id })
+      : params?.from
+      ? await wallet.gasMarketV2({
+          chain: chainItem!,
+          tx: params,
+        })
+      : [];
+    return list;
+  }, [chainItem, form, getParams, wallet]);
+
+  const [
+    { value: gasList, loading: loadingGasList },
+    loadGasList,
+  ] = useAsyncFn(() => {
+    return fetchGasList();
+  }, [fetchGasList]);
+
+  const loadGasListAndResolve = useCallback(async () => {
+    const result = {
+      isValidArray: true,
+      gasList: [] as GasLevel[],
+      instantGasLevel: null as null | GasLevel,
+      normalGasLevel: null as null | GasLevel,
+    };
+    let reqResult: GasLevel[] = [];
+    try {
+      reqResult = await loadGasList();
+      result.isValidArray = Array.isArray(reqResult);
+    } catch (err) {
+      result.isValidArray = false;
+      console.error(err);
+      // Sentry.captureException(err);
+    } finally {
+      result.gasList = result.isValidArray ? reqResult : [];
+      result.instantGasLevel = findInstanceLevel(result.gasList) || null;
+      result.normalGasLevel =
+        result.gasList.find((item) => item.level === 'normal') || null;
+    }
+
+    return result;
+  }, [loadGasList]);
+
+  useEffect(() => {
+    loadGasListAndResolve().then((result) => {
+      result.isValidArray &&
+        setSelectedGasLevel(result.normalGasLevel || result.instantGasLevel);
+    });
+  }, [loadGasListAndResolve]);
+
+  const fetchExtraGasFees = useCallback(
+    async (input: { gasPrice?: number }) => {
+      const ret = {
+        gasLimit: 0,
+        maybeL1Fee: new BigNumber(0),
+      };
+      const doReturn = (
+        gasLimit: number | BigNumber,
+        l1Value: number | BigNumber = 0
+      ) => {
+        // ret.gasLimit = new BigNumber(baseValue);
+        ret.maybeL1Fee = new BigNumber(l1Value);
+
+        setChainTokenGasFees((prev) => ({
+          ...prev,
+          maybeL1Fee: ret.maybeL1Fee,
+        }));
+
+        return ret;
+      };
+
+      if (!currentAccount?.address) return doReturn(0, 0);
+      if (!currentToken || !CAN_ESTIMATE_L1_FEE_CHAINS.includes(chain))
+        return doReturn(0, 0);
+
+      const {
+        gasPrice = (
+          await loadGasListAndResolve().then((result) => result.instantGasLevel)
+        )?.price || 0,
+      } = input;
+
+      const l1GasFee = await wallet.fetchEstimatedL1Fee(
+        {
+          txParams: {
+            chainId: chainItem?.id,
+            from: currentAccount?.address,
+            to:
+              toAddress && isValidAddress(toAddress)
+                ? toAddress
+                : zeroAddress(),
+            value: currentToken.raw_amount_hex_str,
+            gas: intToHex(DEFAULT_GAS_USED),
+            gasPrice: `0x${new BigNumber(gasPrice).toString(16)}`,
+            data: '0x',
+          },
+        },
+        chain
+      );
+
+      return doReturn(0, new BigNumber(l1GasFee || 0));
+    },
+    [
+      currentAccount?.address,
+      loadGasListAndResolve,
+      chainItem?.id,
+      currentToken,
+      wallet,
+      chain,
+      toAddress,
+    ]
+  );
+
+  const defaultGasLevel = useMemo(() => {
+    return findInstanceLevel(gasList || []);
+  }, [gasList]);
+  useEffect(() => {
+    fetchExtraGasFees({
+      gasPrice: selectedGasLevel?.price || defaultGasLevel?.price,
+    });
+  }, [fetchExtraGasFees, selectedGasLevel?.price, defaultGasLevel?.price]);
+
+  const [miniSignLoading, setMiniSignLoading] = useState(false);
+
+  const canUseDirectSubmitTx = useMemo(() => {
+    let sendToOtherChainContract = false;
+    if (addressDesc && chainItem) {
+      const arr = Object.keys(addressDesc.contract || {}).map((chain) =>
+        chain.toLowerCase()
+      );
+      if (arr.length > 0) {
+        // is contract address
+        sendToOtherChainContract = !arr.includes(
+          chainItem.serverId.toLowerCase()
+        );
+      }
+    }
+    return (
+      canSubmitBasic &&
+      supportedDirectSign(currentAccount?.type || '') &&
+      !chainItem?.isTestnet &&
+      !sendToOtherChainContract
+    );
+  }, [canSubmitBasic, chainItem, currentAccount?.type, addressDesc]);
+
+  const { runAsync: handleSubmit, loading: isSubmitLoading } = useRequest(
+    async ({
+      amount,
+      forceSignPage,
+    }: FormSendToken & { forceSignPage?: boolean }) => {
+      if (!currentToken || !currentAccount?.address) {
+        return;
+      }
+      if (!isGnosisReplaceContextReady) {
+        message.error(t('page.signTx.errorRetry.InvalidTx'));
+        return;
+      }
+      const params = getParams({
+        to: toAddress,
+        amount,
+      });
+
+      let shouldForceSignPage = !!forceSignPage;
+
+      if (canUseDirectSubmitTx && !shouldForceSignPage) {
+        consumeTopUpResumeGuard();
+        setMiniSignLoading(true);
+        try {
+          // no need to wait
+          wallet.setLastTimeSendToken(currentToken).catch((error) => {
+            console.error('[MiniSign] setLastTimeSendToken error', error);
+          });
+
+          const hashes = await openDirect({
+            txs: [params as Tx],
+            ga: {
+              category: 'Send',
+              source: 'sendToken',
+              trigger: filterRbiSource('sendToken', rbisource) && rbisource,
+            },
+            getContainer,
+            onRedirectToDeposit: () => {
+              topUpFormValuesRef.current.save(buildTopUpSnapshot());
+              setAwaitingTopUpResume(true);
+              persistPageStateCache({
+                fromGasAccountRedirect: true,
+                topUpSnapshot: buildTopUpSnapshot(),
+              }).catch((error) => {
+                console.error(
+                  '[SendToken] persist page state before gas account deposit failed',
+                  error
+                );
+              });
+            },
+          });
+
+          await clearAmountAfterSuccessfulSend();
+          const hash = hashes[hashes.length - 1];
+          if (hash) {
+            await handleMiniSignResolve();
+          } else {
+            setMiniSignLoading(false);
+          }
+
+          return;
+        } catch (error) {
+          console.error('send token direct sign error', error);
+
+          setMiniSignLoading(false);
+          if (
+            error === MINI_SIGN_ERROR.USER_CANCELLED ||
+            error === MINI_SIGN_ERROR.CANT_PROCESS
+          ) {
+            const hasPendingTopUpResume = !!topUpFormValuesRef.current.getSnapshot();
+            if (!hasPendingTopUpResume && !isGasAccountDepositFlowActive()) {
+              prefetchDirectSendTx(params as Tx);
+            }
+            return;
+          }
+
+          shouldForceSignPage = true;
+        }
+      }
+
+      const chain = findChain({
+        serverId: currentToken.chain,
+      })!;
+
+      if (isNativeToken) {
+        // L2 has extra validation fee so we can not set gasLimit as 21000 when send native token
+        const couldSpecifyIntrinsicGas = !CAN_NOT_SPECIFY_INTRINSIC_GAS_CHAINS.includes(
+          chain.enum
+        );
+
+        try {
+          const code = await wallet.requestETHRpc<any>(
+            {
+              method: 'eth_getCode',
+              params: [toChecksumAddress(toAddress), 'latest'],
+            },
+            chain.serverId
+          );
+          const notContract = !!code && (code === '0x' || code === '0x0');
+
+          let gasLimit = 0;
+
+          if (chainTokenGasFees.gasLimit) {
+            gasLimit = chainTokenGasFees.gasLimit;
+          }
+
+          /**
+           * we don't need always fetch chainTokenGasFees.gasLimit, if no `params.gas` set below,
+           * `params.gas` would be filled on Tx Page.
+           */
+          if (gasLimit > 0) {
+            params.gas = intToHex(gasLimit);
+          } else if (notContract && couldSpecifyIntrinsicGas) {
+            params.gas = intToHex(DEFAULT_GAS_USED);
+          }
+          if (!notContract) {
+            // not pre-set gasLimit if to address is contract address
+            delete params.gas;
+          }
+        } catch (e) {
+          if (couldSpecifyIntrinsicGas) {
+            params.gas = intToHex(DEFAULT_GAS_USED);
+          }
+        }
+        if (clickedMax && selectedGasLevel?.price) {
+          params.gasPrice = selectedGasLevel?.price;
+        }
+      }
+      try {
+        await persistPageStateCache();
+        matomoRequestEvent({
+          category: 'Send',
+          action: 'createTx',
+          label: [
+            chain.name,
+            getKRCategoryByType(currentAccount?.type),
+            currentAccount?.brandName,
+            'token',
+            filterRbiSource('sendToken', rbisource) && rbisource, // mark source module of `sendToken`
+          ].join('|'),
+        });
+
+        !isGnosisSafe &&
+          wallet.addCacheHistoryData(
+            `${chain.enum}-${params.data || '0x'}`,
+            {
+              address: currentAccountAddress,
+              chainId: findChainByEnum(chain.enum)?.id || 0,
+              from: currentAccountAddress,
+              to: toAddress,
+              token: currentToken,
+              amount: Number(amount),
+              status: 'pending',
+              createdAt: Date.now(),
+            } as SendTxHistoryItem,
+            'send'
+          );
+
+        // no need to wait
+        wallet.setLastTimeSendToken(currentToken).catch((error) => {
+          console.error('[FullSign] setLastTimeSendToken error', error);
+        });
+        const promise = wallet.sendRequest({
+          method: 'eth_sendTransaction',
+          params: [params],
+          $ctx: {
+            ga: {
+              category: 'Send',
+              source: 'sendToken',
+              trigger: filterRbiSource('sendToken', rbisource) && rbisource, // mark source module of `sendToken`
+            },
+          },
+        });
+
+        if (isTab || isDesktop) {
+          await promise;
+          await clearAmountAfterSuccessfulSend();
+        } else {
+          window.close();
+        }
+      } catch (e) {
+        message.error(e.message);
+        console.error(e);
+      }
+    },
+    {
+      manual: true,
+    }
+  );
+
+  const buildHistorySearch = useCallback(
+    (input: {
+      token?: TokenItem | null;
+      amount?: string;
+      amountInputState?: SendAmountInputUrlState | null;
+      amountBalanceError?: boolean;
+      clearGnosisReplaceContext?: boolean;
+    }) => {
+      const { token, amount } = input;
+      const searchParams = new URLSearchParams(history.location.search);
+      if (input.clearGnosisReplaceContext) {
+        searchParams.delete(GNOSIS_REPLACE_QUERY_KEY);
+      }
+      if (token) {
+        searchParams.set('token', encodeTokenParam(token));
+      } else if (token === null) {
+        searchParams.delete('token');
+      }
+      if (amount !== undefined) {
+        searchParams.set('amount', amount);
+      }
+      if (Object.prototype.hasOwnProperty.call(input, 'amountInputState')) {
+        applyAmountInputUrlStateToSearchParams(
+          searchParams,
+          input.amountInputState
+        );
+      }
+      if (Object.prototype.hasOwnProperty.call(input, 'amountBalanceError')) {
+        if (input.amountBalanceError) {
+          searchParams.set(AMOUNT_BALANCE_ERROR_QUERY_KEY, '1');
+        } else {
+          searchParams.delete(AMOUNT_BALANCE_ERROR_QUERY_KEY);
+        }
+      }
+
+      return normalizeSearchString(searchParams.toString());
+    },
+    [history]
+  );
+
+  const replaceHistorySearch = useCallback(
+    (input: {
+      token?: TokenItem | null;
+      amount?: string;
+      amountInputState?: SendAmountInputUrlState | null;
+      amountBalanceError?: boolean;
+      clearGnosisReplaceContext?: boolean;
+    }) => {
+      const search = buildHistorySearch(input);
+      history.replace({
+        pathname: history.location.pathname,
+        search,
+      });
+      return search;
+    },
+    [buildHistorySearch, history]
+  );
+
+  const clearGnosisReplaceContext = useCallback(
+    async (expectedContext?: GnosisSendReplaceContext) => {
+      if (expectedContext) {
+        const currentContextResult = parseGnosisSendReplaceContext(
+          history.location.search
+        );
+        if (
+          currentContextResult.status !== 'valid' ||
+          currentContextResult.context.nonce !== expectedContext.nonce ||
+          !isGnosisSendReplaceTargetMatched(expectedContext, {
+            safeAddress: currentContextResult.context.safeAddress,
+            chainId: currentContextResult.context.chainId,
+          })
+        ) {
+          return false;
+        }
+      }
+
+      const nextSearch = replaceHistorySearch({
+        clearGnosisReplaceContext: true,
+      });
+
+      try {
+        await persistPageStateCache(undefined, { search: nextSearch });
+      } catch (error) {
+        console.error(
+          '[SendToken] persist cleared Gnosis replace context failed',
+          error
+        );
+        await wallet.clearPageStateCache();
+      }
+
+      return true;
+    },
+    [history, persistPageStateCache, replaceHistorySearch, wallet]
+  );
+
+  const paramFormAmount = useMemo(
+    () => normalizeInputNumber(paramAmount) || '',
+    [paramAmount]
+  );
+  const initialFormValues = {
+    to: toAddress,
+    amount: paramFormAmount,
+  };
+  const watchedAmount = Form.useWatch('amount', form);
+  const formAmount = watchedAmount || '';
+  const displayFormAmount = formAmount || form.getFieldValue('amount') || '';
+  const displayAmountForUsd = useMemo(() => {
+    if (displayFormAmount) {
+      return displayFormAmount;
+    }
+
+    return amountInputMode === 'usd' &&
+      paramAmountInputState &&
+      watchedAmount === undefined
+      ? paramFormAmount
+      : '';
+  }, [
+    amountInputMode,
+    displayFormAmount,
+    paramAmountInputState,
+    paramFormAmount,
+    watchedAmount,
+  ]);
+  const amount = useSyncStaleValue(formAmount, 300);
+  const address = form.getFieldValue('to');
+  const currentTokenKey = useMemo(() => getSendAmountTokenKey(currentToken), [
+    currentToken,
+  ]);
+  const currentTokenUsdPrice = useMemo(() => {
+    return isValidUsdPrice(currentToken?.price)
+      ? Number(currentToken?.price)
+      : null;
+  }, [currentToken?.price]);
+  const resetAmountInputState = useCallback(() => {
+    setAmountInputMode('token');
+    setUsdInputValue('');
+    setIsUsdMaxAmountActive(false);
+    amountInputUrlStateRef.current = null;
+  }, []);
+  const amountInputHasValue = useMemo(() => {
+    if (amountInputMode === 'usd') {
+      return Boolean(usdInputValue || displayAmountForUsd);
+    }
+
+    return Boolean(displayFormAmount);
+  }, [amountInputMode, displayAmountForUsd, displayFormAmount, usdInputValue]);
+
+  useEffect(() => {
+    if (!currentToken) {
+      return;
+    }
+
+    setUsdPriceSnapshot((prev) => {
+      return getNextUsdPriceSnapshot({
+        prev,
+        tokenKey: currentTokenKey,
+        tokenUsdPrice: currentTokenUsdPrice,
+        amountInputMode,
+        amountInputHasValue,
+      });
+    });
+  }, [
+    amountInputHasValue,
+    amountInputMode,
+    currentToken,
+    currentTokenKey,
+    currentTokenUsdPrice,
+  ]);
+
+  const snapshotUsdPrice = useMemo(() => {
+    if (
+      usdPriceSnapshot.tokenKey === currentTokenKey &&
+      isValidUsdPrice(usdPriceSnapshot.price)
+    ) {
+      return usdPriceSnapshot.price;
+    }
+
+    return null;
+  }, [currentTokenKey, usdPriceSnapshot]);
+  const activeUsdPrice =
+    amountInputMode === 'usd' ? snapshotUsdPrice : currentTokenUsdPrice;
+  const canEnterUsdMode = Boolean(currentTokenUsdPrice);
+  const getAmountInputUrlStateForTokenAmount = useCallback(
+    (
+      tokenAmount = '',
+      overrides?: Partial<
+        Pick<
+          SendAmountInputUrlState,
+          'usdInputValue' | 'usdPrice' | 'isUsdMaxAmountActive'
+        >
+      >
+    ) => {
+      if (amountInputMode !== 'usd') {
+        return null;
+      }
+
+      const restoredState =
+        amountInputUrlStateRef.current?.tokenKey === currentTokenKey
+          ? amountInputUrlStateRef.current
+          : null;
+      const nextState = createUsdAmountInputUrlState({
+        tokenKey: currentTokenKey,
+        usdInputValue:
+          overrides?.usdInputValue ??
+          restoredState?.usdInputValue ??
+          usdInputValue,
+        usdPrice:
+          overrides?.usdPrice ?? restoredState?.usdPrice ?? activeUsdPrice,
+        isUsdMaxAmountActive:
+          overrides?.isUsdMaxAmountActive ??
+          restoredState?.isUsdMaxAmountActive ??
+          isUsdMaxAmountActive,
+      });
+
+      return normalizeUsdAmountInputUrlStateForTokenAmount(
+        nextState,
+        tokenAmount
+      );
+    },
+    [
+      activeUsdPrice,
+      amountInputMode,
+      currentTokenKey,
+      isUsdMaxAmountActive,
+      usdInputValue,
+    ]
+  );
+  const getDerivedAmountInputStateForTokenAmount = useCallback(
+    (
+      tokenAmount = '',
+      overrides?: Partial<Pick<SendAmountInputUrlState, 'isUsdMaxAmountActive'>>
+    ) => {
+      if (amountInputMode !== 'usd' || !activeUsdPrice) {
+        return null;
+      }
+
+      const nextIsUsdMaxAmountActive =
+        overrides?.isUsdMaxAmountActive ??
+        amountInputUrlStateRef.current?.isUsdMaxAmountActive ??
+        isUsdMaxAmountActive;
+      const nextUsdInputValue = shouldDisplaySmallUsdMaxAmount({
+        tokenAmount,
+        usdPrice: activeUsdPrice,
+        isUsdMaxAmountActive: nextIsUsdMaxAmountActive,
+      })
+        ? ''
+        : formatUsdInputValueFromTokenAmount(tokenAmount, activeUsdPrice);
+
+      return normalizeUsdAmountInputUrlStateForTokenAmount(
+        createUsdAmountInputUrlState({
+          tokenKey: currentTokenKey,
+          usdInputValue: nextUsdInputValue,
+          usdPrice: activeUsdPrice,
+          isUsdMaxAmountActive: nextIsUsdMaxAmountActive,
+        }),
+        tokenAmount
+      );
+    },
+    [activeUsdPrice, amountInputMode, currentTokenKey, isUsdMaxAmountActive]
+  );
+  const applyDerivedAmountInputStateForTokenAmount = useCallback(
+    (
+      tokenAmount = '',
+      overrides?: Partial<Pick<SendAmountInputUrlState, 'isUsdMaxAmountActive'>>
+    ) => {
+      const nextState = getDerivedAmountInputStateForTokenAmount(
+        tokenAmount,
+        overrides
+      );
+
+      if (!nextState) {
+        return nextState;
+      }
+
+      setUsdInputValue(nextState.usdInputValue);
+      setIsUsdMaxAmountActive(nextState.isUsdMaxAmountActive);
+      amountInputUrlStateRef.current = nextState;
+      return nextState;
+    },
+    [getDerivedAmountInputStateForTokenAmount]
+  );
+  const restoredAmountInputState = amountInputUrlStateRef.current;
+  const amountInputDisplayState = useMemo(() => {
+    if (amountInputMode !== 'usd') {
+      return {
+        state: null,
+        usdInputValue: '',
+        shouldShowSmallUsdMaxAmount: false,
+      };
+    }
+
+    const state =
+      getAmountInputUrlStateForTokenAmount(displayAmountForUsd) ||
+      restoredAmountInputState ||
+      paramAmountInputState;
+
+    return getUsdAmountInputDisplayState({
+      state,
+      tokenAmount: displayAmountForUsd,
+    });
+  }, [
+    amountInputMode,
+    displayAmountForUsd,
+    getAmountInputUrlStateForTokenAmount,
+    paramAmountInputState,
+    restoredAmountInputState,
+  ]);
+  const effectiveAmountInputState = amountInputDisplayState.state;
+  const hasValidRestoredUsdInputState =
+    amountInputMode === 'usd' &&
+    !!effectiveAmountInputState &&
+    isValidUsdPrice(effectiveAmountInputState.usdPrice);
+  const isRestoredUsdStateForCurrentToken =
+    hasValidRestoredUsdInputState &&
+    effectiveAmountInputState?.tokenKey === currentTokenKey;
+  const shouldShowAmountModeSwitch =
+    canEnterUsdMode || hasValidRestoredUsdInputState;
+  const shouldShowAmountQuote =
+    amountInputMode === 'token' || shouldShowAmountModeSwitch;
+  const canSwitchAmountMode =
+    amountInputMode === 'usd' ? shouldShowAmountModeSwitch : canEnterUsdMode;
+
+  const getCurrentAmountInputUrlState = useCallback(
+    (
+      overrides?: Partial<
+        Pick<
+          SendAmountInputUrlState,
+          'usdInputValue' | 'usdPrice' | 'isUsdMaxAmountActive'
+        >
+      >
+    ) => {
+      return getAmountInputUrlStateForTokenAmount(
+        displayAmountForUsd,
+        overrides
+      );
+    },
+    [displayAmountForUsd, getAmountInputUrlStateForTokenAmount]
+  );
+
+  const getCurrentAmountInputQueryFields = useCallback(() => {
+    if (amountInputMode !== 'usd') {
+      return {};
+    }
+
+    return buildAmountInputQueryFields(
+      getCurrentAmountInputUrlState() || amountInputUrlStateRef.current
+    );
+  }, [amountInputMode, getCurrentAmountInputUrlState]);
+
+  useEffect(() => {
+    const nextAmountInputState = getCurrentAmountInputUrlState();
+    if (nextAmountInputState || amountInputMode !== 'usd') {
+      amountInputUrlStateRef.current = nextAmountInputState;
+    }
+  }, [amountInputMode, getCurrentAmountInputUrlState]);
+
+  const applyRestoredAmountInputState = useCallback(
+    (
+      state: SendAmountInputUrlState | null | undefined,
+      token?: TokenItem | null,
+      tokenAmount = ''
+    ) => {
+      if (!state || !token) {
+        resetAmountInputState();
+        return null;
+      }
+
+      const tokenKey = getSendAmountTokenKey(token);
+      if (state.tokenKey !== tokenKey) {
+        resetAmountInputState();
+        return null;
+      }
+
+      const nextState = normalizeUsdAmountInputUrlStateForTokenAmount(
+        createUsdAmountInputUrlState({
+          tokenKey,
+          usdInputValue: state.usdInputValue,
+          usdPrice: state.usdPrice,
+          isUsdMaxAmountActive: state.isUsdMaxAmountActive,
+        }),
+        tokenAmount
+      );
+
+      if (!nextState) {
+        resetAmountInputState();
+        return null;
+      }
+
+      setUsdPriceSnapshot({
+        tokenKey,
+        price: nextState.usdPrice,
+      });
+      setAmountInputMode('usd');
+      setUsdInputValue(nextState.usdInputValue);
+      setIsUsdMaxAmountActive(nextState.isUsdMaxAmountActive);
+      amountInputUrlStateRef.current = nextState;
+      return nextState;
+    },
+    [resetAmountInputState]
+  );
+
+  useEffect(() => {
+    if (activeUsdPrice || amountInputMode !== 'usd') {
+      return;
+    }
+
+    if (
+      usdPriceSnapshot.tokenKey &&
+      usdPriceSnapshot.tokenKey !== currentTokenKey
+    ) {
+      return;
+    }
+
+    resetAmountInputState();
+  }, [
+    activeUsdPrice,
+    amountInputMode,
+    currentTokenKey,
+    resetAmountInputState,
+    usdPriceSnapshot.tokenKey,
+  ]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    const setMiniTx = async () => {
+      if (
+        canSubmitBasic &&
+        canUseDirectSubmitTx &&
+        amount &&
+        address &&
+        currentToken?.chain &&
+        !isEstimatingGas &&
+        !reserveGasOpen
+      ) {
+        const chain = findChain({
+          serverId: currentToken.chain,
+        })!;
+        const params = getParams({
+          to: toAddress,
+          amount: form.getFieldValue('amount'),
+        });
+
+        if (isNativeToken) {
+          // L2 has extra validation fee so we can not set gasLimit as 21000 when send native token
+          const couldSpecifyIntrinsicGas = !CAN_NOT_SPECIFY_INTRINSIC_GAS_CHAINS.includes(
+            chain.enum
+          );
+
+          try {
+            const code = await wallet.requestETHRpc<any>(
+              {
+                method: 'eth_getCode',
+                params: [toChecksumAddress(toAddress), 'latest'],
+              },
+              chain.serverId
+            );
+            const notContract = !!code && (code === '0x' || code === '0x0');
+
+            let gasLimit = 0;
+
+            if (chainTokenGasFees.gasLimit) {
+              gasLimit = chainTokenGasFees.gasLimit;
+            }
+
+            /**
+             * we don't need always fetch estimatedGas, if no `params.gas` set below,
+             * `params.gas` would be filled on Tx Page.
+             */
+            if (gasLimit > 0) {
+              params.gas = intToHex(gasLimit);
+            } else if (notContract && couldSpecifyIntrinsicGas) {
+              params.gas = intToHex(DEFAULT_GAS_USED);
+            }
+            if (!notContract) {
+              // not pre-set gasLimit if to address is contract address
+              delete params.gas;
+            }
+          } catch (e) {
+            if (couldSpecifyIntrinsicGas) {
+              params.gas = intToHex(DEFAULT_GAS_USED);
+            }
+          }
+          if (clickedMax && selectedGasLevel?.price) {
+            params.gasPrice = selectedGasLevel?.price;
+          }
+        }
+
+        !isGnosisSafe &&
+          wallet.addCacheHistoryData(
+            `${chain.enum}-${params.data || '0x'}`,
+            {
+              address: currentAccountAddress,
+              chainId: findChainByEnum(chain.enum)?.id || 0,
+              from: currentAccountAddress,
+              to: toAddress,
+              token: currentToken,
+              amount: Number(amount),
+              status: 'pending',
+              createdAt: Date.now(),
+            } as SendTxHistoryItem,
+            'send'
+          );
+
+        if (isCurrent) {
+          if (awaitingTopUpResume || depositFlowActive) {
+            return;
+          }
+          prefetchDirectSendTx(params as Tx);
+        }
+      } else {
+        if (isCurrent) {
+          if (awaitingTopUpResume || depositFlowActive) {
+            return;
+          }
+          prefetch({
+            txs: [],
+          });
+        }
+      }
+    };
+    // setGasFeeOpen(true);
+    setMiniTx();
+    return () => {
+      isCurrent = false;
+    };
+  }, [
+    refreshId,
+    reserveGasOpen,
+    isEstimatingGas,
+    isGnosisSafe,
+    canSubmitBasic,
+    canUseDirectSubmitTx,
+    currentToken?.chain,
+    getParams,
+    toAddress,
+    form,
+    isNativeToken,
+    clickedMax,
+    selectedGasLevel?.price,
+    wallet,
+    chainTokenGasFees.gasLimit,
+    amount,
+    address,
+    currentAccountAddress,
+    currentToken,
+    prefetch,
+    prefetchDirectSendTx,
+    awaitingTopUpResume,
+    depositFlowActive,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      prefetch({
+        txs: [],
+      });
+    };
+  }, [prefetch]);
+
+  const handleMiniSignResolve = useCallback(() => {
+    return new Promise<void>((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          setMiniSignLoading(false);
+          prefetch({
+            txs: [],
+          });
+          form.setFieldsValue({ amount: '' });
+          // persistPageStateCache();
+          wallet.clearPageStateCache();
+          setRefreshId((e) => e + 1);
+          resolve();
+        } catch (err) {
+          console.error(err);
+          reject();
+        }
+      }, 500);
+    });
+  }, [form, prefetch, wallet]);
+
+  const handleReceiveAddressChanged = useMemoizedFn(async (to: string) => {
+    if (!to) return;
+    try {
+      const { is_blocked } = await wallet.openapi.isBlockedAddress(to);
+      if (is_blocked) {
+        Modal.error({
+          title: t('page.sendToken.blockedTransaction'),
+          content: t('page.sendToken.blockedTransactionContent'),
+          okText: t('page.sendToken.blockedTransactionCancelText'),
+          onCancel: async () => {
+            await wallet.clearPageStateCache();
+            handleClickBack();
+          },
+          onOk: async () => {
+            await wallet.clearPageStateCache();
+            handleClickBack();
+          },
+        });
+      }
+    } catch (e) {
+      // NOTHING
+    }
+  });
+
+  const handleFormValuesChange = useCallback(
+    async (
+      changedValues: null | Partial<FormSendToken>,
+      { amount, ...restForm }: FormSendToken,
+      opts?: {
+        token?: TokenItem;
+        isInitFromCache?: boolean;
+        updateSliderValue?: boolean;
+        updateHistoryState?: boolean;
+        amountInputState?: SendAmountInputUrlState | null;
+      }
+    ) => {
+      const { token, updateSliderValue = true, updateHistoryState = true } =
+        opts || {};
+      const nextAmountInputState =
+        opts?.amountInputState !== undefined
+          ? opts.amountInputState
+          : amountInputUrlStateRef.current;
+      amountInputUrlStateRef.current = nextAmountInputState;
+      if (changedValues && changedValues.to) {
+        handleReceiveAddressChanged(changedValues.to);
+      }
+
+      const targetToken = token || currentToken;
+
+      let resultAmount = normalizeInputNumber(amount);
+      if (resultAmount === null) {
+        resultAmount = cacheAmount;
+      }
+
+      if (amount !== cacheAmount) {
+        if (showGasReserved && Number(resultAmount) > 0) {
+          setShowGasReserved(false);
+        }
+      }
+
+      const hasInsufficientBalance = isSendAmountGreaterThanBalance(
+        resultAmount || 0,
+        targetToken
+      );
+      setBalanceErrorDisplayOverride(hasInsufficientBalance);
+      if (hasInsufficientBalance) {
+        // Insufficient balance
+        setBalanceError(t('page.sendToken.balanceError.insufficientBalance'));
+      } else {
+        setBalanceError(null);
+      }
+      const nextFormValues = {
+        ...restForm,
+        to: toAddress,
+        amount: resultAmount,
+      };
+
+      form.setFieldsValue(nextFormValues);
+      setCacheAmount(resultAmount);
+
+      const nextSearch = updateHistoryState
+        ? replaceHistorySearch({
+            amount: resultAmount || '',
+            amountInputState: nextAmountInputState,
+            amountBalanceError: hasInsufficientBalance,
+          })
+        : undefined;
+
+      await persistPageStateCache(
+        {
+          values: nextFormValues,
+          currentToken: targetToken,
+          amountInputState: nextAmountInputState,
+        },
+        {
+          search: nextSearch,
+        }
+      );
+
+      if (resultAmount) {
+        if (updateSliderValue) {
+          const percentValue = getSliderPercent(resultAmount, {
+            token: targetToken,
+          });
+          // setSliderPercentValue(percentValue);
+        }
+      } else {
+        // setSliderPercentValue(0);
+      }
+    },
+    [
+      cacheAmount,
+      currentToken,
+      form,
+      handleReceiveAddressChanged,
+      persistPageStateCache,
+      replaceHistorySearch,
+      setShowGasReserved,
+      showGasReserved,
+      t,
+      toAddress,
+    ]
+  );
+
+  const clearAmountAfterSuccessfulSend = useCallback(async () => {
+    if (gnosisReplaceContext) {
+      try {
+        const didConsumeGnosisReplaceContext = await clearGnosisReplaceContext(
+          gnosisReplaceContext
+        );
+        if (!didConsumeGnosisReplaceContext) {
+          return;
+        }
+      } catch (error) {
+        console.error(
+          '[SendToken] clear Gnosis replace context after send failed',
+          error
+        );
+      }
+    }
+
+    cancelClickedMax();
+
+    const nextAmountInputState =
+      amountInputMode === 'usd'
+        ? getAmountInputUrlStateForTokenAmount('', {
+            usdInputValue: '',
+            isUsdMaxAmountActive: false,
+          })
+        : null;
+
+    setUsdInputValue('');
+    setIsUsdMaxAmountActive(false);
+    amountInputUrlStateRef.current = nextAmountInputState;
+
+    const nextValues = {
+      ...form.getFieldsValue(),
+      amount: '',
+    };
+    try {
+      await handleFormValuesChange({ amount: '' }, nextValues, {
+        updateHistoryState: true,
+        amountInputState: nextAmountInputState,
+      });
+    } catch (error) {
+      console.error('[SendToken] clear amount after send failed', error);
+    }
+  }, [
+    amountInputMode,
+    cancelClickedMax,
+    clearGnosisReplaceContext,
+    form,
+    getAmountInputUrlStateForTokenAmount,
+    gnosisReplaceContext,
+    handleFormValuesChange,
+  ]);
+
+  const updateAmountValue = useCallback(
+    (
+      nextAmount: string,
+      opts?: {
+        updateSliderValue?: boolean;
+        updateHistoryState?: boolean;
+        amountInputState?: SendAmountInputUrlState | null;
+      }
+    ) => {
+      const nextValues = {
+        ...form.getFieldsValue(),
+        amount: nextAmount,
+      };
+      const nextAmountInputState =
+        opts?.amountInputState !== undefined
+          ? opts.amountInputState
+          : amountInputMode === 'usd'
+          ? applyDerivedAmountInputStateForTokenAmount(nextAmount)
+          : undefined;
+      form.setFieldsValue(nextValues);
+      handleFormValuesChange(null, nextValues, {
+        updateSliderValue: opts?.updateSliderValue,
+        updateHistoryState: opts?.updateHistoryState,
+        ...(nextAmountInputState !== undefined && {
+          amountInputState: nextAmountInputState,
+        }),
+      });
+    },
+    [
+      amountInputMode,
+      applyDerivedAmountInputStateForTokenAmount,
+      form,
+      handleFormValuesChange,
+    ]
+  );
+
+  const clearAmountForAccountChange = useCallback(async () => {
+    shouldClearAmountForAccountChangeRef.current = true;
+    cancelClickedMax();
+    resetAmountInputState();
+
+    const nextValues = {
+      ...form.getFieldsValue(),
+      amount: '',
+    };
+    form.setFieldsValue(nextValues);
+    await handleFormValuesChange({ amount: '' }, nextValues, {
+      updateSliderValue: true,
+      amountInputState: null,
+    });
+  }, [cancelClickedMax, form, handleFormValuesChange, resetAmountInputState]);
+
+  const previousAccountAddress = usePrevious(currentAccount?.address);
+  useEffect(() => {
+    if (
+      previousAccountAddress &&
+      !isSameAddress(previousAccountAddress, currentAccount?.address || '')
+    ) {
+      clearAmountForAccountChange().catch((error) => {
+        console.error(
+          '[SendToken] clear amount on account change error',
+          error
+        );
+      });
+    }
+  }, [
+    previousAccountAddress,
+    currentAccount?.address,
+    clearAmountForAccountChange,
+  ]);
+
+  const estimateGasOnChain = useCallback(
+    async (input?: {
+      chainItem?: Chain | null;
+      tokenItem?: TokenItem;
+      currentAddress?: string;
+    }) => {
+      const result = { gasNumber: 0 };
+
+      const doReturn = (nextGas = DEFAULT_GAS_USED) => {
+        result.gasNumber = nextGas;
+
+        // setEstimatedGas(result.gasNumber);
+        setChainTokenGasFees((prev) => {
+          return {
+            ...prev,
+            gasLimit: result.gasNumber,
+          };
+        });
+        return result;
+      };
+
+      const {
+        chainItem: lastestChainItem = chainItem,
+        tokenItem = currentToken,
+        currentAddress = currentAccount?.address,
+      } = input || {};
+
+      if (!lastestChainItem?.needEstimateGas) return doReturn(DEFAULT_GAS_USED);
+
+      if (!currentAddress) return doReturn();
+
+      if (lastestChainItem.serverId !== tokenItem?.chain) {
+        console.warn(
+          'estimateGasOnChain:: chain not matched!',
+          lastestChainItem,
+          tokenItem
+        );
+        return doReturn();
+      }
+
+      let _gasUsed: string = intToHex(DEFAULT_GAS_USED);
+      try {
+        _gasUsed = await wallet.requestETHRpc<string>(
+          {
+            method: 'eth_estimateGas',
+            params: [
+              {
+                from: currentAddress,
+                to: toChecksumAddress(
+                  toAddress && isValidAddress(toAddress)
+                    ? toAddress
+                    : zeroAddress()
+                ),
+                gasPrice: intToHex(0),
+                value: intToHex(0),
+              },
+            ],
+          },
+          lastestChainItem.serverId
+        );
+      } catch (err) {
+        console.error(err);
+      }
+
+      const gasUsed = new BigNumber(_gasUsed)
+        .multipliedBy(1.5)
+        .integerValue()
+        .toNumber();
+
+      return doReturn(Number(gasUsed));
+    },
+    [chainItem, currentToken, currentAccount?.address, wallet, toAddress]
+  );
+
+  const loadCurrentToken = useCallback(
+    async (id: string, chainId: string, currentAddress: string) => {
+      const chain = findChain({
+        serverId: chainId,
+      });
+      const tokenId = resolveTempoDefaultTokenId({
+        chainServerId: chainId,
+        tokenId: id,
+        nativeTokenId: chain?.nativeTokenAddress,
+      });
+      let result: TokenItem | null = null;
+      if (chain?.isTestnet) {
+        const res = await wallet.getCustomTestnetToken({
+          address: currentAddress,
+          chainId: chain.id,
+          tokenId,
+        });
+        if (res) {
+          result = customTestnetTokenToTokenItem(res);
+        }
+      } else {
+        result = await wallet.openapi.getToken(
+          currentAddress,
+          chainId,
+          tokenId
+        );
+      }
+      if (result) {
+        estimateGasOnChain({
+          chainItem: chain,
+          tokenItem: result,
+          currentAddress,
+        });
+        setCurrentToken(result);
+
+        const currentValues = form.getFieldsValue();
+        if (currentValues.amount && result) {
+          const amount = currentValues.amount;
+          const hasInsufficientBalance = isSendAmountGreaterThanBalance(
+            amount || 0,
+            result
+          );
+          setBalanceErrorDisplayOverride(hasInsufficientBalance);
+          if (hasInsufficientBalance) {
+            setBalanceError(
+              t('page.sendToken.balanceError.insufficientBalance')
+            );
+          } else {
+            setBalanceError(null);
+          }
+        } else {
+          setBalanceErrorDisplayOverride(false);
+          setBalanceError(null);
+        }
+      }
+      setIsLoading(false);
+
+      if (result && disableItemCheck(result).disable) {
+        setAgreeRequiredChecks((prev) => ({ ...prev, forToken: false }));
+      }
+
+      return result;
+    },
+    [wallet, estimateGasOnChain, disableItemCheck, form, t]
+  );
+
+  const handleAmountChange = useCallback(() => {
+    cancelClickedMax();
+  }, [cancelClickedMax]);
+
+  const handleTokenAmountInputChange = useCallback(
+    (value: string) => {
+      const normalizedValue = normalizeAmountInputValue(
+        value,
+        currentToken?.decimals
+      );
+      if (normalizedValue === null) {
+        return false;
+      }
+
+      setIsUsdMaxAmountActive(false);
+      amountInputUrlStateRef.current = null;
+      return normalizedValue;
+    },
+    [currentToken?.decimals]
+  );
+
+  const persistAmountInputStateForAmount = useCallback(
+    (tokenAmount: string, amountInputState: SendAmountInputUrlState | null) => {
+      const hasInsufficientBalance = isSendAmountGreaterThanBalance(
+        tokenAmount || 0,
+        currentToken
+      );
+      setBalanceErrorDisplayOverride(hasInsufficientBalance);
+
+      const nextValues = {
+        ...form.getFieldsValue(),
+        amount: tokenAmount,
+      };
+      const nextSearch = replaceHistorySearch({
+        amount: tokenAmount,
+        amountInputState,
+        amountBalanceError: hasInsufficientBalance,
+      });
+
+      persistPageStateCache(
+        {
+          values: nextValues,
+          currentToken,
+          amountInputState,
+        },
+        {
+          search: nextSearch,
+        }
+      ).catch((error) => {
+        console.error('[SendToken] persist amount input state failed', error);
+      });
+    },
+    [currentToken, form, persistPageStateCache, replaceHistorySearch]
+  );
+
+  const handleUsdAmountInputChange = useCallback(
+    (value: string) => {
+      if (!activeUsdPrice) {
+        return false;
+      }
+
+      const normalizedValue = normalizeAmountInputValue(value, 2);
+      if (normalizedValue === null || !USD_INPUT_RE.test(normalizedValue)) {
+        return false;
+      }
+
+      let tokenAmount = '';
+      if (normalizedValue) {
+        const nextTokenAmount = new BigNumber(normalizedValue).div(
+          activeUsdPrice
+        );
+        if (nextTokenAmount.isFinite() && !nextTokenAmount.isNaN()) {
+          const normalizedTokenAmount = nextTokenAmount.decimalPlaces(
+            getValidTokenDecimals(currentToken?.decimals),
+            BigNumber.ROUND_DOWN
+          );
+
+          tokenAmount = normalizedTokenAmount.gt(0)
+            ? normalizedTokenAmount.toFixed()
+            : '';
+        }
+      }
+
+      setUsdInputValue(normalizedValue);
+      setIsUsdMaxAmountActive(false);
+      const nextAmountInputState = createUsdAmountInputUrlState({
+        tokenKey: currentTokenKey,
+        usdInputValue: normalizedValue,
+        usdPrice: activeUsdPrice,
+        isUsdMaxAmountActive: false,
+      });
+      amountInputUrlStateRef.current = nextAmountInputState;
+      persistAmountInputStateForAmount(tokenAmount, nextAmountInputState);
+      return tokenAmount;
+    },
+    [
+      activeUsdPrice,
+      currentToken?.decimals,
+      currentTokenKey,
+      persistAmountInputStateForAmount,
+    ]
+  );
+
+  const handleAmountInputValueChange = useCallback(
+    (value: string) => {
+      if (amountInputMode === 'usd') {
+        return handleUsdAmountInputChange(value);
+      }
+
+      return handleTokenAmountInputChange(value);
+    },
+    [amountInputMode, handleTokenAmountInputChange, handleUsdAmountInputChange]
+  );
+
+  const clearAmountInputValue = useCallback(() => {
+    const nextValues = {
+      ...form.getFieldsValue(),
+      amount: '',
+    };
+    form.setFieldsValue(nextValues);
+    handleFormValuesChange({ amount: '' }, nextValues, {
+      updateSliderValue: false,
+      updateHistoryState: true,
+    });
+  }, [form, handleFormValuesChange]);
+
+  const handleAmountInputModeSwitch = useCallback(() => {
+    const nextAmountInputMode: AmountInputMode =
+      amountInputMode === 'token' ? 'usd' : 'token';
+
+    if (nextAmountInputMode === 'usd' && !activeUsdPrice) {
+      return;
+    }
+
+    const nextAmountInputState =
+      nextAmountInputMode === 'usd'
+        ? createUsdAmountInputUrlState({
+            tokenKey: currentTokenKey,
+            usdInputValue: '',
+            usdPrice: activeUsdPrice,
+            isUsdMaxAmountActive: false,
+          })
+        : null;
+
+    setUsdInputValue('');
+    setIsUsdMaxAmountActive(false);
+    amountInputUrlStateRef.current = nextAmountInputState;
+    clearAmountInputValue();
+    setAmountInputMode(nextAmountInputMode);
+  }, [activeUsdPrice, amountInputMode, clearAmountInputValue, currentTokenKey]);
+
+  const handleCurrentTokenChange = useCallback(
+    async (token: TokenItem, ignoreCache = false) => {
+      const nextChain = findChain({ serverId: token.chain });
+      const shouldClearGnosisReplaceContext =
+        !!gnosisReplaceContext &&
+        !isGnosisSendReplaceTargetMatched(gnosisReplaceContext, {
+          safeAddress: currentAccountAddress,
+          chainId: nextChain?.id,
+        });
+      cancelClickedMax();
+      if (showGasReserved) {
+        setShowGasReserved(false);
+      }
+      const account = (await wallet.syncGetCurrentAccount())!;
+      const values = form.getFieldsValue();
+      const tokenChanged =
+        token.id !== currentToken?.id || token.chain !== currentToken?.chain;
+      if (tokenChanged) {
+        resetAmountInputState();
+        form.setFieldsValue({
+          ...values,
+          amount: '',
+        });
+      }
+      setChain(nextChain?.enum ?? CHAINS_ENUM.ETH);
+      setCurrentToken(token);
+      // setEstimatedGas(0);
+      setChainTokenGasFees((prev) => ({
+        ...prev,
+        gasLimit: 0,
+      }));
+      const nextSearch = replaceHistorySearch({
+        token: token,
+        ...(tokenChanged ? { amount: '' } : {}),
+        amountInputState: tokenChanged ? null : amountInputUrlStateRef.current,
+        ...(tokenChanged ? { amountBalanceError: false } : {}),
+        clearGnosisReplaceContext: shouldClearGnosisReplaceContext,
+      });
+      if (!ignoreCache || shouldClearGnosisReplaceContext) {
+        await persistPageStateCache(
+          { currentToken: token },
+          { search: nextSearch }
+        );
+      }
+      setBalanceError(null);
+      if (tokenChanged) {
+        setBalanceErrorDisplayOverride(false);
+      }
+      setIsLoading(true);
+      loadCurrentToken(token.id, token.chain, account.address);
+    },
+    [
+      currentToken?.chain,
+      currentToken?.id,
+      currentAccountAddress,
+      form,
+      gnosisReplaceContext,
+      loadCurrentToken,
+      persistPageStateCache,
+      setShowGasReserved,
+      showGasReserved,
+      wallet,
+      cancelClickedMax,
+      replaceHistorySearch,
+      resetAmountInputState,
+    ]
+  );
+
+  const handleGasChange = useCallback(
+    (input: {
+      gasLevel: GasLevel;
+      updateTokenAmount?: boolean;
+      gasLimit?: number;
+    }) => {
+      const {
+        gasLevel,
+        updateTokenAmount = true,
+        gasLimit = MINIMUM_GAS_LIMIT,
+      } = input;
+      setSelectedGasLevel(gasLevel);
+
+      const gasAmount = new BigNumber(gasLevel.price).times(gasLimit).div(1e18);
+      if (updateTokenAmount && currentToken) {
+        const values = form.getFieldsValue();
+        const diffValue = new BigNumber(currentToken.raw_amount_hex_str || 0)
+          .div(10 ** currentToken.decimals)
+          .minus(gasAmount);
+        if (diffValue.lt(0)) {
+          setShowGasReserved(false);
+        }
+        const newValues = {
+          ...values,
+          amount: diffValue.gt(0) ? diffValue.toFixed() : '0',
+        };
+        form.setFieldsValue(newValues);
+      }
+      return gasAmount;
+    },
+    [currentToken, form, setShowGasReserved]
+  );
+
+  const couldReserveGas = useMemo(() => isNativeToken && !isGnosisSafe, [
+    isGnosisSafe,
+    isNativeToken,
+  ]);
+  const handleMaxInfoChanged = useCallback(
+    async (
+      input?: { gasLevel?: GasLevel },
+      options?: { updateSliderValue?: boolean }
+    ) => {
+      if (!currentAccount) return;
+
+      if (isLoading) return;
+      if (isEstimatingGas) return;
+      if (!currentToken) return;
+
+      const { updateSliderValue = false } = options || {};
+
+      const tokenBalance = new BigNumber(
+        currentToken.raw_amount_hex_str || 0
+      ).div(10 ** currentToken.decimals);
+      let amount = tokenBalance.toFixed();
+
+      const {
+        gasLevel = selectedGasLevel ||
+          (await loadGasListAndResolve().then(
+            (result) => result.instantGasLevel
+          )),
+      } = input || {};
+      const needReserveGasOnSendToken = !!gasLevel && gasLevel?.price > 0;
+
+      if (couldReserveGas && needReserveGasOnSendToken) {
+        setShowGasReserved(true);
+        setSendMaxInfo((prev) => ({ ...prev, isEstimatingGas: true }));
+        try {
+          const { gasNumber } = await estimateGasOnChain({
+            chainItem,
+            tokenItem: currentToken,
+          });
+
+          let gasAmount = handleGasChange({
+            gasLevel: gasLevel,
+            updateTokenAmount: false,
+            gasLimit: gasNumber,
+          });
+
+          let maybeL1Fee = chainTokenGasFees.maybeL1Fee;
+          if (input?.gasLevel) {
+            maybeL1Fee = await fetchExtraGasFees({
+              gasPrice: input.gasLevel.price,
+            }).then((res) => res.maybeL1Fee);
+          }
+          if (maybeL1Fee?.gt(0)) {
+            gasAmount = gasAmount
+              .plus(new BigNumber(maybeL1Fee).div(1e18))
+              .times(1.1);
+          }
+          const tokenForSend = tokenBalance.minus(gasAmount);
+          amount = tokenForSend.gt(0) ? tokenForSend.toFixed() : '0';
+          if (tokenForSend.lt(0)) {
+            setShowGasReserved(false);
+          }
+        } catch (e) {
+          if (!isGnosisSafe) {
+            setShowGasReserved(false);
+          }
+        } finally {
+          setSendMaxInfo((prev) => ({ ...prev, isEstimatingGas: false }));
+        }
+      }
+
+      const values = form.getFieldsValue();
+      const newValues = {
+        ...values,
+        amount,
+      };
+      const nextAmountInputState =
+        amountInputMode === 'usd'
+          ? applyDerivedAmountInputStateForTokenAmount(amount, {
+              isUsdMaxAmountActive: true,
+            })
+          : undefined;
+      form.setFieldsValue(newValues);
+      handleFormValuesChange(null, newValues, {
+        updateSliderValue,
+        ...(amountInputMode === 'usd' && {
+          amountInputState: nextAmountInputState,
+        }),
+      });
+
+      setTimeout(() => {
+        setRefreshId((e) => e + 1);
+      }, 0);
+    },
+    [
+      isLoading,
+      isEstimatingGas,
+      currentToken,
+      selectedGasLevel,
+      loadGasListAndResolve,
+      couldReserveGas,
+      form,
+      amountInputMode,
+      applyDerivedAmountInputStateForTokenAmount,
+      handleFormValuesChange,
+      setShowGasReserved,
+      estimateGasOnChain,
+      handleGasChange,
+      isGnosisSafe,
+      chainItem,
+      chainTokenGasFees.maybeL1Fee,
+      currentAccount,
+      fetchExtraGasFees,
+    ]
+  );
+  // const [sliderPercentValue, setSliderPercentValue] = useState(0);
+  // const onSliderValueChangeTo100 = useCallback(
+  //   debounce((value: number) => {
+  //     if (value !== 100) return;
+
+  //     handleMaxInfoChanged(undefined, { updateSliderValue: false });
+  //   }, 300),
+  //   [handleMaxInfoChanged]
+  // );
+  const handleGasLevelChanged = useCallback(
+    async (gl?: GasLevel | null) => {
+      handleReserveGasClose();
+      const gasLevel = gl
+        ? gl
+        : await loadGasListAndResolve().then(
+            (result) => result.normalGasLevel || result.instantGasLevel
+          );
+
+      if (gasLevel) {
+        setSelectedGasLevel(gasLevel);
+        handleMaxInfoChanged({ gasLevel }, { updateSliderValue: false });
+      } else {
+        setReserveGasOpen(false);
+      }
+    },
+    [handleReserveGasClose, handleMaxInfoChanged, loadGasListAndResolve]
+  );
+
+  const handleSlider100 = useCallback(async () => {
+    if (currentToken && couldReserveGas) {
+      if (gasList) {
+        const gasLevel = gasList.find((e) => e.level === 'fast');
+        if (gasLevel) {
+          setSelectedGasLevel(gasLevel);
+          handleMaxInfoChanged({ gasLevel });
+        } else {
+          updateAmountValue(tokenAmountBn(currentToken).toString(10), {
+            updateSliderValue: false,
+          });
+        }
+      } else {
+        updateAmountValue(tokenAmountBn(currentToken).toString(10), {
+          updateSliderValue: false,
+        });
+      }
+    } else if (currentToken) {
+      updateAmountValue(tokenAmountBn(currentToken).toString(10), {
+        updateSliderValue: false,
+      });
+    }
+  }, [
+    currentToken,
+    couldReserveGas,
+    updateAmountValue,
+
+    handleMaxInfoChanged,
+    gasList,
+  ]);
+
+  const handleClickMaxButton = useCallback(async () => {
+    if (amountInputMode === 'usd') {
+      setIsUsdMaxAmountActive(true);
+      amountInputUrlStateRef.current = createUsdAmountInputUrlState({
+        tokenKey: currentTokenKey,
+        usdInputValue,
+        usdPrice: activeUsdPrice,
+        isUsdMaxAmountActive: true,
+      });
+    }
+
+    setSendMaxInfo((prev) => ({ ...prev, clickedMax: true }));
+
+    handleSlider100();
+    // if (couldReserveGas) {
+    //   setReserveGasOpen(true);
+    // } else {
+    //   handleMaxInfoChanged(undefined, { updateSliderValue: false });
+    // }
+  }, [
+    activeUsdPrice,
+    amountInputMode,
+    currentTokenKey,
+    handleSlider100,
+    usdInputValue,
+  ]);
+
+  const handleClickBack = () => {
+    const from = (history.location.state as any)?.from;
+
+    if (from) {
+      history.replace(from);
+    } else {
+      history.replace('/dashboard');
+    }
+  };
+
+  // const handleChainChanged = useCallback(
+  //   async (val: CHAINS_ENUM) => {
+  //     setSendMaxInfo((prev) => ({ ...prev, clickedMax: false }));
+  //     const gasList = await loadGasList();
+  //     if (gasList && Array.isArray(gasList) && gasList.length > 0) {
+  //       const foundLevel =
+  //         gasList.find(
+  //           (gasLevel) => (gasLevel.level as GasLevelType) === 'normal'
+  //         ) || findInstanceLevel(gasList);
+  //       foundLevel && setSelectedGasLevel(foundLevel);
+  //     }
+
+  //     const account = (await wallet.syncGetCurrentAccount())!;
+  //     const chain = findChain({
+  //       enum: val,
+  //     });
+  //     if (!chain) {
+  //       return;
+  //     }
+  //     form.setFieldsValue({
+  //       ...form.getFieldsValue(),
+  //       amount: '',
+  //     });
+  //     setChain(val);
+  //     if (addressDesc?.cex?.id && addressDesc.cex.is_deposit) {
+  //       try {
+  //         const isSupportRes = await wallet.openapi.depositCexSupport(
+  //           chain.nativeTokenAddress,
+  //           chain.serverId,
+  //           addressDesc.cex.id
+  //         );
+  //         if (isSupportRes && !isSupportRes.support) {
+  //           setCurrentToken(null);
+  //           setBalanceError(null);
+  //           setSelectedGasLevel(null);
+  //           setShowGasReserved(false);
+  //           // setEstimatedGas(0);
+
+  //           setChainTokenGasFees((prev) => ({
+  //             ...prev,
+  //             gasLimit: 0,
+  //           }));
+  //           const values = form.getFieldsValue();
+  //           form.setFieldsValue({
+  //             ...values,
+  //             amount: '',
+  //           });
+  //           return;
+  //         }
+  //       } catch (error) {
+  //         console.error(error);
+  //       }
+  //     }
+  //     setCurrentToken({
+  //       id: chain.nativeTokenAddress,
+  //       decimals: chain.nativeTokenDecimals,
+  //       logo_url: chain.nativeTokenLogo,
+  //       symbol: chain.nativeTokenSymbol,
+  //       display_symbol: chain.nativeTokenSymbol,
+  //       optimized_symbol: chain.nativeTokenSymbol,
+  //       is_core: true,
+  //       is_verified: true,
+  //       is_wallet: true,
+  //       amount: 0,
+  //       price: 0,
+  //       name: chain.nativeTokenSymbol,
+  //       chain: chain.serverId,
+  //       time_at: 0,
+  //     });
+
+  //     let nextToken: TokenItem | null = null;
+  //     try {
+  //       nextToken = await loadCurrentToken(
+  //         chain.nativeTokenAddress,
+  //         chain.serverId,
+  //         account.address
+  //       );
+  //     } catch (error) {
+  //       console.error(error);
+  //     }
+
+  //     const values = form.getFieldsValue();
+  //     form.setFieldsValue({
+  //       ...values,
+  //       amount: '',
+  //     });
+  //     setShowGasReserved(false);
+  //     handleFormValuesChange(
+  //       { amount: '' },
+  //       {
+  //         ...values,
+  //         amount: '',
+  //       },
+  //       {
+  //         ...(nextToken && { token: nextToken }),
+  //       }
+  //     );
+  //   },
+  //   [
+  //     loadGasList,
+  //     wallet,
+  //     addressDesc?.cex?.id,
+  //     addressDesc?.cex?.is_deposit,
+  //     form,
+  //     setShowGasReserved,
+  //     handleFormValuesChange,
+  //     loadCurrentToken,
+  //   ]
+  // );
+
+  const initByCache = async () => {
+    try {
+      const account = (await wallet.syncGetCurrentAccount())!;
+      const qs = query2obj(history.location.search);
+      if (gnosisReplaceContextResult.status === 'invalid') {
+        message.error(t('page.signTx.errorRetry.InvalidTx'));
+        return;
+      }
+      let activeGnosisReplaceContext = gnosisReplaceContext;
+      if (
+        activeGnosisReplaceContext &&
+        (account.type !== KEYRING_CLASS.GNOSIS ||
+          !isGnosisSendReplaceTargetMatched(activeGnosisReplaceContext, {
+            safeAddress: account.address,
+            chainId: activeGnosisReplaceContext.chainId,
+          }))
+      ) {
+        activeGnosisReplaceContext = null;
+        await clearGnosisReplaceContext();
+      }
+      const cache = await wallet.getPageStateCache();
+      const shouldClearAmountForAccountChange =
+        shouldClearAmountForAccountChangeRef.current;
+      if (shouldClearAmountForAccountChange) {
+        shouldClearAmountForAccountChangeRef.current = false;
+      }
+      const isMatchedSendTokenCache =
+        cache?.path === history.location.pathname &&
+        (!cache.search ||
+          normalizeSearchString(cache.search) ===
+            normalizeSearchString(history.location.search));
+      const sendTokenCache = isMatchedSendTokenCache ? cache : null;
+      const rawCachedFormValues = sendTokenCache?.states?.values as
+        | FormSendToken
+        | undefined;
+      const cachedFormValues =
+        shouldClearAmountForAccountChange && rawCachedFormValues
+          ? {
+              ...rawCachedFormValues,
+              amount: '',
+            }
+          : rawCachedFormValues;
+      const cachedAmountInputState = shouldClearAmountForAccountChange
+        ? null
+        : (sendTokenCache?.states?.amountInputState as
+            | SendAmountInputUrlState
+            | null
+            | undefined);
+      const amountInputStateToRestore = shouldClearAmountForAccountChange
+        ? null
+        : chooseRestoredUsdAmountInputState({
+            paramState: paramAmountInputState,
+            cachedState: cachedAmountInputState,
+          });
+      const restoreAmountInputState = (
+        token?: TokenItem | null,
+        tokenAmount = ''
+      ) => {
+        return applyRestoredAmountInputState(
+          amountInputStateToRestore,
+          token,
+          tokenAmount
+        );
+      };
+
+      const filledAmountRef = { current: false };
+      const restoreCachedValues = (token?: TokenItem | null) => {
+        if (!cachedFormValues) return false;
+        filledAmountRef.current = true;
+
+        const restoredAmountInputState = restoreAmountInputState(
+          token || sendTokenCache?.states.currentToken,
+          cachedFormValues.amount || ''
+        );
+        form.setFieldsValue(cachedFormValues);
+        handleFormValuesChange(cachedFormValues, form.getFieldsValue(), {
+          token: token || sendTokenCache?.states.currentToken,
+          isInitFromCache: true,
+          updateSliderValue: true,
+          amountInputState: restoredAmountInputState,
+        });
+        return true;
+      };
+      const fillAmount = (token?: TokenItem) => {
+        if (filledAmountRef.current) return;
+        if (shouldClearAmountForAccountChange) return;
+
+        if (Object.prototype.hasOwnProperty.call(qs, 'amount')) {
+          filledAmountRef.current = true;
+
+          const patchValues = { to: qs.to, amount: qs.amount };
+          const restoredAmountInputState = restoreAmountInputState(
+            token,
+            qs.amount || ''
+          );
+          handleFormValuesChange(patchValues, initialFormValues, {
+            token,
+            updateSliderValue: true,
+            amountInputState: restoredAmountInputState,
+          });
+        }
+      };
+
+      if (qs.token) {
+        const { chain: tokenChain, id } = decodeTokenParam(qs.token);
+        if (!tokenChain || !id) {
+          setInitLoading(false);
+          return;
+        }
+
+        const target = findChain({
+          serverId: tokenChain,
+        });
+        if (!target) {
+          if (currentToken) {
+            setInitLoading(false);
+            loadCurrentToken(
+              currentToken.id,
+              currentToken.chain,
+              account.address
+            );
+          }
+          return;
+        }
+        if (
+          activeGnosisReplaceContext &&
+          target.id !== activeGnosisReplaceContext.chainId
+        ) {
+          activeGnosisReplaceContext = null;
+          await clearGnosisReplaceContext();
+        }
+        setChain(target.enum);
+        const tokenItem = await loadCurrentToken(
+          id,
+          tokenChain,
+          account.address
+        );
+        if (!restoreCachedValues(tokenItem)) {
+          fillAmount(tokenItem || undefined);
+        }
+      } else if (activeGnosisReplaceContext) {
+        const chain = findChainByID(activeGnosisReplaceContext.chainId);
+        if (!chain) {
+          message.error(t('page.signTx.errorRetry.InvalidTx'));
+          return;
+        }
+        setChain(chain.enum);
+        const defaultToken = getChainDefaultToken(chain.enum);
+        const nativeToken = await loadCurrentToken(
+          defaultToken.id,
+          chain.serverId,
+          account.address
+        );
+        persistPageStateCache({
+          currentToken: nativeToken || currentToken,
+        });
+      } else {
+        const lastTimeSentToken = await wallet.getLastTimeSendToken();
+        let needLoadToken: TokenItem | null = lastTimeSentToken || currentToken;
+
+        if (sendTokenCache) {
+          if (
+            sendTokenCache.states?.fromGasAccountRedirect &&
+            sendTokenCache.states?.topUpSnapshot
+          ) {
+            topUpFormValuesRef.current.save(
+              sendTokenCache.states.topUpSnapshot
+            );
+            setAwaitingTopUpResume(true);
+          }
+          restoreCachedValues(sendTokenCache.states.currentToken);
+          if (sendTokenCache.states.currentToken) {
+            needLoadToken = sendTokenCache.states.currentToken;
+          }
+        }
+        if (!needLoadToken) return;
+        // check the recommended token is support for address
+        setCurrentToken(needLoadToken);
+        if (chainItem && needLoadToken.chain !== chainItem.serverId) {
+          const target = findChain({ serverId: needLoadToken.chain });
+          if (target?.enum) {
+            setChain(target.enum);
+          }
+        }
+        setInitLoading(false);
+        await loadCurrentToken(
+          needLoadToken.id,
+          needLoadToken.chain,
+          account.address
+        );
+      }
+
+      fillAmount();
+    } catch (error) {
+      /* empty */
+      console.error('initByCache error', error);
+    } finally {
+      setInitLoading(false);
+    }
+  };
+
+  const init = async () => {
+    const account = await wallet.syncGetCurrentAccount();
+    if (!account) {
+      history.replace('/');
+      return;
+    }
+
+    setInited(true);
+  };
+
+  useEffect(() => {
+    if (inited && currentAccount?.address) {
+      initByCache();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inited, currentAccount?.address]);
+
+  useEffect(() => {
+    if (!awaitingTopUpResume) {
+      return;
+    }
+
+    const snapshot = topUpFormValuesRef.current.getSnapshot();
+    if (!snapshot) {
+      setAwaitingTopUpResume(false);
+      return;
+    }
+
+    const currentValues = buildTopUpSnapshot();
+    const comparison = topUpFormValuesRef.current.compare(currentValues);
+    const shouldIgnore = shouldIgnoreAmountChangeInMaxMode(
+      comparison,
+      snapshot,
+      currentValues
+    );
+
+    if (!comparison.isChanged || shouldIgnore) {
+      return;
+    }
+
+    topUpFormValuesRef.current.clear();
+    setAwaitingTopUpResume(false);
+    closeSign();
+  }, [awaitingTopUpResume, buildTopUpSnapshot, closeSign]);
+
+  useEffect(() => {
+    init();
+    return () => {
+      wallet.clearPageStateCache();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { balanceBigNum, balanceNumText } = useMemo(() => {
+    if (!currentToken) {
+      return {
+        balanceNumText: '',
+        balanceBigNum: new BigNumber(0),
+        sliderPercentValue: 0,
+      };
+    }
+    const balanceBigNum = new BigNumber(
+      currentToken.raw_amount_hex_str || 0
+    ).div(10 ** currentToken.decimals);
+    const decimalPlaces = clickedMax || selectedGasLevel ? 8 : 4;
+
+    return {
+      balanceBigNum,
+      balanceNumText: formatTokenAmount(
+        balanceBigNum.lte(1e-4)
+          ? balanceBigNum.toFixed()
+          : balanceBigNum.toFixed(decimalPlaces, BigNumber.ROUND_FLOOR),
+        decimalPlaces
+      ),
+    };
+  }, [currentToken, clickedMax, selectedGasLevel]);
+
+  const tokenSymbol = currentToken ? getTokenSymbol(currentToken) : '';
+  const safeFormAmount = useMemo(() => getSafeAmountBn(displayAmountForUsd), [
+    displayAmountForUsd,
+  ]);
+  const shouldShowSmallUsdMaxAmountText =
+    amountInputMode === 'usd' &&
+    amountInputDisplayState.shouldShowSmallUsdMaxAmount;
+  const amountInputInsufficientError =
+    !!balanceError || balanceErrorDisplayOverride;
+  const amountInputDisplayValue =
+    amountInputMode === 'usd'
+      ? amountInputDisplayState.usdInputValue
+      : undefined;
+  const amountInputDisplayValueText = shouldShowSmallUsdMaxAmountText
+    ? SMALL_USD_AMOUNT_TEXT
+    : undefined;
+  const amountInputPrefixText = amountInputMode === 'usd' ? '$' : undefined;
+  const amountInputQuoteText =
+    amountInputMode === 'usd'
+      ? shouldShowAmountModeSwitch
+        ? `${formatTokenQuoteValueText(safeFormAmount)}${
+            isRestoredUsdStateForCurrentToken && tokenSymbol
+              ? ` ${tokenSymbol}`
+              : ''
+          }`
+        : ''
+      : formatUsdValue(
+          safeFormAmount.times(currentTokenUsdPrice || 0).toString()
+        );
+
+  useEffect(() => {
+    if (currentToken && gasList && gasList.length > 0) {
+      const result = checkIfTokenBalanceEnough(currentToken, {
+        gasList,
+        gasLimit: MINIMUM_GAS_LIMIT,
+      });
+
+      if (result.isNormalEnough && result.normalLevel) {
+        setSelectedGasLevel(result.normalLevel);
+      } else if (result.isSlowEnough && result.slowLevel) {
+        setSelectedGasLevel(result.slowLevel);
+      } else if (result.customLevel) {
+        setSelectedGasLevel(result.customLevel);
+      }
+    }
+  }, [currentToken, gasList]);
+
+  // const [gasFeeOpen, setGasFeeOpen] = useState(false);
+  const pendingTxRef = useRef<{ fetchHistory: () => void }>(null);
+  const handleFulfilled = useMemoizedFn(() => {
+    if (currentToken) {
+      handleCurrentTokenChange(currentToken, true);
+    }
+  });
+
+  // const chainSelectorRef = useRef<ChainSelectorInSend>(null);
+
+  return (
+    <FullscreenContainer className={isDesktop ? 'h-[600px]' : 'h-[700px]'}>
+      <div
+        className={clsx(
+          'send-token',
+          isTab || isDesktop
+            ? 'w-full h-full overflow-auto min-h-0 rounded-[16px] shadow-[0px_40px_80px_0px_rgba(43,57,143,0.40)'
+            : ''
+        )}
+      >
+        <PageHeader
+          onBack={handleClickBack}
+          forceShowBack={!(isTab || isDesktop)}
+          isShowAccount
+          canBack={!(isTab || isDesktop)}
+          className="mb-[10px]"
+          onBeforeSwitchAccountChange={async (nextAccount) => {
+            const isSameAccount =
+              currentAccount?.address &&
+              isSameAddress(currentAccount.address, nextAccount.address) &&
+              currentAccount.type === nextAccount.type;
+            if (isSameAccount) {
+              return;
+            }
+
+            if (
+              gnosisReplaceContext &&
+              (nextAccount.type !== KEYRING_CLASS.GNOSIS ||
+                !isGnosisSendReplaceTargetMatched(gnosisReplaceContext, {
+                  safeAddress: nextAccount.address,
+                  chainId: gnosisReplaceContext.chainId,
+                }))
+            ) {
+              await clearGnosisReplaceContext();
+            }
+
+            await clearAmountForAccountChange();
+          }}
+          rightSlot={
+            isTab || isDesktop ? null : (
+              <div
+                className="text-r-neutral-title1 hover:text-r-blue-default cursor-pointer absolute right-0 hit-slop-8"
+                onClick={() => {
+                  // openInternalPageInTab(`send-token${history.location.search}`);
+                  wallet.openInDesktop(
+                    `/desktop/profile?action=send&${history.location.search.slice(
+                      1
+                    )}`
+                  );
+                  window.close();
+                }}
+              >
+                <RcIconJumpBoldCC />
+              </div>
+            )
+          }
+        >
+          {t('page.sendToken.header.title')}
+        </PageHeader>
+        <Form
+          form={form}
+          className="send-token-form pt-[4px]"
+          onFinish={handleSubmit}
+          onValuesChange={handleFormValuesChange}
+          initialValues={initialFormValues}
+        >
+          <div className="flex-1 overflow-auto pb-[32px]">
+            {/* <AddressInfoFrom /> */}
+            <AddressInfoTo
+              loadingToAddressDesc={loadingToAddressDesc}
+              toAccount={targetAccount}
+              toAddressPositiveTips={toAddressPositiveTips}
+              cexInfo={addressDesc?.cex}
+              onClick={() => {
+                const amountInputQueryFields = getCurrentAmountInputQueryFields();
+                const amountBalanceErrorQueryFields: Record<
+                  string,
+                  string
+                > = amountInputInsufficientError
+                  ? { [AMOUNT_BALANCE_ERROR_QUERY_KEY]: '1' }
+                  : {};
+                const gnosisReplaceQueryFields: Record<
+                  string,
+                  string
+                > = gnosisReplaceQueryValue
+                  ? {
+                      [GNOSIS_REPLACE_QUERY_KEY]: gnosisReplaceQueryValue,
+                    }
+                  : {};
+                if (isDesktop) {
+                  history.push(
+                    `${history.location.pathname}?${obj2query({
+                      action: 'send',
+                      sendPageType: 'selectToAddress',
+                      type: 'send-token',
+                      rbisource:
+                        filterRbiSource('sendToken', rbisource) || rbisource,
+                      token: encodeTokenParam({
+                        chain: currentToken?.chain || '',
+                        id: currentToken?.id || '',
+                      }),
+                      amount: form.getFieldValue('amount') || '',
+                      ...gnosisReplaceQueryFields,
+                      ...amountInputQueryFields,
+                      ...amountBalanceErrorQueryFields,
+                    })}`
+                  );
+                } else {
+                  history.push(
+                    `/select-to-address?${obj2query({
+                      type: 'send-token',
+                      rbisource:
+                        filterRbiSource('sendToken', rbisource) || rbisource,
+                      token: encodeTokenParam({
+                        chain: currentToken?.chain || '',
+                        id: currentToken?.id || '',
+                      }),
+                      amount: form.getFieldValue('amount') || '',
+                      ...gnosisReplaceQueryFields,
+                      ...amountInputQueryFields,
+                      ...amountBalanceErrorQueryFields,
+                    })}`
+                  );
+                }
+              }}
+            />
+            <div className="section">
+              <div className="section-title flex justify-between items-center">
+                <div className="token-balance whitespace-pre-wrap">
+                  {t('page.sendToken.sectionBalance.title')}
+                </div>
+
+                {/* <div className="token-balance-slider flex pl-[2px] w-[192px] pr-[8px] justify-between items-center">
+                  <SendSlider
+                    min={0}
+                    max={100}
+                    disabled={isLoading || isEstimatingGas}
+                    value={sliderPercentValue}
+                    onChange={(value) => {
+                      setSliderPercentValue(value);
+                      let newAmountBigNum = balanceBigNum?.multipliedBy(
+                        value / 100
+                      );
+
+                      if (value === 100) {
+                        if (
+                          chainTokenGasFees.gasLimit &&
+                          selectedGasLevel?.price
+                        ) {
+                          newAmountBigNum = newAmountBigNum.minus(
+                            new BigNumber(chainTokenGasFees.gasLimit)
+                              .times(selectedGasLevel?.price)
+                              .div(1e18)
+                          );
+                        }
+                        if (chainTokenGasFees.maybeL1Fee?.gt(0)) {
+                          newAmountBigNum = newAmountBigNum.minus(
+                            new BigNumber(chainTokenGasFees.maybeL1Fee).div(
+                              1e18
+                            )
+                          );
+                        }
+
+                        if (newAmountBigNum.lt(0)) {
+                          newAmountBigNum = new BigNumber(0);
+                        }
+                      }
+
+                      const newAmount =
+                        value === 100
+                          ? newAmountBigNum.toFixed()
+                          : !value
+                          ? ''
+                          : formatAmountString(newAmountBigNum);
+
+                      form.setFieldsValue({ amount: newAmount });
+                      handleFormValuesChange(
+                        { amount: newAmount },
+                        {
+                          ...form.getFieldsValue(),
+                          amount: newAmount,
+                        },
+                        {
+                          updateSliderValue: false,
+                          updateHistoryState: true,
+                        }
+                      );
+
+                      onSliderValueChangeTo100(value);
+                    }}
+                    className="w-[160px] max-w-[100%]"
+                  />
+                  <div className="ml-[8px] w-[42px] text-right text-[13px] text-r-blue-default">
+                    {sliderPercentValue}%
+                  </div>
+                </div> */}
+              </div>
+              {currentAccount && chainItem && (
+                <div className="bg-r-neutral-card1 rounded-[8px]">
+                  {/* <ChainSelectWrapper>
+                    <ChainSelectorInForm
+                      value={chain}
+                      loading={initLoading}
+                      onChange={handleChainChanged}
+                      disableChainCheck={disableChainCheck}
+                      chainRenderClassName={clsx(
+                        'text-[13px] font-medium border-0 bg-transparent',
+                        'before:border-transparent hover:before:border-rabby-blue-default pl-[8px]'
+                      )}
+                      drawerHeight={540}
+                      showClosableIcon
+                      getContainer={getContainer}
+                    />
+                  </ChainSelectWrapper> */}
+                  <Form.Item name="amount">
+                    <TokenAmountInput
+                      type="send"
+                      className="bg-r-neutral-card1 rounded-[8px]"
+                      token={currentToken}
+                      onChange={handleAmountChange}
+                      onTokenChange={handleCurrentTokenChange}
+                      // chainId={chainItem.serverId}
+                      initLoading={initLoading}
+                      disableItemCheck={disableItemCheck}
+                      balanceNumText={balanceNumText}
+                      insufficientError={amountInputInsufficientError}
+                      handleClickMaxButton={handleClickMaxButton}
+                      displayValue={amountInputDisplayValue}
+                      displayValueText={amountInputDisplayValueText}
+                      inputPrefixText={amountInputPrefixText}
+                      quoteText={amountInputQuoteText}
+                      showQuote={shouldShowAmountQuote}
+                      canSwitchMode={canSwitchAmountMode}
+                      onSwitchMode={handleAmountInputModeSwitch}
+                      onInputValueChange={handleAmountInputValueChange}
+                      amountInputOverflowPosition={clickedMax ? 'start' : 'end'}
+                      isLoading={isLoading}
+                      getContainer={getContainer}
+                      // onStartSelectChain={() => {
+                      //   chainSelectorRef.current?.toggleShow(true);
+                      // }}
+                    />
+                  </Form.Item>
+                  {/* <ChainSelectorInSend
+                    ref={chainSelectorRef}
+                    hideTestnetTab
+                    onChange={(value) => {
+                      // setChainServerId(findChainByEnum(value)?.serverId || '');
+                    }}
+                  /> */}
+                </div>
+              )}
+            </div>
+
+            {chainItem?.serverId && canUseDirectSubmitTx ? (
+              <ShowMoreOnSend
+                chainServeId={chainItem?.serverId}
+                open
+                signatureInstance={instance}
+                // setOpen={setGasFeeOpen}
+              />
+            ) : null}
+            {!canSubmitBasic && (
+              <div className="mt-20">
+                <PendingTxItem
+                  getContainer={getContainer}
+                  onFulfilled={handleFulfilled}
+                  type="send"
+                  ref={pendingTxRef}
+                />
+              </div>
+            )}
+          </div>
+
+          <BottomArea
+            mostImportantRisks={mostImportantRisks}
+            agreeRequiredChecked={agreeRequiredChecked}
+            onCheck={(newVal) => {
+              setAgreeRequiredChecks((prev) => ({
+                ...prev,
+                ...(hasRiskForToAddress && { forToAddress: newVal }),
+                ...(hasRiskForToken && { forToken: newVal }),
+              }));
+            }}
+            currentAccount={currentAccount}
+            isSubmitLoading={isSubmitLoading}
+            canSubmit={canSubmit}
+            miniSignLoading={miniSignLoading}
+            canUseDirectSubmitTx={canUseDirectSubmitTx}
+            signatureInstance={instance}
+            onConfirm={async () => {
+              await handleSubmit({
+                to: form.getFieldValue('to'),
+                amount: form.getFieldValue('amount'),
+              });
+              setAgreeRequiredChecks((prev) => ({
+                ...prev,
+                forToAddress: false,
+                forToken: false,
+              }));
+            }}
+          />
+        </Form>
+        <SendReserveGasPopup
+          selectedItem={selectedGasLevel?.level as GasLevelType}
+          chain={chain}
+          limit={Math.max(chainTokenGasFees.gasLimit, MINIMUM_GAS_LIMIT)}
+          onGasChange={(gasLevel) => {
+            handleGasLevelChanged(gasLevel);
+          }}
+          gasList={gasList}
+          visible={reserveGasOpen}
+          isLoading={loadingGasList}
+          rawHexBalance={currentToken?.raw_amount_hex_str || '0'}
+          onClose={() => handleReserveGasClose()}
+          getContainer={getContainer}
+        />
+      </div>
+    </FullscreenContainer>
+  );
+};
+
+const SendTokenWrapper = () => {
+  return (
+    <DirectSubmitProvider>
+      <SendToken />
+    </DirectSubmitProvider>
+  );
+};
+
+export default isTab
+  ? connectStore()(withAccountChange(SendTokenWrapper))
+  : connectStore()(SendTokenWrapper);

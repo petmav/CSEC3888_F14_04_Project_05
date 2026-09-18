@@ -1,0 +1,438 @@
+const child_process = require('child_process');
+const path = require('path');
+
+const webpack = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const TSConfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
+const ESLintWebpackPlugin = require('eslint-webpack-plugin');
+const tsImportPluginFactory = require('ts-import-plugin');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
+// const AssetReplacePlugin = require('./plugins/AssetReplacePlugin');
+const CopyPlugin = require('copy-webpack-plugin');
+const {
+  resolveManifestFilename,
+  resolveManifestVersion,
+} = require('./manifest-utils');
+
+const createStyledComponentsTransformer = require('typescript-plugin-styled-components')
+  .default;
+
+const isEnvDevelopment = process.env.NODE_ENV !== 'production';
+const useForkTsChecker = process.env.FORK_TS_CHECKER === 'enable';
+
+const paths = require('./paths');
+
+const BUILD_GIT_HASH = child_process
+  .execSync('git rev-parse HEAD')
+  .toString()
+  .trim()
+  .slice(0, 8);
+
+const {
+  transformer: tsStyledComponentTransformer,
+  webpackPlugin: tsStyledComponentPlugin,
+} = createStyledComponentsTransformer({
+  ssr: true, // always enable it to make all styled generated component has id.
+  displayName: isEnvDevelopment,
+  minify: false, // it's still an experimental feature
+  componentIdPrefix: 'rabby-',
+});
+// 'chrome-mv2', 'chrome-mv3', 'firefox-mv2', 'firefox-mv3'
+const MANIFEST_TYPE = process.env.MANIFEST_TYPE || 'chrome-mv2';
+const IS_MANIFEST_MV3 = MANIFEST_TYPE.includes('-mv3');
+const FINAL_DIST = IS_MANIFEST_MV3 ? paths.dist : paths.distMv2;
+const IS_FIREFOX = MANIFEST_TYPE.includes('firefox');
+const BUILD_ENV = process.env.RABBY_BUILD_ENV || '';
+const disableStyleSourceMap =
+  !!process.env.sourcemap || BUILD_ENV === 'sourcemap';
+const DEXIE_IMPORT_WRAPPER =
+  BUILD_ENV === 'pro' || BUILD_ENV === 'sourcemap'
+    ? 'import-wrapper-prod.mjs'
+    : 'import-wrapper.mjs';
+
+const MANIFEST_FILENAME = resolveManifestFilename({
+  manifestType: MANIFEST_TYPE,
+  buildEnv: BUILD_ENV,
+});
+const APP_VERSION =
+  process.env.VERSION ||
+  resolveManifestVersion({
+    manifestType: MANIFEST_TYPE,
+    buildEnv: BUILD_ENV,
+  });
+
+const config = {
+  entry: {
+    background: {
+      import: paths.rootResolve('src/background/index.ts'),
+      asyncChunks: false,
+    },
+    'content-script': paths.rootResolve('src/content-script/index.ts'),
+    pageProvider: paths.rootResolve('src/content-script/page-provider.ts'),
+    ui: paths.rootResolve('src/ui/index.tsx'),
+    offscreen: paths.rootResolve('src/offscreen/scripts/offscreen.ts'),
+  },
+  output: {
+    path: FINAL_DIST,
+    filename: '[name].js',
+    publicPath: '/',
+  },
+  ...(useForkTsChecker
+    ? {
+        cache: {
+          type: 'filesystem',
+          buildDependencies: {
+            config: [__filename],
+          },
+        },
+      }
+    : {}),
+  module: {
+    rules: [
+      {
+        test: /\.jsx?$|\.tsx?$/,
+        exclude: /node_modules/,
+        oneOf: [
+          {
+            // prevent webpack remove this file's output even it's not been used in entry
+            sideEffects: true,
+            test: /[\\/]pageProvider[\\/]index.ts/,
+            loader: 'ts-loader',
+            ...(useForkTsChecker
+              ? {
+                  options: {
+                    transpileOnly: true,
+                  },
+                }
+              : {}),
+          },
+          {
+            test: /[\\/]ui[\\/]index.tsx/,
+            use: [
+              {
+                loader: 'ts-loader',
+                options: {
+                  transpileOnly: true,
+                  getCustomTransformers: () => ({
+                    before: [
+                      tsImportPluginFactory({
+                        libraryName: 'antd',
+                        libraryDirectory: 'lib',
+                        style: true,
+                      }),
+                    ],
+                  }),
+                  compilerOptions: {
+                    module: 'es2015',
+                  },
+                },
+              },
+              {
+                loader: paths.rootResolve(
+                  'node_modules/antd-dayjs-webpack-plugin/src/init-loader'
+                ),
+                options: {
+                  plugins: [
+                    'isSameOrBefore',
+                    'isSameOrAfter',
+                    'advancedFormat',
+                    'customParseFormat',
+                    'weekday',
+                    'weekYear',
+                    'weekOfYear',
+                    'isMoment',
+                    'localeData',
+                    'localizedFormat',
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            loader: 'ts-loader',
+            options: {
+              ...(useForkTsChecker ? { transpileOnly: true } : {}),
+              getCustomTransformers: () => ({
+                before: [
+                  // @see https://github.com/Igorbek/typescript-plugin-styled-components#ts-loader
+                  tsStyledComponentTransformer,
+                ],
+              }),
+            },
+          },
+        ],
+      },
+      {
+        test: /\.less$/,
+        use: [
+          'style-loader',
+          {
+            loader: 'css-loader',
+            options: {
+              importLoaders: 1,
+              ...(disableStyleSourceMap ? { sourceMap: false } : {}),
+            },
+          },
+          {
+            loader: 'postcss-loader',
+            options: {
+              ...(disableStyleSourceMap ? { sourceMap: false } : {}),
+              postcssOptions: {
+                plugins: [
+                  require('postcss-nested'),
+                  require('postcss-custom-properties'),
+                  require('autoprefixer'),
+                ],
+              },
+            },
+          },
+          {
+            loader: 'less-loader',
+            options: {
+              ...(disableStyleSourceMap ? { sourceMap: false } : {}),
+              lessOptions: {
+                javascriptEnabled: true,
+              },
+            },
+          },
+          {
+            loader: 'style-resources-loader',
+            options: {
+              patterns: [
+                path.resolve(__dirname, '../src/ui/style/var.less'),
+                path.resolve(__dirname, '../src/ui/style/mixin.less'),
+              ],
+              injector: 'append',
+            },
+          },
+        ],
+      },
+      {
+        test: /\.css$/,
+        use: [
+          {
+            loader: 'style-loader',
+          },
+          {
+            loader: 'css-loader',
+            options: {
+              importLoaders: 1,
+              ...(disableStyleSourceMap ? { sourceMap: false } : {}),
+            },
+          },
+          {
+            loader: 'postcss-loader',
+            options: {
+              ...(disableStyleSourceMap ? { sourceMap: false } : {}),
+            },
+          },
+        ],
+      },
+      {
+        test: /\.svg$/,
+        use: [
+          '@svgr/webpack',
+          {
+            loader: 'url-loader',
+            options: {
+              limit: false,
+              outputPath: 'generated/svgs',
+            },
+          },
+        ],
+      },
+      {
+        test: /\.(png|jpe?g|gif)$/i,
+        loader: 'file-loader',
+        options: {
+          name: '[name].[ext]',
+          outputPath: 'generated/images',
+        },
+      },
+      {
+        test: /\.md$/,
+        use: 'raw-loader',
+      },
+    ],
+  },
+  plugins: [
+    new ESLintWebpackPlugin({
+      extensions: ['ts', 'tsx', 'js', 'jsx'],
+      ...(useForkTsChecker ? { lintDirtyModulesOnly: true } : {}),
+    }),
+    ...(useForkTsChecker
+      ? [
+          new ForkTsCheckerWebpackPlugin({
+            async: isEnvDevelopment,
+            typescript: {
+              memoryLimit: 2048,
+            },
+          }),
+        ]
+      : []),
+    // new AntdDayjsWebpackPlugin(),
+    new HtmlWebpackPlugin({
+      inject: true,
+      template: paths.popupHtml,
+      chunks: ['ui'],
+      filename: 'popup.html',
+    }),
+    new HtmlWebpackPlugin({
+      inject: true,
+      template: paths.notificationHtml,
+      chunks: ['ui'],
+      filename: 'notification.html',
+    }),
+    new HtmlWebpackPlugin({
+      inject: true,
+      template: paths.indexHtml,
+      chunks: ['ui'],
+      filename: 'index.html',
+    }),
+    new HtmlWebpackPlugin({
+      inject: true,
+      template: paths.desktopHtml,
+      chunks: ['ui'],
+      filename: 'desktop.html',
+    }),
+    new HtmlWebpackPlugin({
+      inject: true,
+      template: paths.backgroundHtml,
+      chunks: ['background'],
+      filename: 'background.html',
+    }),
+    new HtmlWebpackPlugin({
+      inject: true,
+      template: paths.offscreenHtml,
+      chunks: ['offscreen'],
+      filename: 'offscreen.html',
+    }),
+    new webpack.ProvidePlugin({
+      Buffer: ['buffer', 'Buffer'],
+      process: 'process',
+      dayjs: 'dayjs',
+    }),
+    new webpack.DefinePlugin({
+      'process.env.version': JSON.stringify(`version: ${APP_VERSION}`),
+      'process.env.release': JSON.stringify(APP_VERSION),
+      'process.env.RABBY_BUILD_GIT_HASH': JSON.stringify(BUILD_GIT_HASH),
+      'process.env.ETHERSCAN_KEY': JSON.stringify(process.env.ETHERSCAN_KEY),
+      'process.env.RABBY_SENTRY_DSN': JSON.stringify(
+        process.env.RABBY_SENTRY_DSN
+      ),
+    }),
+    new CopyPlugin({
+      patterns: [
+        { from: paths.rootResolve('_raw'), to: FINAL_DIST },
+        {
+          from: paths.rootResolve(
+            `src/manifest/${MANIFEST_TYPE}/${MANIFEST_FILENAME}`
+          ),
+          to: path.resolve(FINAL_DIST, 'manifest.json'),
+        },
+        IS_MANIFEST_MV3
+          ? {
+              from: require.resolve(
+                '@trezor/connect-webextension/build/content-script.js'
+              ),
+              to: path.resolve(
+                FINAL_DIST,
+                './vendor/trezor/trezor-content-script.js'
+              ),
+            }
+          : {
+              from: require.resolve(
+                '@trezor/connect-web/lib/webextension/trezor-content-script.js'
+              ),
+              to: path.resolve(
+                FINAL_DIST,
+                './vendor/trezor/trezor-content-script.js'
+              ),
+            },
+        {
+          from: require.resolve(
+            '@trezor/connect-web/lib/webextension/trezor-usb-permissions.js'
+          ),
+          to: path.resolve(
+            FINAL_DIST,
+            './vendor/trezor-usb-permissions.js'
+          ),
+        },
+        ...(IS_MANIFEST_MV3
+          ? [
+              {
+                from: require.resolve(
+                  '@trezor/connect-web/lib/webextension/trezor-usb-permissions.html'
+                ),
+                to: path.resolve(
+                  FINAL_DIST,
+                  './trezor-usb-permissions.html'
+                ),
+              },
+            ]
+          : []),
+      ],
+    }),
+    tsStyledComponentPlugin,
+  ],
+  resolve: {
+    alias: {
+      dexie$: paths.rootResolve(`node_modules/dexie/${DEXIE_IMPORT_WRAPPER}`),
+      moment: require.resolve('dayjs'),
+      '@debank/common': require.resolve('@debank/common/dist/index-rabby'),
+    },
+    plugins: [new TSConfigPathsPlugin()],
+    fallback: {
+      stream: require.resolve('stream-browserify'),
+      crypto: require.resolve('crypto-browserify'),
+      url: require.resolve('url'),
+      zlib: require.resolve('browserify-zlib'),
+      https: require.resolve('https-browserify'),
+      http: require.resolve('stream-http'),
+      vm: false,
+    },
+    extensions: ['.js', 'jsx', '.ts', '.tsx'],
+  },
+  stats: 'minimal',
+  optimization: {
+    splitChunks: {
+      ...(IS_FIREFOX && {
+        chunks: (chunk) =>
+          chunk.name !== 'content-script' && chunk.name !== 'pageProvider',
+        minSize: 10000,
+        maxSize: 4000000,
+        minChunks: 1,
+        maxAsyncRequests: 30,
+        maxInitialRequests: 30,
+      }),
+      cacheGroups: {
+        'webextension-polyfill': {
+          minSize: 0,
+          test: /[\\/]node_modules[\\/]webextension-polyfill/,
+          name: 'webextension-polyfill',
+          chunks: 'all',
+          priority: 100,
+        },
+        ...(IS_FIREFOX && {
+          vendors: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendors',
+            priority: -10,
+            reuseExistingChunk: true,
+          },
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+          },
+        }),
+      },
+    },
+  },
+  experiments: {
+    asyncWebAssembly: true,
+    topLevelAwait: true,
+  },
+};
+
+module.exports = config;
