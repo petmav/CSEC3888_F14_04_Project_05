@@ -110,3 +110,74 @@ export const RedbellyRecipientCheck = ({
     </SubCol>
   );
 };
+
+/**
+ * The KYC status of the account that is about to sign this Redbelly send.
+ *
+ * Redbelly nodes reject unregistered senders with JSON-RPC error -32603. This
+ * row exposes that cause before the user attempts to sign. It deliberately
+ * remains informational: the network is the final authority on whether the
+ * account may submit, while the recipient gate prevents an irreversible send
+ * to an address nobody can spend from.
+ */
+export const RedbellySenderCheck = ({
+  chainId,
+  address,
+}: {
+  chainId?: number | null;
+  address?: string | null;
+}) => {
+  const { t } = useTranslation();
+  const sender = useRedbellyStore(
+    useShallow((state) => state.currentTx.sender)
+  );
+  const checkSender = useRedbellyStore((state) => state.checkSender);
+
+  React.useEffect(() => {
+    checkSender(chainId, address);
+  }, [checkSender, chainId, address]);
+
+  if (!isRedbellyChainId(chainId) || !address) {
+    return null;
+  }
+
+  const isCurrent =
+    sender.address?.toLowerCase() === address.toLowerCase() &&
+    sender.chainId === Number(chainId);
+  const isChecking = !isCurrent || sender.loading || !sender.completed;
+  const isUnknown = !isChecking && sender.isRegistered === null;
+  const isRegistered = !isChecking && sender.isRegistered === true;
+
+  const label = isChecking
+    ? t('page.signTx.redbelly.checking')
+    : isUnknown
+    ? t('page.dashboard.assets.redbelly.kycUnknown')
+    : isRegistered
+    ? t('page.dashboard.assets.redbelly.kycRegistered')
+    : t('page.dashboard.assets.redbelly.kycNotRegistered');
+  const tip = isChecking
+    ? t('page.signTx.redbelly.recipientTip')
+    : isUnknown
+    ? t('page.signTx.redbelly.unknownTip')
+    : isRegistered
+    ? t('page.signTx.redbelly.registeredTip')
+    : t('page.dashboard.assets.redbelly.kycNotRegisteredTip');
+  const tone: Tone = isChecking
+    ? 'neutral'
+    : isUnknown
+    ? 'warning'
+    : isRegistered
+    ? 'safe'
+    : 'danger';
+
+  return (
+    <SubCol>
+      <SubRow isTitle tip={tip}>
+        {t('page.signTx.redbelly.senderTitle')}
+      </SubRow>
+      <SubRow>
+        <span className={clsx(TONE_CLASS[tone])}>{label}</span>
+      </SubRow>
+    </SubCol>
+  );
+};

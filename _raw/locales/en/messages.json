@@ -344,6 +344,7 @@
       },
       "redbelly": {
         "recipientTitle": "Redbelly KYC",
+        "senderTitle": "Your Redbelly KYC",
         "recipientTip": "Redbelly records identity-verified accounts in an on-chain permission list. This row reports whether the recipient is on that list for this network.",
         "checking": "Checking",
         "registered": "Registered",
