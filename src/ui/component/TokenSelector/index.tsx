@@ -52,6 +52,7 @@ import { isNil, isNumber } from 'lodash';
 import { ExternalTokenRow } from './ExternalToken';
 import { getCexIds } from '@/ui/utils/portfolio/tokenUtils';
 import { UnknownTag } from '@/ui/component';
+import { useRedbellyNativeTokens } from '@/ui/hooks/useRedbellyNativeTokens';
 
 const isTab = getUiType().isTab;
 
@@ -215,19 +216,56 @@ const TokenSelector = ({
     customTestnetTokenListLoading,
   ]);
 
+  // RBNT is not on DeBank, so no DeBank-backed list ever contains it. Add it
+  // here, the one place Send, Swap and Bridge pickers all go through.
+  const redbellyTokens = useRedbellyNativeTokens(visible);
+  const tokenList = useMemo(() => {
+    const base = mainnetTokenList || [];
+    if (!redbellyTokens.length || lpTokenMode) {
+      return base;
+    }
+    const keyword = query.trim().toLowerCase();
+    const extra = redbellyTokens.filter((token) => {
+      // Chain filter set: only that chain. No filter: only if held.
+      if (chainServerId ? token.chain !== chainServerId : !token.amount) {
+        return false;
+      }
+      if (excludeTokens.includes(token.id)) {
+        return false;
+      }
+      if (base.some((b) => b.chain === token.chain && b.id === token.id)) {
+        return false;
+      }
+      return (
+        !keyword ||
+        [token.symbol, token.name, token.chain].some((field) =>
+          field?.toLowerCase().includes(keyword)
+        )
+      );
+    });
+    return [...extra, ...base];
+  }, [
+    mainnetTokenList,
+    redbellyTokens,
+    chainServerId,
+    query,
+    excludeTokens,
+    lpTokenMode,
+  ]);
+
   const displayList = useMemo(() => {
     if (showCustomTestnetAssetList && selectedTab === 'testnet') {
       return customTestnetTokenList || [];
     }
 
     if (!supportChains?.length) {
-      const resultList = mainnetTokenList || [];
+      const resultList = tokenList;
       if (!chainServerId) return resultList.filter(filterTestnetTokenItem);
 
       return resultList;
     }
 
-    const varied = (mainnetTokenList || []).reduce(
+    const varied = tokenList.reduce(
       (accu, token) => {
         const chainItem = findChainByServerID(token.chain);
         const disabled =
@@ -254,7 +292,7 @@ const TokenSelector = ({
 
     return [...varied.natural, ...varied.disabled];
   }, [
-    mainnetTokenList,
+    tokenList,
     supportChains,
     chainServerId,
     selectedTab,
@@ -280,9 +318,9 @@ const TokenSelector = ({
     if (showCustomTestnetAssetList && selectedTab === 'testnet') {
       return customTestnetTokenList?.length <= 0;
     }
-    return mainnetTokenList.length <= 0;
+    return tokenList.length <= 0;
   }, [
-    mainnetTokenList,
+    tokenList,
     showCustomTestnetAssetList,
     selectedTab,
     customTestnetTokenList,

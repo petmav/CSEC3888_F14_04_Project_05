@@ -15,6 +15,7 @@ import * as Values from './components/Values';
 import LogoWithText from './components/LogoWithText';
 import ViewMore from './components/ViewMore';
 import {
+  RedbellyRecipientBanner,
   RedbellyRecipientCheck,
   RedbellySenderCheck,
 } from './components/RedbellyRecipientCheck';
@@ -253,6 +254,9 @@ const Send = ({
           />
         </SubTable>
       </Table>
+      {/* Outside the collapsible SubTable so the verdict is visible without
+          hovering the address. */}
+      <RedbellyRecipientBanner chainId={chain.id} address={actionData.to} />
     </Wrapper>
   );
 };

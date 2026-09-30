@@ -181,3 +181,67 @@ export const RedbellySenderCheck = ({
     </SubCol>
   );
 };
+
+/**
+ * A visible verdict banner for the recipient, shown outside the collapsible
+ * address `SubTable`, which only expands on hover or click.
+ */
+export const RedbellyRecipientBanner = ({
+  chainId,
+  address,
+}: {
+  chainId?: number | null;
+  address?: string | null;
+}) => {
+  const { t } = useTranslation();
+  const recipient = useRedbellyStore(
+    useShallow((state) => state.currentTx.recipient)
+  );
+  const checkRecipient = useRedbellyStore((state) => state.checkRecipient);
+
+  React.useEffect(() => {
+    checkRecipient(chainId, address);
+  }, [checkRecipient, chainId, address]);
+
+  if (!isRedbellyChainId(chainId) || !address) {
+    return null;
+  }
+
+  const isCurrent =
+    recipient.address?.toLowerCase() === address.toLowerCase() &&
+    recipient.chainId === Number(chainId);
+  const verdict = isCurrent ? recipient.verdict : null;
+  if (!verdict) {
+    return null;
+  }
+
+  const config: Record<Verdict, { key: string; className: string }> = {
+    REGISTERED: {
+      key: 'page.signTx.redbelly.bannerVerified',
+      className: 'bg-r-green-light text-r-green-default',
+    },
+    NOT_REGISTERED: {
+      key: 'page.signTx.redbelly.bannerNotVerified',
+      className: 'bg-r-red-light text-r-red-default',
+    },
+    CONTRACT: {
+      key: 'page.signTx.redbelly.bannerContract',
+      className: 'bg-r-neutral-card-2 text-r-neutral-body',
+    },
+    UNKNOWN: {
+      key: 'page.signTx.redbelly.bannerUnknown',
+      className: 'bg-r-orange-light text-r-orange-default',
+    },
+  };
+
+  return (
+    <div
+      className={clsx(
+        'mt-[8px] rounded-[6px] px-[12px] py-[10px] text-[13px] leading-[16px] font-medium',
+        config[verdict].className
+      )}
+    >
+      {t(config[verdict].key)}
+    </div>
+  );
+};

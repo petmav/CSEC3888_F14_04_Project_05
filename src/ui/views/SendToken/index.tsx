@@ -61,6 +61,9 @@ import './style.less';
 import { getKRCategoryByType } from '@/utils/transaction';
 import { filterRbiSource, useRbiSource } from '@/ui/utils/ga-event';
 import { findChain, findChainByEnum, findChainByID } from '@/utils/chain';
+import { isRedbellyChainId } from '@/constant/redbelly';
+import { useRedbellyStore } from '@/ui/state/redbelly';
+import { buildRedbellyNativeToken } from '@/utils/redbelly/token';
 import { Chain } from '@debank/common';
 import {
   checkIfTokenBalanceEnough,
@@ -719,7 +722,36 @@ const SendToken = () => {
     forToAddress: false,
     forToken: false,
   });
+  // Redbelly KYC verdict for the typed recipient. Drives the verified /
+  // not-verified messages, and replaces the DeBank "not sent in 180 days"
+  // check, which has no data for Redbelly.
+  const isRedbelly = isRedbellyChainId(chainItem?.id);
+  const redbellyRecipient = useRedbellyStore(
+    (state) => state.currentTx.recipient
+  );
+  const redbellyCheckRecipient = useRedbellyStore(
+    (state) => state.checkRecipient
+  );
+  const redbellyResetCurrentTx = useRedbellyStore(
+    (state) => state.resetCurrentTx
+  );
+  const redbellyRecipientAddress =
+    isRedbelly && toAddress && isValidAddress(toAddress) ? toAddress : null;
+  useEffect(() => {
+    redbellyCheckRecipient(chainItem?.id, redbellyRecipientAddress);
+  }, [redbellyCheckRecipient, chainItem?.id, redbellyRecipientAddress]);
+  useEffect(() => redbellyResetCurrentTx, [redbellyResetCurrentTx]);
+  const redbellyVerdict =
+    redbellyRecipientAddress &&
+    redbellyRecipient.chainId === Number(chainItem?.id) &&
+    redbellyRecipient.address?.toLowerCase() ===
+      redbellyRecipientAddress.toLowerCase()
+      ? redbellyRecipient.verdict
+      : null;
+
   const { loading: loadingRisks, risks } = useAddressRisks({
+    isRedbelly,
+    redbellyVerdict,
     toAddress: toAddress || '',
     fromAddress: currentAccount?.address,
     forbiddenCheck: useMemo(() => {
@@ -744,6 +776,7 @@ const SendToken = () => {
   const toAddressPositiveTips = useToAddressPositiveTips({
     toAddress,
     isMyImported,
+    redbellyVerified: isRedbelly && redbellyVerdict === 'REGISTERED',
   });
 
   const {
@@ -2168,6 +2201,14 @@ const SendToken = () => {
         });
         if (res) {
           result = customTestnetTokenToTokenItem(res);
+        }
+      } else if (chain && isRedbellyChainId(chain.id)) {
+        // DeBank does not index Redbelly: read the balance from a node.
+        if (tokenId === chain.nativeTokenAddress) {
+          result = buildRedbellyNativeToken(
+            chain,
+            await wallet.getRedbellyBalance(chain.id, currentAddress)
+          );
         }
       } else {
         result = await wallet.openapi.getToken(

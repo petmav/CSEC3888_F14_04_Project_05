@@ -355,7 +355,11 @@
         "contractTip": "The permission list covers user accounts, so no identity check applies to a smart contract.",
         "unknown": "Could not verify",
         "unknownTip": "The Redbelly node did not answer, so this address was not checked. This is not a confirmation that the address is valid.",
-        "blockedReason": "Recipient is not registered on Redbelly. Funds sent there cannot be spent."
+        "blockedReason": "Recipient is not registered on Redbelly. Funds sent there cannot be spent.",
+        "bannerVerified": "This address is verified on the Redbelly Network",
+        "bannerNotVerified": "This address is not verified in the Redbelly Network",
+        "bannerContract": "This address is a smart contract",
+        "bannerUnknown": "Could not verify this address on the Redbelly Network"
       },
       "tokenApprove": {
         "title": "Token Approval",
@@ -968,6 +972,10 @@
       "selectToken": "Select Token",
       "accountSelectorModal": {
         "title": "Select Address"
+      },
+      "redbelly": {
+        "verified": "This address is verified on the Redbelly Network",
+        "notVerified": "This address is not verified in the Redbelly Network"
       },
       "riskAlert": {
         "checkboxText": "I understand the risks and want to continue"

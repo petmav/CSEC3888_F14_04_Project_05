@@ -39,7 +39,10 @@ export const AssetList = ({
   const handleTestnetSelectChainChange = (id: string | null) => {
     setSelectTestnetChainId(id);
   };
-  const [isEmptyAssets, setIsEmptyAssets] = useState<boolean>(false);
+  const [isEmptyAssetsFromDebank, setIsEmptyAssets] = useState<boolean>(false);
+  // DeBank cannot see RBNT, so a wallet holding only RBNT reports empty here.
+  const [redbellyHasBalance, setRedbellyHasBalance] = useState<boolean>(false);
+  const isEmptyAssets = isEmptyAssetsFromDebank && !redbellyHasBalance;
   const { selectedTab, onTabChange } = usePureNetSwitch();
 
   React.useEffect(() => {
@@ -139,14 +142,16 @@ export const AssetList = ({
               />
             )}
           </div>
+          {/* Above the DeBank-backed list and outside the empty-state toggle:
+              RBNT has no price feed so it cannot be a row in a USD portfolio,
+              and it must still show when DeBank reports no assets. */}
+          <RedbellyAssetSection
+            selectChainId={selectChainId}
+            visible={visible}
+            onHasBalanceChange={setRedbellyHasBalance}
+          />
           <div className={clsx(isEmptyAssets ? 'hidden' : 'block')}>
             <ChainList onChange={handleSelectChainChange} />
-            {/* Above the DeBank-backed list: RBNT has no price feed, so it
-                cannot be a row in a USD portfolio. */}
-            <RedbellyAssetSection
-              selectChainId={selectChainId}
-              visible={visible}
-            />
             <AssetListContainer
               className="mt-12"
               selectChainId={selectChainId}

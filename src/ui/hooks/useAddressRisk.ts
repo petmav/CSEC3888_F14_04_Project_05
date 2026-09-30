@@ -20,6 +20,7 @@ import { isSameAddress, useWallet } from '../utils';
 import { KEYRING_CLASS } from 'consts';
 import { useDebouncedValue } from './useDebounceValue';
 import { useExchangeStore } from '../state/exchange';
+import type { Verdict } from '@/utils/redbelly/verdict';
 
 const queue = new PQueue({ intervalCap: 5, concurrency: 5, interval: 1000 });
 
@@ -40,6 +41,8 @@ export const enum RiskType {
   CEX_NO_DEPOSIT = 4,
 
   FORBIDDEN_TIP = 5,
+  /** Redbelly recipient is confirmed not KYC registered. */
+  REDBELLY_NOT_VERIFIED = 6,
 }
 
 const riskTypePriority = {
@@ -48,6 +51,7 @@ const riskTypePriority = {
   [RiskType.CONTRACT_ADDRESS]: 10e1,
   [RiskType.SCAM_ADDRESS]: 10e3,
   [RiskType.FORBIDDEN_TIP]: 10e4,
+  [RiskType.REDBELLY_NOT_VERIFIED]: 10e5,
 };
 
 export function sortRisksDesc(a: { type: RiskType }, b: { type: RiskType }) {
@@ -71,6 +75,14 @@ export const useAddressRisks = (options: {
   onLoadFinished?: (/* ctx: { risks: Array<RiskItem> } */) => void;
   editCex?: IExchange | null;
   scene?: 'send-poly' | 'send-nft' | 'send-token';
+  /**
+   * The send is on a Redbelly network. DeBank has no Redbelly transfer
+   * history, so the "not sent in 180 days" check would fire on every send and
+   * mean nothing. It is skipped and the Redbelly verdict is used instead.
+   */
+  isRedbelly?: boolean;
+  /** Redbelly KYC verdict for `toAddress`, or null while it is pending. */
+  redbellyVerdict?: Verdict | null;
 }) => {
   const {
     toAddress,
@@ -79,6 +91,8 @@ export const useAddressRisks = (options: {
     editCex,
     onLoadFinished,
     scene = 'send-poly',
+    isRedbelly = false,
+    redbellyVerdict = null,
   } = options || {};
 
   const { t } = useTranslation();
@@ -147,7 +161,13 @@ export const useAddressRisks = (options: {
                   ),
           }
         : null,
-      hasNoSent
+      isRedbelly && redbellyVerdict === 'NOT_REGISTERED'
+        ? {
+            type: RiskType.REDBELLY_NOT_VERIFIED,
+            value: t('page.sendToken.redbelly.notVerified'),
+          }
+        : null,
+      hasNoSent && !isRedbelly
         ? {
             type: RiskType.NEVER_SEND,
             value:
@@ -157,7 +177,15 @@ export const useAddressRisks = (options: {
           }
         : null,
     ].filter((i) => !!i) as { type: RiskType; value: string }[];
-  }, [forbiddenTip, scene, addressDesc, hasNoSent, t]);
+  }, [
+    forbiddenTip,
+    scene,
+    addressDesc,
+    hasNoSent,
+    isRedbelly,
+    redbellyVerdict,
+    t,
+  ]);
 
   const myTop10AccountList = useMemo(
     () =>
@@ -296,6 +324,20 @@ export const useAddressRisks = (options: {
     controller: null as AbortController | null,
   });
   useEffect(() => {
+    if (isRedbelly) {
+      // No DeBank transfer history for Redbelly: nothing to wait for.
+      riskGetRef.current.requestKey = '';
+      riskGetRef.current.controller?.abort();
+      riskGetRef.current.controller = null;
+      queue.clear();
+      setHasNoSent(false);
+      setHasError(false);
+      setLoadingHasTransfer(false);
+      // Same reset the transfer check does, so an "I understand" tick given
+      // for one recipient never carries over to the next.
+      onLoadFinished?.();
+      return;
+    }
     if (!caredAddresses.length || !isValidAddress(toAddress)) {
       riskGetRef.current.requestKey = '';
       if (riskGetRef.current.controller) {
@@ -380,13 +422,17 @@ export const useAddressRisks = (options: {
         setLoadingHasTransfer(false);
       }
     })();
-  }, [toAddress, caredAddresses, onLoadFinished, wallet]);
+  }, [toAddress, caredAddresses, onLoadFinished, wallet, isRedbelly]);
 
   return {
     risks,
     addressDesc,
     hasNoSent,
-    loading: loadingHasTransfer || loadingAddrDesc,
+    loading:
+      loadingHasTransfer ||
+      loadingAddrDesc ||
+      // A verdict still in flight must not let the user submit unwarned.
+      (isRedbelly && isValidAddress(toAddress) && redbellyVerdict === null),
     loadingAddrDesc,
     loadingHasTransfer,
     hasNotRisk:
