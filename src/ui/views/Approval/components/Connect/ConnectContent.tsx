@@ -236,6 +236,11 @@ export const ConnectContent = (
   const [nonce, setNonce] = useState(0);
   const { rules, userData, executeEngine } = useSecurityEngine(nonce);
   const [engineResults, setEngineResults] = useState<Result[]>([]);
+  // Redbelly-only skips DeBank's site lookups, so the community-list and
+  // popularity rules would judge every site on empty data ("Low", "Listed by
+  // None") and demand an override on every connect. Only the user's own
+  // mark/blocklist rule has real input.
+  const isRuleShown = (id: string) => !REDBELLY_ONLY || id === '1006';
   const [collectList, setCollectList] = useState<
     { name: string; logo_url: string }[]
   >([]);
@@ -484,7 +489,9 @@ export const ConnectContent = (
         popularLevel: originPopularLevel!,
       },
     };
-    const results = await executeEngine(ctx);
+    const results = (await executeEngine(ctx)).filter((item) =>
+      isRuleShown(item.id)
+    );
     setIsLoading(false);
     setEngineResults(results);
   };
@@ -584,7 +591,9 @@ export const ConnectContent = (
         popularLevel: level,
       },
     };
-    const results = await executeEngine(ctx);
+    const results = (await executeEngine(ctx)).filter((item) =>
+      isRuleShown(item.id)
+    );
 
     setEngineResults(results);
     if (site) {
@@ -721,7 +730,7 @@ export const ConnectContent = (
               <p className="connect-origin">{origin}</p>
             </div>
             <div className="rule-list">
-              {RuleDesc.map((rule) => {
+              {RuleDesc.filter((rule) => isRuleShown(rule.id)).map((rule) => {
                 if (rule.id === '1006') {
                   return (
                     <RuleResult

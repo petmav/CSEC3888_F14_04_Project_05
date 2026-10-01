@@ -423,8 +423,12 @@ const v1SignTypedDataVlidation = ({
 };
 
 /**
- * Refuse a chain the wallet does not serve (FR4). Returned as 4902, the code
- * dApps already handle for "unrecognised chain", so they fail gracefully.
+ * Refuse a chain the wallet does not serve (FR4).
+ *
+ * Returned as EIP-1193's 4901, "not connected to the requested chain". 4902
+ * would read more naturally, but the page provider serialises errors with
+ * eth-rpc-errors, which only passes through codes it knows and turns 4902
+ * into -32603; 4901 reaches the dApp intact.
  *
  * @param chainId - The requested chain id.
  */
@@ -432,8 +436,7 @@ const assertChainAllowed = (chainId: unknown) => {
   const id =
     typeof chainId === 'number' ? chainId : Number(new BigNumber(`${chainId}`));
   if (!isChainAllowed(id)) {
-    throw ethErrors.provider.custom({
-      code: 4902,
+    throw ethErrors.provider.chainDisconnected({
       message: `Chain ${chainId} is not supported. This wallet only connects to Redbelly Network (151 Mainnet, 153 Testnet).`,
     });
   }

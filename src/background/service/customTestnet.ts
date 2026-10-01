@@ -210,6 +210,14 @@ class CustomTestnetService {
 
   _update = async (chain: TestnetChainBase, isAdd?: boolean) => {
     chain.id = +chain.id;
+    if (REDBELLY_ONLY && !builtinRedbellyNetwork(chain.id)) {
+      return {
+        error: {
+          key: 'id',
+          message: 'This wallet only supports Redbelly Network',
+        },
+      };
+    }
     const local = findChain({
       id: +chain.id,
     });
