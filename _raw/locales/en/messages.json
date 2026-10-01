@@ -2543,6 +2543,7 @@
         "available": "Available",
         "staked": "Staked",
         "stakedWithRewards": "Staked + rewards",
+        "rotateCurrency": "Change display currency",
         "rewards": "Rewards",
         "withdrawable": "Withdrawable",
         "locked": "Locked",

@@ -10,7 +10,8 @@ import {
 } from '@/constant/redbelly';
 import { REDBELLY_MAINNET } from '@/constant/redbelly-chains';
 import { useWallet } from '@/ui/utils';
-import { formatTokenAmount, formatUsdValue } from '@/ui/utils/number';
+import { formatTokenAmount } from '@/ui/utils/number';
+import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 import { gasUnitsToUsd } from '@/utils/redbelly/fees';
 
 /**
@@ -24,6 +25,7 @@ import { gasUnitsToUsd } from '@/utils/redbelly/fees';
 export const RedbellyPriceBar = () => {
   const { t } = useTranslation();
   const wallet = useWallet();
+  const { format, formatPrice, currencyCode } = useRedbellyCurrency();
 
   const { data } = useRequest(async () => {
     const [rbntUsd, gasList, usdPerGas] = await Promise.all([
@@ -57,9 +59,9 @@ export const RedbellyPriceBar = () => {
           className="w-[20px] h-[20px] rounded-full"
         />
         <span className="text-r-neutral-title1 font-medium">
-          {data?.rbntUsd ? `$${data.rbntUsd.toPrecision(4)}` : '-'}
+          {data?.rbntUsd ? formatPrice(data.rbntUsd) : '-'}
         </span>
-        <span className="text-r-neutral-foot">RBNT</span>
+        <span className="text-r-neutral-foot">RBNT/{currencyCode}</span>
       </div>
       <div className="text-r-neutral-foot">
         {data?.transferRbnt
@@ -67,7 +69,7 @@ export const RedbellyPriceBar = () => {
               amount: formatTokenAmount(data.transferRbnt.toFixed()),
               usd:
                 data.transferUsd !== null
-                  ? ` (${formatUsdValue(data.transferUsd)})`
+                  ? ` (${format(data.transferUsd)})`
                   : '',
             })
           : '-'}

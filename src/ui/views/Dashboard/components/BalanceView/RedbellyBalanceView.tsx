@@ -8,7 +8,8 @@ import type { Account } from '@/background/service/preference';
 import { REDBELLY_MAINNET_CHAIN_ID } from '@/constant/redbelly';
 import { useRedbellyPortfolio } from '@/ui/hooks/useRedbellyPortfolio';
 import { useCommonPopupView } from '@/ui/utils';
-import { formatTokenAmount, formatUsdValue } from '@/ui/utils/number';
+import { formatTokenAmount } from '@/ui/utils/number';
+import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 
 const rbnt = (value: BigNumber) => `${formatTokenAmount(value.toFixed())} RBNT`;
 
@@ -35,6 +36,7 @@ export const RedbellyBalanceView = ({
   const { t } = useTranslation();
   const { activePopup } = useCommonPopupView();
   const portfolio = useRedbellyPortfolio(currentAccount?.address);
+  const { currencyCode, rotation, rotate, format } = useRedbellyCurrency();
 
   const mainnet = portfolio.summaries.find(
     (item) => item.chainId === REDBELLY_MAINNET_CHAIN_ID
@@ -60,14 +62,35 @@ export const RedbellyBalanceView = ({
             <KycChip isRegistered={mainnet?.isRegistered ?? null} />
           </div>
 
-          <div className="text-[32px] leading-[38px] font-bold text-r-neutral-title2 mt-[4px]">
-            {portfolio.totalUsd
-              ? formatUsdValue(portfolio.totalUsd.toFixed())
-              : mainnet?.unavailable
-              ? t('page.dashboard.redbelly.unavailable')
-              : portfolio.mainnetRbnt
-              ? rbnt(portfolio.mainnetRbnt.plus(portfolio.stakedRbnt))
-              : '-'}
+          <div className="flex items-center gap-[8px] mt-[4px]">
+            <div className="text-[32px] leading-[38px] font-bold text-r-neutral-title2">
+              {portfolio.totalUsd
+                ? format(portfolio.totalUsd)
+                : mainnet?.unavailable
+                ? t('page.dashboard.redbelly.unavailable')
+                : portfolio.mainnetRbnt
+                ? rbnt(portfolio.mainnetRbnt.plus(portfolio.stakedRbnt))
+                : '-'}
+            </div>
+            {portfolio.totalUsd && rotation.length > 1 ? (
+              // Tap to cycle the display currency; the same setting as
+              // Settings > Currency, so it applies everywhere.
+              <button
+                type="button"
+                className={clsx(
+                  'text-[12px] font-medium text-r-neutral-title2 border-0 cursor-pointer',
+                  'px-[8px] py-[2px] rounded-[10px] bg-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.25)]'
+                )}
+                title={t('page.dashboard.redbelly.rotateCurrency')}
+                data-testid="redbelly-currency-chip"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  rotate();
+                }}
+              >
+                {currencyCode} ⇄
+              </button>
+            ) : null}
           </div>
 
           <div className="mt-[8px] flex flex-col gap-[2px] text-[13px] text-r-neutral-title2">

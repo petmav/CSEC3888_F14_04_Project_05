@@ -5,7 +5,8 @@ import BigNumber from 'bignumber.js';
 
 import { gasUnitsToUsd } from '@/utils/redbelly/fees';
 import type { Verdict } from '@/utils/redbelly/verdict';
-import { formatTokenAmount, formatUsdValue } from '@/ui/utils/number';
+import { formatTokenAmount } from '@/ui/utils/number';
+import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 import { Card } from '../Card';
 import type { RedbellyTxGate } from './useRedbellyTxGate';
 
@@ -74,6 +75,7 @@ export const RedbellyTxPanel = ({
   gasPrice?: string | number | null;
 }) => {
   const { t } = useTranslation();
+  const { format } = useRedbellyCurrency();
 
   if (!gate.isRedbelly) {
     return null;
@@ -171,7 +173,7 @@ export const RedbellyTxPanel = ({
                 {feeUsd !== null ? (
                   <span className="text-r-neutral-foot">
                     {' '}
-                    (≈{formatUsdValue(feeUsd)})
+                    (≈{format(feeUsd)})
                   </span>
                 ) : null}
               </>

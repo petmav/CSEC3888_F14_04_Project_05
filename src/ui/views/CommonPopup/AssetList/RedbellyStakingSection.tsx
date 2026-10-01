@@ -7,7 +7,8 @@ import { useTranslation } from 'react-i18next';
 import type { RedbellyStakingSummary } from '@/background/service/redbelly';
 import { REDBELLY_STAKING_URL } from '@/constant/redbelly-assets';
 import { openInTab } from '@/ui/utils';
-import { formatTokenAmount, formatUsdValue } from '@/ui/utils/number';
+import { formatTokenAmount } from '@/ui/utils/number';
+import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 
 const rbnt = (wei: string) =>
   `${formatTokenAmount(new BigNumber(wei).div(1e18).toFixed())} RBNT`;
@@ -54,6 +55,7 @@ export const RedbellyStakingSection = ({
   className?: string;
 }) => {
   const { t } = useTranslation();
+  const { format } = useRedbellyCurrency();
 
   if (!positions.length && !unavailable) {
     return null;
@@ -116,7 +118,7 @@ export const RedbellyStakingSection = ({
                     {stakedUsd ? (
                       <span className="text-r-neutral-foot">
                         {' '}
-                        ≈{formatUsdValue(stakedUsd.toFixed())}
+                        ≈{format(stakedUsd)}
                       </span>
                     ) : null}
                   </>
