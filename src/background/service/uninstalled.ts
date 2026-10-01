@@ -3,6 +3,7 @@ import { keyringService, transactionHistoryService } from '.';
 import { KEYRING_CLASS } from '@/constant';
 import browser from 'webextension-polyfill';
 import i18n from './i18n';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 export type UninstalledStore = {
   imported: boolean;
@@ -104,6 +105,10 @@ class Uninstalled {
   };
 
   setUninstalled = async () => {
+    // Redbelly-only: the URL is Rabby's survey and carries usage flags.
+    if (REDBELLY_ONLY) {
+      return;
+    }
     try {
       let search = '';
       if (this.store.imported) {

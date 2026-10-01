@@ -1,3 +1,4 @@
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import {
   stripHexPrefix,
   isValidPrivate,
@@ -2406,10 +2407,17 @@ export class WalletController extends BaseController {
       ) {
         core = true;
       }
-      const data = await openapiService.getTotalBalance(address, core);
+      // Redbelly-only: the account's worth on Redbelly, not DeBank's total
+      // across chains this wallet cannot use.
+      const data = REDBELLY_ONLY
+        ? await redbellyService.getTotalBalance(address)
+        : await openapiService.getTotalBalance(address, core);
       let appChainTotalNetWorth = 0;
       const appChainIds: string[] = [];
       try {
+        if (REDBELLY_ONLY) {
+          throw new Error('No app chains on Redbelly');
+        }
         const { apps } = await openapiService.getAppChainList(address);
         apps?.forEach((app) => {
           app?.portfolio_item_list?.forEach((item) => {

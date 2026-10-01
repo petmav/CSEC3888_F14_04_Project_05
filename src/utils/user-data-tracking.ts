@@ -1,6 +1,7 @@
 import browser from 'webextension-polyfill';
 import eventBus from '@/eventBus';
 import { BROADCAST_TO_UI_EVENTS } from './broadcastToUI';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 export const USER_DATA_TRACKING_OPT_OUT_KEY = 'userDataTrackingOptOut';
 const BACKGROUND_BROADCAST_TO_UI_EVENT = 'broadcastToUI';
@@ -67,6 +68,12 @@ eventBus.addEventListener(BACKGROUND_BROADCAST_TO_UI_EVENT, (payload) => {
 });
 
 export const shouldReportUserBehaviorData = async () => {
+  // Redbelly-only: Rabby's analytics (Matomo, GA4, DeBank stats) report
+  // what users do to Rabby's servers. A KYC-gated network's wallet does not
+  // send its users' behaviour to a third party, whatever the preference.
+  if (REDBELLY_ONLY) {
+    return false;
+  }
   if (cachedShouldReportUserBehaviorData !== undefined) {
     return cachedShouldReportUserBehaviorData;
   }

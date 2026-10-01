@@ -1,5 +1,6 @@
 /* eslint "react-hooks/exhaustive-deps": ["error"] */
 /* eslint-enable react-hooks/exhaustive-deps */
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { matomoRequestEvent } from '@/utils/matomo-request';
 import { Button, DrawerProps, Form, Input, message, Modal, Switch } from 'antd';
 import clsx from 'clsx';
@@ -1644,6 +1645,33 @@ const SettingsInner = ({
 
   const [isShowEcology, setIsShowEcologyModal] = React.useState(false);
 
+  /**
+   * Redbelly-only: entries for Rabby's own services and for chains the
+   * wallet does not serve. Matched by icon because items carry no key.
+   * Analytics is listed because it is now always off (see
+   * utils/user-data-tracking.ts), so the switch would mislead.
+   */
+  const REDBELLY_HIDDEN_ITEMS = new Set<unknown>([
+    RcIconEcosystemCC,
+    RcIconRabbyMobileCC,
+    RcIconSettingsSearchDapps,
+    RcIconPerps,
+    RcIconDataAnalysisCC,
+    RcIconCustomTestnet,
+    RcIconCustomRPC,
+    RcIconFeedback,
+    RcIconSettingsAboutSupporetedChains,
+    RcIconSettingsAboutFollowUs,
+  ]);
+  const visibleGroups = Object.values(renderData)
+    .map((group) => ({
+      ...group,
+      items: (group.items as SettingItem[]).filter(
+        (item) => !REDBELLY_ONLY || !REDBELLY_HIDDEN_ITEMS.has(item.leftIcon)
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
     <div className="popup-settings">
       <div
@@ -1654,9 +1682,11 @@ const SettingsInner = ({
         <div className={clsx('content')}>
           {/* <ClaimRabbyBadge onClick={onOpenBadgeModal} /> */}
 
-          <RateModalTriggerOnSettings className="mb-[16px]" />
+          {REDBELLY_ONLY ? null : (
+            <RateModalTriggerOnSettings className="mb-[16px]" />
+          )}
 
-          {Object.values(renderData).map((group, idxl1) => {
+          {visibleGroups.map((group, idxl1) => {
             return (
               <div key={`g-${idxl1}`} className="setting-block">
                 <div className="setting-title">{group.label}</div>

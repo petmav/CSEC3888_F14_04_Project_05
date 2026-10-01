@@ -1,4 +1,5 @@
 import { SWAP_SUPPORT_CHAINS } from '@/constant';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { useRabbySelector } from '@/ui/store';
 import { findChainByEnum } from '@/utils/chain';
 import { CHAINS_ENUM } from '@debank/common';
@@ -27,12 +28,18 @@ const fetchSwapDapps = async () => {
   return data;
 };
 
-const swapDapps = pRetry(fetchSwapDapps, {
-  retries: 2,
-});
-const bridgeDapps = pRetry(fetchBridgeDapps, {
-  retries: 2,
-});
+// Fetched eagerly at import. Redbelly-only: these list DeBank-chain swap and
+// bridge dApps, none of which the wallet can use.
+const swapDapps = REDBELLY_ONLY
+  ? Promise.resolve([] as SwapBridgeDapps[])
+  : pRetry(fetchSwapDapps, {
+      retries: 2,
+    });
+const bridgeDapps = REDBELLY_ONLY
+  ? Promise.resolve([] as SwapBridgeDapps[])
+  : pRetry(fetchBridgeDapps, {
+      retries: 2,
+    });
 
 export const useExternalSwapBridgeDapps = (
   chain: CHAINS_ENUM | CHAINS_ENUM[],

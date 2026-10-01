@@ -13,6 +13,7 @@ import {
   USD_PEGGED_TOKENS,
 } from '@/constant/redbelly-assets';
 import { useWallet } from '@/ui/utils';
+import { portfolioUsd } from '@/utils/redbelly/portfolio';
 
 export type RedbellyPortfolio = {
   loading: boolean;
@@ -100,11 +101,13 @@ export function useRedbellyPortfolio(
       const stable = tokens
         .filter((token) => USD_PEGGED_TOKENS.has(token.id.toLowerCase()))
         .reduce((sum, token) => sum.plus(token.amount), new BigNumber(0));
-      totalUsd = mainnetRbnt
-        .plus(stakedRbnt)
-        .plus(wrapped)
-        .times(rbntUsd)
-        .plus(stable);
+      totalUsd = portfolioUsd({
+        rbnt: mainnetRbnt,
+        staked: stakedRbnt,
+        wrappedRbnt: wrapped,
+        stablecoins: stable,
+        rbntUsd,
+      });
     }
 
     return {

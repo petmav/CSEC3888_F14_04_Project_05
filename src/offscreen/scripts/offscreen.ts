@@ -1,3 +1,6 @@
+// Must stay the first import: installs the Redbelly-only network guard
+// before any other module can open a connection.
+import '@/utils/redbelly/networkGuard';
 import { initBitBox02 } from './bitbox02';
 import { initImKey } from './imkey';
 import initLattice from './lattice';

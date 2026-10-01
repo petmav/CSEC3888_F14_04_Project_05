@@ -9,8 +9,11 @@ import {
   sanitizeSentryBreadcrumbUrl,
   shouldIgnoreSentryError,
 } from '@/utils/sentry';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 export const getSentryConfig = (): BrowserOptions => ({
+  // Redbelly-only: error reports would go to Rabby's Sentry project.
+  enabled: !REDBELLY_ONLY,
   dsn: process.env.RABBY_SENTRY_DSN,
   release: process.env.release,
   environment: getSentryEnv(),

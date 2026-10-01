@@ -1,3 +1,6 @@
+// Must stay the first import: installs the Redbelly-only network guard
+// before any other module can open a connection.
+import '@/utils/redbelly/networkGuard';
 import browser from 'webextension-polyfill';
 
 import './style/tailwind.css';

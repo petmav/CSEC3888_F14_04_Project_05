@@ -77,6 +77,37 @@ when unknown:
 | Stake | Reddex RBNT pools: `userInfo`, `getReward`, `getAvailalbeUnstakeAmount`, `getStakeUnlockTimes`, APR from `getCurrentAllocPoint` |
 | Activity | Routescan explorer API (Mainnet); this wallet's own sends (Testnet) |
 
+**Display currency.** Every Redbelly value - home total, RBNT price, fees,
+token rows, stake - is shown in the user's chosen currency. Tap the currency
+chip on the home card to cycle USD, AUD, EUR, GBP, SGD, JPY; Settings >
+Currency has the full list. It is Rabby's own currency setting, so both are
+the same switch. Prices are in US dollars on chain; conversion uses Rabby's
+currency rate list.
+
+**Account totals.** The account switcher and address list use the same
+Redbelly total as the home card (`utils/redbelly/portfolio.ts`) instead of
+DeBank's cross-chain figure.
+
+## Privacy
+
+A KYC-gated network's wallet should not tell third parties who its users
+are or what they do. In the Redbelly-only build:
+
+- Rabby's analytics (Matomo, GA4, DeBank stats) are off regardless of the
+  preference, the Matomo page-view script is removed from every page, and
+  Sentry is disabled.
+- A network guard (`utils/redbelly/networkGuard.ts`, imported first in the
+  background, UI and offscreen entry points) refuses `fetch`, XHR and beacon
+  requests to DeBank, Rabby, Hyperliquid, Google Analytics and Sentry. Every
+  call site upstream adds later is covered without changes. The single
+  exception is the currency rate list, which carries no user data.
+- The hourly DeBank chain sync, default-RPC sync, CEX labelling, uninstall
+  survey URL and Perps connections do not start.
+
+Verified by recording every request the extension made through onboarding,
+home, assets, connect, signing, history and settings: the only third-party
+data requests were Redbelly's RPC, Routescan and the currency list.
+
 ## Contracts and endpoints
 
 | | Mainnet (151) | Testnet (153) |
@@ -137,10 +168,11 @@ Redbelly unit tests; project typecheck clean.
   Before a demo, send RBNT and a token from a funded, KYC-registered
   Testnet account, then a Mainnet one.
 - Hardware wallets, Safe and WalletConnect signing are untested.
-- Rabby's own telemetry (Matomo, GA4, Sentry) and its hourly chain-list sync
-  from `static.debank.com` are still on. The account switcher and address
-  list still show DeBank's USD totals.
-- Settings still lists Rabby features (points, mobile sync, and so on).
+- Images still load from DeBank's CDN in a few places (currency flags in
+  Settings > Currency, some token logos). They carry no user data, but they
+  do reveal the user's IP address to the CDN. Bundling them would close it.
+- Rabby's Send screen and token detail pages show USD regardless of the
+  display currency, as upstream Rabby does.
 - Staking is read-only; stake, unstake and claim happen on Reddex through
   the normal signing screen.
 - Testnet activity shows only what this wallet sent: Routescan's Testnet API

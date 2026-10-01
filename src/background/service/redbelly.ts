@@ -29,9 +29,15 @@ import { verdictFor } from '@/utils/redbelly/verdict';
 import type { AddressFacts, Verdict } from '@/utils/redbelly/verdict';
 import { withTimeout } from 'background/utils';
 import {
+  RBNT_PEGGED_TOKENS,
+  REDBELLY_DEFAULT_TOKENS,
   REDBELLY_EXPLORER_API,
   REDBELLY_STAKING_POOLS,
+  USD_PEGGED_TOKENS,
 } from '@/constant/redbelly-assets';
+import BigNumber from 'bignumber.js';
+import { encodeAddressArgument } from '@/utils/redbelly/abi';
+import { portfolioUsd } from '@/utils/redbelly/portfolio';
 import type { RedbellyTokenInfo } from '@/constant/redbelly-assets';
 import { readRbntUsdPrice } from '@/utils/redbelly/price';
 import { readStakingPosition } from '@/utils/redbelly/staking';
@@ -535,6 +541,98 @@ class RedbellyService {
       console.error('[redbelly] activity read failed', error);
       return null;
     }
+  };
+
+  /**
+   * Balances of the priced Mainnet tokens (wrapped RBNT, dollar
+   * stablecoins), in whole tokens.
+   *
+   * @param address - The holder.
+   * @returns Totals per kind.
+   * @throws If any balance cannot be read.
+   */
+  private getPricedTokenBalances = async (address: string) => {
+    const request = this.transport(REDBELLY_MAINNET_CHAIN_ID);
+    const tokens = (REDBELLY_DEFAULT_TOKENS[REDBELLY_MAINNET_CHAIN_ID] || [])
+      .map((token) => ({ ...token, address: token.address.toLowerCase() }))
+      .filter(
+        (token) =>
+          RBNT_PEGGED_TOKENS.has(token.address) ||
+          USD_PEGGED_TOKENS.has(token.address)
+      );
+    const balances = await Promise.all(
+      tokens.map(async (token) => {
+        const raw = await request({
+          method: 'eth_call',
+          params: [
+            {
+              to: token.address,
+              // balanceOf(address)
+              data: `0x70a08231${encodeAddressArgument(address)}`,
+            },
+            'latest',
+          ],
+        });
+        if (typeof raw !== 'string') {
+          throw new Error(`Unexpected balanceOf result: ${String(raw)}`);
+        }
+        return {
+          token,
+          amount: new BigNumber(raw === '0x' ? 0 : raw).div(
+            new BigNumber(10).pow(token.decimals)
+          ),
+        };
+      })
+    );
+    const sum = (set: Set<string>) =>
+      balances
+        .filter((item) => set.has(item.token.address))
+        .reduce((total, item) => total.plus(item.amount), new BigNumber(0));
+    return {
+      wrappedRbnt: sum(RBNT_PEGGED_TOKENS),
+      stablecoins: sum(USD_PEGGED_TOKENS),
+    };
+  };
+
+  /**
+   * An account's Mainnet holdings in US dollars, in the shape Rabby's
+   * balance cache expects (FR2).
+   *
+   * Used in place of DeBank's total for every account-level balance - the
+   * account switcher, the address list - so they show what the account
+   * holds on Redbelly rather than a total from chains this wallet cannot
+   * use.
+   *
+   * @param address - The account.
+   * @returns The total, with no per-chain breakdown.
+   * @throws If any part cannot be read. A partial total would understate
+   * the account, so the caller keeps its last good value instead.
+   */
+  getTotalBalance = async (
+    address: string
+  ): Promise<{ total_usd_value: number; chain_list: [] }> => {
+    const [balanceWei, rbntUsd, staking, tokens] = await Promise.all([
+      this.getBalance(REDBELLY_MAINNET_CHAIN_ID, address),
+      this.getRbntUsdPrice(),
+      this.getStakingPositions(address),
+      withTimeout(this.getPricedTokenBalances(address), RPC_TIMEOUT),
+    ]);
+    if (balanceWei === null || rbntUsd === null || staking.unavailable) {
+      throw new Error('Redbelly balance unavailable');
+    }
+    const staked = staking.positions.reduce(
+      (total, item) =>
+        total.plus(new BigNumber(item.staked).plus(item.rewards).div(1e18)),
+      new BigNumber(0)
+    );
+    const total = portfolioUsd({
+      rbnt: new BigNumber(balanceWei).div(1e18),
+      staked,
+      wrappedRbnt: tokens.wrappedRbnt,
+      stablecoins: tokens.stablecoins,
+      rbntUsd,
+    });
+    return { total_usd_value: total.toNumber(), chain_list: [] };
   };
 
   /** Drop every cache. Used when the Redbelly RPC endpoint changes. */

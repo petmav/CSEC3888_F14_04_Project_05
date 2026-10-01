@@ -7,6 +7,7 @@ import { keyringService, openapiService, whitelistService } from '.';
 import { KEYRING_CLASS } from '@/constant';
 import PQueue from 'p-queue';
 import { z } from 'zod';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 const queue = new PQueue({
   concurrency: 8,
@@ -159,6 +160,11 @@ class ContactBook {
   };
 
   detectWhiteListCex = async () => {
+    // Redbelly-only: this sends every whitelisted address to DeBank to label
+    // exchanges - none of which are on Redbelly.
+    if (REDBELLY_ONLY) {
+      return;
+    }
     try {
       const whitelistEnabled = whitelistService.isWhitelistEnabled();
       if (!whitelistEnabled) return;
