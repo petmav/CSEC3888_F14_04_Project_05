@@ -6703,6 +6703,9 @@ export class WalletController extends BaseController {
   getRedbellyUsdPerGas = redbellyService.getUsdPerGas;
   getRedbellyBalance = redbellyService.getBalance;
   getRedbellyAccountSummaries = redbellyService.getAccountSummaries;
+  getRedbellyRbntUsdPrice = redbellyService.getRbntUsdPrice;
+  getRedbellyStakingPositions = redbellyService.getStakingPositions;
+  getRedbellyActivity = redbellyService.getActivity;
   clearRedbellyCaches = redbellyService.clearCaches;
 
   hasPrivateKeyInWallet = async (address: string) => {

@@ -12,13 +12,25 @@
 export const REDBELLY_MAINNET_CHAIN_ID = 151;
 export const REDBELLY_TESTNET_CHAIN_ID = 153;
 
-/** `serverId` values. Redbelly is not a DeBank chain, so these are ours. */
-export const REDBELLY_MAINNET_SERVER_ID = 'redbelly';
-export const REDBELLY_TESTNET_SERVER_ID = 'redbelly-testnet';
+/**
+ * `serverId` values. Redbelly is registered as a built-in custom network (see
+ * `redbelly-chains.ts`), and Rabby derives a custom network's ids from its
+ * chain id, so these must match `createTestnetChain` exactly.
+ */
+export const REDBELLY_MAINNET_SERVER_ID = `custom_${REDBELLY_MAINNET_CHAIN_ID}`;
+export const REDBELLY_TESTNET_SERVER_ID = `custom_${REDBELLY_TESTNET_CHAIN_ID}`;
 
-/** `CHAINS_ENUM` keys. Also ours; `@debank/common` has no Redbelly entry. */
-export const REDBELLY_MAINNET_ENUM = 'REDBELLY';
-export const REDBELLY_TESTNET_ENUM = 'REDBELLY_TESTNET';
+/** `CHAINS_ENUM` keys, derived the same way. */
+export const REDBELLY_MAINNET_ENUM = `CUSTOM_${REDBELLY_MAINNET_CHAIN_ID}`;
+export const REDBELLY_TESTNET_ENUM = `CUSTOM_${REDBELLY_TESTNET_CHAIN_ID}`;
+
+/**
+ * The wallet only talks to Redbelly (FR4). Every other chain is kept in the
+ * internal chain store, because large parts of Rabby look Ethereum up by
+ * enum, but is hidden from every chain picker and refused at the dApp
+ * provider. Flip this to re-enable the rest of Rabby's networks.
+ */
+export const REDBELLY_ONLY = true;
 
 /**
  * Public RPC endpoints, by chain ID.
@@ -37,11 +49,8 @@ export const REDBELLY_NETWORK_NAMES: Record<number, string> = {
 };
 
 /**
- * Block explorer bases, by chain ID.
- *
- * UNVERIFIED - these were not carried over from the Snap, which never needed
- * them, and no project document records them. Confirm both against a real
- * transaction before any demo; a wrong explorer link is a visible bug.
+ * Block explorer bases, by chain ID. Routescan is Redbelly's explorer; Reddex
+ * links its pool contracts to the mainnet host.
  */
 export const REDBELLY_EXPLORER_HOSTS: Record<number, string> = {
   [REDBELLY_MAINNET_CHAIN_ID]: 'https://redbelly.routescan.io',
@@ -69,6 +78,26 @@ export const PERMISSION_KEY = 'permission';
 
 /** Registry key for the gas fee contract. */
 export const GAS_FEE_KEY = 'gasfees';
+
+/** Registry key for the RBNT/USD price feed. */
+export const PRICE_FEED_KEY = 'pricefeed';
+
+/** `decimals()` on the price feed. */
+export const SELECTOR_DECIMALS = '0x313ce567';
+
+/**
+ * `getLatestPrice()` on the price feed: `(int256 price, uint256 updatedAt,
+ * bool)`. Recovered from the access dApp, which reads it the same way to
+ * value RBNT; the third field is not used there either.
+ */
+export const SELECTOR_GET_LATEST_PRICE = '0x8e15f473';
+
+/**
+ * How old a price may be before we stop showing dollar values. The feed is
+ * updated every few minutes; a day-old price is a broken oracle, and no
+ * dollar figure beats a wrong one (US7).
+ */
+export const PRICE_MAX_AGE_SECONDS = 24 * 60 * 60;
 
 /**
  * Gas units in a base transaction. Redbelly quotes its gas fee as the price of

@@ -46,9 +46,6 @@ import {
   ALIAS_ADDRESS,
 } from 'consts';
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { useShallow } from 'zustand/react/shallow';
-import { useRedbellyStore } from '@/ui/state/redbelly';
-import { blocksSigning } from '@/utils/redbelly/verdict';
 import { matomoRequestEvent } from '@/utils/matomo-request';
 import { useTranslation, Trans } from 'react-i18next';
 import { useScroll } from 'react-use';
@@ -462,17 +459,6 @@ const SignTx = ({
   const actionData = preparedActions?.actions[0]?.data || {};
   const actionRequireData = preparedActions?.actions[0]?.requireData || null;
   const { t } = useTranslation();
-
-  // Redbelly recipient gate (US12 / FR7). The check is kicked off here as well
-  // as inside the panel component so the sign button is gated even if the
-  // panel never mounts; the store de-duplicates by recipient.
-  const redbellyRecipient = useRedbellyStore(
-    useShallow((s) => s.currentTx.recipient)
-  );
-  const redbellyCheckRecipient = useRedbellyStore((s) => s.checkRecipient);
-  const redbellyResetCurrentTx = useRedbellyStore((s) => s.resetCurrentTx);
-  const redbellyRecipientAddress =
-    (actionData as ParsedTransactionActionData)?.send?.to || null;
   const [preprocessSuccess, setPreprocessSuccess] = useState(true);
   const [chainId, setChainId] = useState<number>(
     params.data[0].chainId && Number(params.data[0].chainId)
@@ -482,32 +468,6 @@ const SignTx = ({
       id: chainId,
     })
   );
-
-  useEffect(() => {
-    redbellyCheckRecipient(chain?.id, redbellyRecipientAddress);
-  }, [redbellyCheckRecipient, chain?.id, redbellyRecipientAddress]);
-
-  // Drop the verdict when this confirmation goes away, so the next one cannot
-  // inherit it. An address can be registered between two confirmations, and a
-  // stale NOT_REGISTERED would block a legitimate send.
-  useEffect(() => redbellyResetCurrentTx, [redbellyResetCurrentTx]);
-
-  /**
-   * US12 / FR7: refuse to sign to a confirmed unregistered recipient - the one
-   * thing the Snap could not do. Only a verdict for *this* recipient counts,
-   * and UNKNOWN never blocks (see `blocksSigning`).
-   */
-  const redbellyBlocked = useMemo(() => {
-    if (!redbellyRecipientAddress || !redbellyRecipient.verdict) {
-      return false;
-    }
-    const isCurrent =
-      redbellyRecipient.chainId === Number(chain?.id) &&
-      redbellyRecipient.address?.toLowerCase() ===
-        redbellyRecipientAddress.toLowerCase();
-    return isCurrent && blocksSigning(redbellyRecipient.verdict);
-  }, [redbellyRecipient, redbellyRecipientAddress, chain?.id]);
-
   const [inited, setInited] = useState(false);
   const [isHardware, setIsHardware] = useState(false);
   const [manuallyChangeGasLimit, setManuallyChangeGasLimit] = useState(false);
@@ -3000,21 +2960,15 @@ const SignTx = ({
               securityBlocked={securityBlocked}
               onSubmit={runHandleGnosisSign}
               enableTooltip={
-                redbellyBlocked ||
                 currentGnosisAdmin?.type === KEYRING_TYPE.WatchAddressKeyring
               }
               tooltipContent={
-                redbellyBlocked ? (
-                  <div>{t('page.signTx.redbelly.blockedReason')}</div>
-                ) : currentGnosisAdmin?.type ===
-                  KEYRING_TYPE.WatchAddressKeyring ? (
+                currentGnosisAdmin?.type ===
+                KEYRING_TYPE.WatchAddressKeyring ? (
                   <div>{t('page.signTx.canOnlyUseImportedAddress')}</div>
                 ) : null
               }
-              // The Safe co-signing drawer is a second route to a signature,
-              // so it has to honour the same refusal (FR7).
               disabledProcess={
-                redbellyBlocked ||
                 currentGnosisAdmin?.type === KEYRING_TYPE.WatchAddressKeyring
               }
               isSubmitting={isSubmittingGnosis}
@@ -3165,24 +3119,18 @@ const SignTx = ({
               // 3001 use gasless tip
               checkErrors && checkErrors?.[0]?.code === 3001
                 ? false
-                : redbellyBlocked ||
-                  !canProcess ||
+                : !canProcess ||
                   !!checkErrors.find((item) => item.level === 'forbidden')
             }
             tooltipContent={
               checkErrors && checkErrors?.[0]?.code === 3001
                 ? undefined
-                : // Stated before other reasons: an unregistered recipient is
-                // the one failure the user can still fix by changing address.
-                redbellyBlocked
-                ? t('page.signTx.redbelly.blockedReason')
                 : checkErrors.find((item) => item.level === 'forbidden')
                 ? checkErrors.find((item) => item.level === 'forbidden')!.msg
                 : cantProcessReason
             }
             disabledProcess={
               !isReady ||
-              redbellyBlocked ||
               (selectedGas ? selectedGas.price < 0 : true) ||
               (isGnosisAccount ? !safeInfo : false) ||
               (isCoboArugsAccount ? !coboArgusInfo : false) ||

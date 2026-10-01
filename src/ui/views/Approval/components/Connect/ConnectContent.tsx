@@ -1,4 +1,6 @@
 import { ConnectedSite } from '@/background/service/permission';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
+import { DEFAULT_SITE_CHAIN_ENUM } from '@/utils/redbelly/allowlist';
 import i18n from '@/i18n';
 import { ReactComponent as ArrowDownSVG } from '@/ui/assets/approval/arrow-down-blue.svg';
 import { findChain } from '@/utils/chain';
@@ -225,7 +227,9 @@ export const ConnectContent = (
   const [, resolveApproval, rejectApproval] = useApproval();
   const { t } = useTranslation();
   const wallet = useWallet();
-  const [defaultChain, setDefaultChain] = useState(CHAINS_ENUM.ETH);
+  const [defaultChain, setDefaultChain] = useState<CHAINS_ENUM>(
+    REDBELLY_ONLY ? (DEFAULT_SITE_CHAIN_ENUM as CHAINS_ENUM) : CHAINS_ENUM.ETH
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [listDrawerVisible, setListDrawerVisible] = useState(false);
   const [processedRules, setProcessedRules] = useState<string[]>([]);
@@ -496,7 +500,9 @@ export const ConnectContent = (
     }
     let level: 'very_low' | 'low' | 'medium' | 'high' = 'low';
     let collectList: { name: string; logo_url: string }[] = [];
-    let defaultChain = CHAINS_ENUM.ETH;
+    let defaultChain = REDBELLY_ONLY
+      ? (DEFAULT_SITE_CHAIN_ENUM as CHAINS_ENUM)
+      : CHAINS_ENUM.ETH;
     let isShowTestnet = false;
     const queue = new PQueue();
     const waitQueueFinished = (q: PQueue) => {
@@ -506,7 +512,14 @@ export const ConnectContent = (
         });
       });
     };
+    // The three lookups below send the site, and the third the user's
+    // address, to DeBank. A Redbelly-only build has no use for their
+    // answers - the recommended chain can only be Redbelly - so it does not
+    // ask.
     queue.add(async () => {
+      if (REDBELLY_ONLY) {
+        return;
+      }
       try {
         const result = await wallet.openapi.getOriginPopularityLevel(origin);
         level = result.level;
@@ -515,6 +528,9 @@ export const ConnectContent = (
       }
     });
     queue.add(async () => {
+      if (REDBELLY_ONLY) {
+        return;
+      }
       try {
         const {
           collect_list,
@@ -525,6 +541,9 @@ export const ConnectContent = (
       }
     });
     queue.add(async () => {
+      if (REDBELLY_ONLY) {
+        return;
+      }
       try {
         if (selectedAccount) {
           const recommendChains = await wallet.openapi.getRecommendChains(

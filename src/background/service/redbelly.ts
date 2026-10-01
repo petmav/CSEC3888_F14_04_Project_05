@@ -28,6 +28,14 @@ import type { EthereumRequest } from '@/utils/redbelly/reader';
 import { verdictFor } from '@/utils/redbelly/verdict';
 import type { AddressFacts, Verdict } from '@/utils/redbelly/verdict';
 import { withTimeout } from 'background/utils';
+import {
+  REDBELLY_EXPLORER_API,
+  REDBELLY_STAKING_POOLS,
+} from '@/constant/redbelly-assets';
+import type { RedbellyTokenInfo } from '@/constant/redbelly-assets';
+import { readRbntUsdPrice } from '@/utils/redbelly/price';
+import { readStakingPosition } from '@/utils/redbelly/staking';
+import type { StakingPosition } from '@/utils/redbelly/staking';
 
 /**
  * Per-call ceiling, in milliseconds.
@@ -52,6 +60,37 @@ const GAS_PEG_TTL = 60_000;
 
 type CachedPeg = { usdPerGas: number; readAt: number };
 
+/** How long a price or token discovery result stays fresh, in milliseconds. */
+const PRICE_TTL = 60_000;
+const DISCOVERY_TTL = 5 * 60_000;
+
+/** One line of on-chain activity, from the block explorer. */
+export type RedbellyActivityItem = {
+  hash: string;
+  timestamp: number;
+  from: string;
+  to: string;
+  kind: 'native' | 'token';
+  /** Raw amount, as a decimal string in the token's smallest unit. */
+  value: string;
+  symbol: string;
+  decimals: number;
+  failed: boolean;
+  /** The called function's name, when the explorer knows it. */
+  method: string;
+};
+
+/** A staking position as sent to the UI: amounts as decimal wei strings. */
+export type RedbellyStakingSummary = {
+  pool: StakingPosition['pool'];
+  staked: string;
+  rewards: string;
+  withdrawable: string;
+  locked: string;
+  nextUnlock: { amount: string; timestamp: number } | null;
+  aprPercent: number;
+};
+
 /** A description of an account on one Redbelly network, for the home page. */
 export type RedbellyAccountSummary = {
   chainId: number;
@@ -69,6 +108,13 @@ export type RedbellyAccountSummary = {
 
 class RedbellyService {
   private gasPegCache = new Map<number, CachedPeg>();
+
+  private priceCache: { usd: number; readAt: number } | null = null;
+
+  private discoveryCache = new Map<
+    string,
+    { tokens: RedbellyTokenInfo[]; readAt: number }
+  >();
 
   /**
    * A JSON-RPC transport bound to one Redbelly network.
@@ -268,8 +314,233 @@ class RedbellyService {
     );
   };
 
+  /**
+   * US dollars per RBNT, from Redbelly's on-chain price feed (FR2).
+   *
+   * Always Mainnet's feed: Testnet RBNT is worthless, so the UI applies this
+   * to Mainnet holdings only and to fees, never to Testnet balances.
+   *
+   * @returns The price, or `null` if it could not be read or is stale. A
+   * missing price means no dollar figure, never $0 (US7).
+   */
+  getRbntUsdPrice = async (): Promise<number | null> => {
+    if (this.priceCache && Date.now() - this.priceCache.readAt < PRICE_TTL) {
+      return this.priceCache.usd;
+    }
+    try {
+      const usd = await withTimeout(
+        readRbntUsdPrice(
+          this.transport(REDBELLY_MAINNET_CHAIN_ID),
+          REDBELLY_MAINNET_CHAIN_ID
+        ),
+        RPC_TIMEOUT
+      );
+      this.priceCache = { usd, readAt: Date.now() };
+      return usd;
+    } catch (error) {
+      console.error('[redbelly] price read failed', error);
+      return null;
+    }
+  };
+
+  /**
+   * An account's positions in the RBNT staking pools (US13).
+   *
+   * @param address - The staker.
+   * @returns Positions with a non-zero stake or reward, and whether any pool
+   * could not be read. A pool that fails to answer is reported, never
+   * silently dropped: a missing stake looks exactly like a lost one.
+   */
+  getStakingPositions = async (
+    address: string
+  ): Promise<{ positions: RedbellyStakingSummary[]; unavailable: boolean }> => {
+    if (!address) {
+      return { positions: [], unavailable: false };
+    }
+    const results = await Promise.all(
+      REDBELLY_STAKING_POOLS.map((pool) =>
+        withTimeout(
+          readStakingPosition(this.transport(pool.chainId), pool, address),
+          RPC_TIMEOUT
+        ).catch((error) => {
+          console.error('[redbelly] staking read failed', pool.address, error);
+          return null;
+        })
+      )
+    );
+    const positions = results
+      .filter((item): item is StakingPosition => !!item)
+      .filter((item) => item.staked > 0n || item.rewards > 0n)
+      .map((item) => ({
+        pool: item.pool,
+        staked: item.staked.toString(),
+        rewards: item.rewards.toString(),
+        withdrawable: item.withdrawable.toString(),
+        locked: item.locked.toString(),
+        nextUnlock: item.nextUnlock
+          ? {
+              amount: item.nextUnlock.amount.toString(),
+              timestamp: item.nextUnlock.timestamp,
+            }
+          : null,
+        aprPercent: item.aprPercent,
+      }));
+    return { positions, unavailable: results.some((item) => item === null) };
+  };
+
+  /**
+   * ERC-20s an address holds, according to Redbelly's block explorer.
+   *
+   * Best effort: this is how tokens outside the default list (Buffy's DONO,
+   * FeTi70 and WBIOME, say) appear without being added by hand. Any failure
+   * returns an empty list and the default list still shows.
+   *
+   * @param chainId - The numeric chain id.
+   * @param address - The holder.
+   * @returns The tokens held.
+   */
+  discoverTokens = async (
+    chainId: number,
+    address: string
+  ): Promise<RedbellyTokenInfo[]> => {
+    const api = REDBELLY_EXPLORER_API[chainId];
+    if (!api || !address) {
+      return [];
+    }
+    const key = `${chainId}:${address.toLowerCase()}`;
+    const cached = this.discoveryCache.get(key);
+    if (cached && Date.now() - cached.readAt < DISCOVERY_TTL) {
+      return cached.tokens;
+    }
+    try {
+      const response = await withTimeout(
+        fetch(`${api}/address/${address}/erc20-holdings?limit=100`),
+        RPC_TIMEOUT
+      );
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const payload = (await response.json()) as {
+        items?: {
+          tokenAddress?: string;
+          tokenSymbol?: string;
+          tokenName?: string;
+          tokenDecimals?: number;
+        }[];
+      };
+      const tokens = (payload.items || [])
+        .filter(
+          (item) =>
+            typeof item.tokenAddress === 'string' &&
+            /^0x[0-9a-fA-F]{40}$/.test(item.tokenAddress) &&
+            typeof item.tokenDecimals === 'number' &&
+            item.tokenDecimals >= 0 &&
+            item.tokenDecimals <= 36
+        )
+        .map((item) => ({
+          address: item.tokenAddress!.toLowerCase(),
+          symbol: (item.tokenSymbol || '???').slice(0, 24),
+          name: (item.tokenName || '').slice(0, 64),
+          decimals: item.tokenDecimals!,
+        }));
+      this.discoveryCache.set(key, { tokens, readAt: Date.now() });
+      return tokens;
+    } catch (error) {
+      console.error('[redbelly] token discovery failed', error);
+      return [];
+    }
+  };
+
+  /**
+   * An address's recent Mainnet activity, incoming included (FR2).
+   *
+   * Rabby's own history comes from DeBank, which shows nothing for Redbelly -
+   * and for an address used elsewhere, other chains' activity (scam airdrops
+   * included) in a wallet that cannot touch them. A node cannot list an
+   * address's history, so this asks Redbelly's block explorer.
+   *
+   * @param address - The account.
+   * @returns Up to 50 native and 50 token movements, newest first, or
+   * `null` if the explorer could not be reached - shown as unavailable, not
+   * as "no activity".
+   */
+  getActivity = async (
+    address: string
+  ): Promise<RedbellyActivityItem[] | null> => {
+    const api = REDBELLY_EXPLORER_API[REDBELLY_MAINNET_CHAIN_ID];
+    if (!api || !address) {
+      return [];
+    }
+    const query = (action: string) =>
+      withTimeout(
+        fetch(
+          `${api}/etherscan/api?module=account&action=${action}&address=${address}&page=1&offset=50&sort=desc`
+        ).then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          return response.json() as Promise<{
+            status?: string;
+            message?: string;
+            result?: Record<string, string>[] | string;
+          }>;
+        }),
+        RPC_TIMEOUT
+      );
+    try {
+      const [native, tokens] = await Promise.all([
+        query('txlist'),
+        query('tokentx'),
+      ]);
+      // "No transactions found" comes back as status 0 with an empty list.
+      const rows = (payload: typeof native) =>
+        Array.isArray(payload.result) ? payload.result : [];
+      const tokenRows = rows(tokens).map(
+        (row): RedbellyActivityItem => ({
+          hash: row.hash,
+          timestamp: Number(row.timeStamp),
+          from: (row.from || '').toLowerCase(),
+          to: (row.to || '').toLowerCase(),
+          kind: 'token',
+          value: row.value || '0',
+          symbol: (row.tokenSymbol || '???').slice(0, 24),
+          decimals: Number(row.tokenDecimal || 18),
+          failed: false,
+          method: '',
+        })
+      );
+      const tokenHashes = new Set(tokenRows.map((row) => row.hash));
+      const nativeRows = rows(native)
+        // A token transfer also appears here as a zero-value call to the
+        // token contract; the token row already says it better.
+        .filter((row) => !(tokenHashes.has(row.hash) && row.value === '0'))
+        .map(
+          (row): RedbellyActivityItem => ({
+            hash: row.hash,
+            timestamp: Number(row.timeStamp),
+            from: (row.from || '').toLowerCase(),
+            to: (row.to || '').toLowerCase(),
+            kind: 'native',
+            value: row.value || '0',
+            symbol: 'RBNT',
+            decimals: 18,
+            failed: row.isError === '1' || row.txreceipt_status === '0',
+            method: (row.functionName || '').split('(')[0].slice(0, 40),
+          })
+        );
+      return [...nativeRows, ...tokenRows].sort(
+        (a, b) => b.timestamp - a.timestamp
+      );
+    } catch (error) {
+      console.error('[redbelly] activity read failed', error);
+      return null;
+    }
+  };
+
   /** Drop every cache. Used when the Redbelly RPC endpoint changes. */
   clearCaches = () => {
+    this.priceCache = null;
+    this.discoveryCache.clear();
     this.gasPegCache.clear();
     clearRedbellyContractCache();
   };

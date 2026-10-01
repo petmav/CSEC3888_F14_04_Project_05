@@ -11,6 +11,8 @@ import { PageHeader } from 'ui/component';
 import { HistoryList } from './components/HistoryList';
 import './style.less';
 import { TestnetTransactionHistory } from '../TransactionHistory/TestnetTranasctionHistory';
+import { RedbellyHistory } from './RedbellyHistory';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 const Null = () => null;
 const renderTabBar = () => <Null />;
@@ -25,6 +27,17 @@ export const HistoryPage = () => {
   React.useEffect(() => {
     setIsHideScam(isSupportAccount);
   }, [isSupportAccount]);
+
+  if (REDBELLY_ONLY) {
+    return (
+      <div className="txs-history">
+        <PageHeader className="transparent-wrap" fixed>
+          {t('page.transactions.title')}
+        </PageHeader>
+        <RedbellyHistory />
+      </div>
+    );
+  }
 
   return (
     <div className="txs-history">

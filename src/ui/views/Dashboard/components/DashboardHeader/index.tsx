@@ -39,6 +39,8 @@ import { useMemoizedFn } from 'ahooks';
 import styled from 'styled-components';
 import { ReactComponent as IconArrowRight } from 'ui/assets/dashboard/arrow-right.svg';
 import { BalanceView, BalanceViewJumpButton } from '../BalanceView/BalanceView';
+import { RedbellyBalanceView } from '../BalanceView/RedbellyBalanceView';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { useHomeBalanceViewOuterPrefetch } from '../BalanceView/useHomeBalanceView';
 import PendingTxs from '../PendingTxs';
 import Queue from '../Queue';
@@ -197,8 +199,9 @@ export const DashboardHeader: React.FC<{ onSettingClick?(): void }> = ({
           </div>
 
           <div className="shrink-0 min-w-0 ml-auto flex items-center gap-[4px]">
-            <FeedbackEntry />
-            <GasAccountEntry />
+            {/* Both talk to Rabby's own backend about Rabby's own services. */}
+            {REDBELLY_ONLY ? null : <FeedbackEntry />}
+            {REDBELLY_ONLY ? null : <GasAccountEntry />}
 
             <div
               className={clsx(
@@ -214,15 +217,21 @@ export const DashboardHeader: React.FC<{ onSettingClick?(): void }> = ({
       )}
       {hasTopRightAction ? (
         <div className="group/balance-view-actions relative">
-          {dashboardBalanceCacheInited && (
-            <BalanceView currentAccount={currentAccount} hideJumpButton />
+          {REDBELLY_ONLY ? (
+            <RedbellyBalanceView currentAccount={currentAccount} />
+          ) : (
+            dashboardBalanceCacheInited && (
+              <BalanceView currentAccount={currentAccount} hideJumpButton />
+            )
           )}
 
           <div className="absolute right-[12px] top-[10px] z-[1] flex items-center gap-[8px]">
-            <BalanceViewJumpButton
-              className="balance-view-jump-button-external group-hover/balance-view-actions:flex"
-              onClick={onClickOpenInDesktop}
-            />
+            {REDBELLY_ONLY ? null : (
+              <BalanceViewJumpButton
+                className="balance-view-jump-button-external group-hover/balance-view-actions:flex"
+                onClick={onClickOpenInDesktop}
+              />
+            )}
             {isGnosis ? (
               <Queue
                 // count={gnosisPendingCount || 0}
@@ -237,6 +246,8 @@ export const DashboardHeader: React.FC<{ onSettingClick?(): void }> = ({
             )}
           </div>
         </div>
+      ) : REDBELLY_ONLY ? (
+        <RedbellyBalanceView currentAccount={currentAccount} />
       ) : (
         dashboardBalanceCacheInited && (
           <BalanceView currentAccount={currentAccount} />

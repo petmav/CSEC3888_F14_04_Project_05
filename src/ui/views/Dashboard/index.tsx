@@ -16,6 +16,8 @@ import { DashboardHeader } from './components/DashboardHeader';
 import { DashboardPanel } from './components/DashboardPanel';
 import { useCurrentAccount } from '@/ui/hooks/backgroundState/useAccount';
 import { GasPriceBar } from './components/GasPriceBar';
+import { RedbellyPriceBar } from './components/GasPriceBar/RedbellyPriceBar';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { CHAINS_ENUM, KEYRING_CLASS } from '@/constant';
 import Settings from './components/Settings';
 import { useMemoizedFn, useMount } from 'ahooks';
@@ -194,13 +196,17 @@ const Dashboard = () => {
           <DashboardHeader onSettingClick={toggleShowMoreSettings} />
           <DashboardPanel onSettingClick={toggleShowMoreSettings} />
           <div className="px-[16px] pb-[13px]">
-            <GasPriceBar
-              currentConnectedSiteChain={currentConnectedSiteChain}
-            />
+            {REDBELLY_ONLY ? (
+              <RedbellyPriceBar />
+            ) : (
+              <GasPriceBar
+                currentConnectedSiteChain={currentConnectedSiteChain}
+              />
+            )}
             <CurrentConnection onChainChange={setCurrentConnectedSiteChain} />
           </div>
         </div>
-        <StablecoinSwapPopup />
+        {REDBELLY_ONLY ? null : <StablecoinSwapPopup />}
       </div>
       <Modal
         visible={firstNotice && updateContent}

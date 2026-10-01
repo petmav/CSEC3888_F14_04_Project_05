@@ -46,6 +46,13 @@ import { getFormattedIpfsUrl } from '../utils/ipfs';
 import { storage } from '../webapi';
 import RPCService, { RPCServiceStore } from './rpc';
 import dayjs from 'dayjs';
+import { isRedbellyChainId, REDBELLY_ONLY } from '@/constant/redbelly';
+import {
+  builtinRedbellyNetwork,
+  REDBELLY_NETWORKS,
+} from '@/constant/redbelly-chains';
+import { REDBELLY_DEFAULT_TOKENS } from '@/constant/redbelly-assets';
+import redbellyService from './redbelly';
 // import openapiService from './openapi';
 
 const MAX_READ_CONTRACT_TIME = 15_000;
@@ -145,11 +152,14 @@ class CustomTestnetService {
       }
     });
     this.store.customTestnet = coped;
+    this.ensureBuiltinNetworks();
     const rpcStorage: RPCServiceStore = await storage.get('rpc');
     Object.values(this.store.customTestnet).forEach((chain) => {
       const config =
         CUSTOM_RPC_ENABLED &&
-        rpcStorage.customRPC[chain.enum] &&
+        // Optional: a fresh install has no RPC store yet, and with Redbelly
+        // built in this loop now runs on first start.
+        rpcStorage?.customRPC?.[chain.enum] &&
         rpcStorage.customRPC[chain.enum]?.enable
           ? { ...chain, rpcUrl: rpcStorage.customRPC[chain.enum].url }
           : chain;
@@ -162,6 +172,34 @@ class CustomTestnetService {
       this.syncChainList();
     });
   };
+  /**
+   * Write the built-in Redbelly networks into the store (FR6 / US10).
+   *
+   * Done on every start rather than once, so the canonical definition always
+   * wins: an endpoint or explorer change ships with the next release instead
+   * of being stuck behind whatever an earlier version persisted.
+   */
+  ensureBuiltinNetworks = () => {
+    const builtins: Record<string, TestnetChain> = {};
+    REDBELLY_NETWORKS.forEach((network) => {
+      builtins[network.id] = createTestnetChain({
+        id: network.id,
+        name: network.name,
+        nativeTokenSymbol: network.nativeTokenSymbol,
+        rpcUrl: network.rpcUrl,
+        scanLink: network.scanLink,
+      });
+    });
+    // Built-ins first, so every list that preserves insertion order shows
+    // Redbelly Mainnet, then Testnet, then anything the user added.
+    this.store.customTestnet = {
+      ...builtins,
+      ...omitBy(this.store.customTestnet, (item) =>
+        builtinRedbellyNetwork(item.id)
+      ),
+    };
+  };
+
   add = async (chain: TestnetChainBase) => {
     return this._update(chain, true);
   };
@@ -248,6 +286,10 @@ class CustomTestnetService {
   };
 
   remove = (chainId: number) => {
+    // Redbelly is the wallet, not an add-on to it.
+    if (builtinRedbellyNetwork(chainId)) {
+      return;
+    }
     this.store.customTestnet = omitBy(this.store.customTestnet, (item) => {
       return +chainId === +item.id;
     });
@@ -269,6 +311,14 @@ class CustomTestnetService {
     }
   };
 
+  /**
+   * The native token logo for a network: Redbelly's own for the built-ins,
+   * otherwise whatever DeBank's logo list has.
+   */
+  nativeLogo = (chainId: number | string) =>
+    builtinRedbellyNetwork(chainId)?.logo ||
+    this.store.logos?.[chainId]?.token_logo_url;
+
   getClient = (chainId: number) => {
     return this.chains[chainId];
   };
@@ -276,6 +326,14 @@ class CustomTestnetService {
   getList = () => {
     const list = Object.values(this.store.customTestnet).map((item) => {
       const res = createTestnetChain(item);
+
+      const builtin = builtinRedbellyNetwork(res.id);
+      if (builtin) {
+        res.logo = builtin.logo;
+        res.whiteLogo = builtin.logo;
+        res.nativeTokenLogo = builtin.logo;
+        return res;
+      }
 
       if (this.store.logos?.[res.id]) {
         res.logo = this.store.logos[res.id].chain_logo_url;
@@ -332,7 +390,7 @@ class CustomTestnetService {
             id: chain.nativeTokenAddress,
             chainId: chain.id,
             rawAmount: '0',
-            logo: this.store.logos?.[chain.id]?.token_logo_url,
+            logo: this.nativeLogo(chain.id),
           }),
         };
       })
@@ -349,7 +407,7 @@ class CustomTestnetService {
             id: chain.nativeTokenAddress,
             chainId: chain.id,
             rawAmount: '0',
-            logo: this.store.logos?.[chain.id]?.token_logo_url,
+            logo: this.nativeLogo(chain.id),
           }),
         };
       });
@@ -454,6 +512,29 @@ class CustomTestnetService {
 
     const gasPrice = await this.getGasPrice(chainId);
 
+    // Redbelly sets one gas price for everyone from its USD peg (FR3); there
+    // is no auction to win, so a 10-25% markup is money thrown away and makes
+    // the quoted fee wrong. Every tier is the node's own price.
+    if (isRedbellyChainId(chainId)) {
+      return ['slow', 'normal', 'fast']
+        .map((level) => ({
+          level,
+          price: Number(gasPrice),
+          priority_price: 0,
+          front_tx_count: 0,
+          estimated_seconds: 0,
+        }))
+        .concat([
+          {
+            level: 'custom',
+            price: custom || Number(gasPrice),
+            priority_price: 0,
+            front_tx_count: 0,
+            estimated_seconds: 0,
+          },
+        ]) as GasLevel[];
+    }
+
     const levels = [
       {
         level: 'slow',
@@ -553,7 +634,7 @@ class CustomTestnetService {
       rawAmount: balance.toString(),
       logo:
         !tokenId || tokenId?.replace('custom_', '') === String(chainId)
-          ? this.store.logos?.[chainId]?.token_logo_url
+          ? this.nativeLogo(chainId)
           : undefined,
     };
   };
@@ -626,6 +707,18 @@ class CustomTestnetService {
       return local;
     }
 
+    const listed = REDBELLY_DEFAULT_TOKENS[chainId]?.find(
+      (item) => item.address.toLowerCase() === tokenId.toLowerCase()
+    );
+    if (listed) {
+      return {
+        id: listed.address.toLowerCase(),
+        symbol: listed.symbol,
+        chainId,
+        decimals: listed.decimals,
+      };
+    }
+
     // todo: multicall
     const [symbol, decimals] = await Promise.all([
       readContract(client, {
@@ -665,12 +758,23 @@ class CustomTestnetService {
           id: null,
           chainId: item.id,
           symbol: item.nativeTokenSymbol,
-          logo: this.store.logos?.[item.id]?.token_logo_url,
+          logo: this.nativeLogo(item.id),
         };
       }
     );
     const list = this.store.customTokenList || [];
-    let tokenList = [...nativeTokenList, ...list];
+    const redbellyTokens = await this.getRedbellyListedTokens({
+      address,
+      chainId,
+    });
+    const listedIds = new Set(
+      redbellyTokens.map((item) => `${item.chainId}:${item.id}`)
+    );
+    let tokenList = [
+      ...nativeTokenList,
+      ...list.filter((item) => !listedIds.has(`${item.chainId}:${item.id}`)),
+      ...redbellyTokens,
+    ];
     if (chainId) {
       tokenList = tokenList.filter((item) => {
         return item.chainId === chainId;
@@ -715,7 +819,18 @@ class CustomTestnetService {
       )
     );
     const result = sortBy(
-      res.filter((item): item is CustomTestnetToken => !!item),
+      res
+        .filter((item): item is CustomTestnetToken => !!item)
+        // Listed and discovered tokens are shown when held; ones the user
+        // added by hand always are, as is RBNT. A search shows everything.
+        .filter(
+          (item) =>
+            !!q ||
+            !item.id ||
+            item.amount > 0 ||
+            !listedIds.has(`${item.chainId}:${item.id}`) ||
+            this.hasToken({ id: item.id, chainId: item.chainId })
+        ),
       (item) => {
         return !item.id;
       },
@@ -740,6 +855,50 @@ class CustomTestnetService {
     return result;
   };
 
+  /**
+   * Redbelly tokens shown without the user adding them (US13): the default
+   * list, plus anything the explorer says this address holds.
+   *
+   * @param params.address - The account.
+   * @param params.chainId - Restrict to one chain, if given.
+   * @returns Token entries in the shape of `customTokenList`.
+   */
+  getRedbellyListedTokens = async ({
+    address,
+    chainId,
+  }: {
+    address: string;
+    chainId?: number;
+  }): Promise<CustomTestnetTokenBase[]> => {
+    const chainIds = REDBELLY_NETWORKS.map((item) => item.id).filter(
+      (id) => chainId === undefined || id === chainId
+    );
+    const perChain = await Promise.all(
+      chainIds.map(async (id) => {
+        const discovered = address
+          ? await redbellyService.discoverTokens(id, address)
+          : [];
+        const seen = new Set<string>();
+        return [...(REDBELLY_DEFAULT_TOKENS[id] || []), ...discovered]
+          .filter((token) => {
+            const key = token.address.toLowerCase();
+            if (seen.has(key)) {
+              return false;
+            }
+            seen.add(key);
+            return true;
+          })
+          .map((token) => ({
+            id: token.address.toLowerCase(),
+            chainId: id,
+            symbol: token.symbol,
+            decimals: token.decimals,
+          }));
+      })
+    );
+    return perChain.flat();
+  };
+
   // todo
   getTokenWithBalance = this.getTokenList;
 
@@ -757,6 +916,11 @@ class CustomTestnetService {
   };
 
   fetchLogos = async () => {
+    // The logos come from DeBank's servers, and the only networks a
+    // Redbelly-only build has bring their own.
+    if (REDBELLY_ONLY) {
+      return {};
+    }
     try {
       if (
         dayjs().isBefore(dayjs(this.store.logosUpdatedAt || 0).add(1, 'day'))
@@ -1096,7 +1260,7 @@ class CustomTestnetService {
               id: chain.nativeTokenAddress,
               chainId: chain.id,
               rawAmount: _value.toFixed(),
-              logo: this.store.logos?.[chain.id]?.token_logo_url,
+              logo: this.nativeLogo(chain.id),
             }),
           },
         },

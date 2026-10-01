@@ -9,7 +9,8 @@ import { ReactComponent as AssetEmptySVG } from '@/ui/assets/dashboard/asset-emp
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { CustomTestnetAssetList } from './CustomTestnetAssetList';
-import { RedbellyAssetSection } from './RedbellyAssetSection';
+import { RedbellyAssetList } from './RedbellyAssetList';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { AddCustomTokenPopup } from './CustomAssetList/AddCustomTokenPopup';
 import { Button } from 'antd';
 import { SpecialTokenListPopup } from './components/TokenButton';
@@ -68,6 +69,10 @@ export const AssetList = ({
     wallet.openInDesktop('/desktop/profile');
     window.close();
   };
+
+  if (REDBELLY_ONLY) {
+    return <RedbellyAssetList visible={visible} onClose={onClose} />;
+  }
 
   return (
     <div ref={containerRef} className="pt-[12px] h-full overflow-auto">
@@ -141,12 +146,6 @@ export const AssetList = ({
           </div>
           <div className={clsx(isEmptyAssets ? 'hidden' : 'block')}>
             <ChainList onChange={handleSelectChainChange} />
-            {/* Above the DeBank-backed list: RBNT has no price feed, so it
-                cannot be a row in a USD portfolio. */}
-            <RedbellyAssetSection
-              selectChainId={selectChainId}
-              visible={visible}
-            />
             <AssetListContainer
               className="mt-12"
               selectChainId={selectChainId}

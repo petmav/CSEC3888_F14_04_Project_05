@@ -27,7 +27,6 @@ import type { ChainGas } from 'background/service/preference';
 import { AuthorizationList, AuthorizationListBytes } from '@ethereumjs/common';
 import { TX_GAS_LIMIT_CHAIN_MAPPING } from '@/constant/txGasLimit';
 import { getTempoFeeTokenInfo, isTempoChain } from './tempo';
-import { isRedbellyChainId } from '@/constant/redbelly';
 
 export interface ApprovalRes extends Tx {
   type?: string;
@@ -890,30 +889,9 @@ export const explainGas = async ({
     gasCostTokenAmount = gasCostRawAmountIn18.div(1e18);
     maxGasCostAmount = maxGasCostRawAmountIn18.div(1e18);
   }
-  /**
-   * Redbelly does not price gas as `tokenAmount * tokenPrice` (FR3 / US6).
-   * The chain quotes a USD price per unit of gas via its on-chain `gasfees`
-   * contract and converts to RBNT at an oracle rate, which is why RBNT fees
-   * look enormous beside Ethereum's. Dollars are therefore `gasUnits *
-   * usdPerGas`, and never touch `nativeTokenPrice` - which is 0 here anyway,
-   * since DeBank does not index Redbelly.
-   *
-   * The gas figure used is `gasUsed`, matching `gasCostAmount` above, so the
-   * dollar value and the RBNT value on screen describe the same thing.
-   *
-   * NaN when the peg cannot be read: the formatters render that as no figure
-   * at all, which US7 prefers to a figure we cannot substantiate.
-   */
-  const gasCostUsd = isRedbellyChainId(chain.id)
-    ? await (async () => {
-        const usdPerGas = await wallet.getRedbellyUsdPerGas(chain.id);
-        return usdPerGas === null
-          ? new BigNumber(NaN)
-          : new BigNumber(gasUsed).times(usdPerGas);
-      })()
-    : new BigNumber(gasCostTokenAmount).times(
-        isTempoChain(chain.serverId) ? 1 : nativeTokenPrice
-      );
+  const gasCostUsd = new BigNumber(gasCostTokenAmount).times(
+    isTempoChain(chain.serverId) ? 1 : nativeTokenPrice
+  );
 
   const gasCostRawAmount = convert18RawToTokenRaw(
     gasCostRawAmountIn18,
