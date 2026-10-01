@@ -10,7 +10,6 @@ import {
 } from '@/constant/redbelly';
 import { REDBELLY_MAINNET } from '@/constant/redbelly-chains';
 import { useWallet } from '@/ui/utils';
-import { formatTokenAmount } from '@/ui/utils/number';
 import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 import { gasUnitsToUsd } from '@/utils/redbelly/fees';
 
@@ -66,7 +65,7 @@ export const RedbellyPriceBar = () => {
       <div className="text-r-neutral-foot">
         {data?.transferRbnt
           ? t('page.dashboard.redbelly.transferFee', {
-              amount: formatTokenAmount(data.transferRbnt.toFixed()),
+              amount: data.transferRbnt.toFixed(2),
               usd:
                 data.transferUsd !== null
                   ? ` (${format(data.transferUsd)})`

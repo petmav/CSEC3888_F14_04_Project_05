@@ -108,11 +108,11 @@ const Wrapper = styled(Card)`
           cursor: pointer;
 
           &:hover {
-            border-color: var(--r-blue-default, #7084ff);
+            border-color: var(--r-blue-default, #ff4646);
           }
           &.is-selected {
-            border-color: var(--r-blue-default, #7084ff);
-            background: var(--r-blue-light-1, #eef1ff);
+            border-color: var(--r-blue-default, #ff4646);
+            background: var(--r-blue-light-1, #fff0f0);
           }
         }
       }
@@ -134,11 +134,11 @@ const OptionList = styled.div`
     }
 
     &.is-selected {
-      border: 1px solid var(--r-blue-default, #7084ff);
-      background: var(--r-blue-light-1, #eef1ff);
+      border: 1px solid var(--r-blue-default, #ff4646);
+      background: var(--r-blue-light-1, #fff0f0);
     }
     &:not(.is-disabled):hover {
-      border: 1px solid var(--r-blue-default, #7084ff);
+      border: 1px solid var(--r-blue-default, #ff4646);
     }
 
     &.is-disabled {

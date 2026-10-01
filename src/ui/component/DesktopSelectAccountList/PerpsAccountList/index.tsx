@@ -270,7 +270,7 @@ export const DesktopPerpsSelectAccountList: React.FC<{
                 'desktop-account-item'
               )}
               style={{
-                background: 'rgba(76, 101, 255, 0.08)',
+                background: 'rgba(255, 70, 70, 0.08)',
               }}
             >
               <RcIconAddWalletCC className="shrink-0" />

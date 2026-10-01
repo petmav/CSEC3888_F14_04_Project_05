@@ -42,9 +42,9 @@ const SlippageItem = styled.div`
 
   &:hover,
   &.active {
-    color: var(--r-blue-default, #7084ff);
-    background: var(--r-blue-light1, #eef1ff);
-    border: 1px solid var(--r-blue-default, #7084ff);
+    color: var(--r-blue-default, #ff4646);
+    background: var(--r-blue-light1, #fff0f0);
+    border: 1px solid var(--r-blue-default, #ff4646);
   }
 
   &.error,

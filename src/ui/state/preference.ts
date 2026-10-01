@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import type { TokenItem } from '@/background/service/openapi';
 import type {
   AddressSortStore,
@@ -135,7 +136,7 @@ export const getDefaultPreferenceState = (): PreferenceState => ({
   isShowTestnet: false,
   userDataTrackingOptOut: true,
   addressSortStore: {} as AddressSortStore,
-  themeMode: DARK_MODE_TYPE.system,
+  themeMode: REDBELLY_ONLY ? DARK_MODE_TYPE.dark : DARK_MODE_TYPE.system,
   reserveGasOnSendToken: false,
   isHideEcologyNoticeDict: {},
   isEnabledPwdForNonWhitelistedTx: false,

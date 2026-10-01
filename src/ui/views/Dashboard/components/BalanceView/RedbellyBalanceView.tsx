@@ -45,7 +45,7 @@ export const RedbellyBalanceView = ({
   return (
     <div
       className={clsx(
-        'w-full min-h-[132px] rounded-[8px] px-[16px] py-[14px] cursor-pointer',
+        'w-full min-h-[120px] rounded-[8px] px-[16px] py-[12px] cursor-pointer',
         'bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.14)]'
       )}
       onClick={() => activePopup('AssetList')}
@@ -63,7 +63,7 @@ export const RedbellyBalanceView = ({
           </div>
 
           <div className="flex items-center gap-[8px] mt-[4px]">
-            <div className="text-[32px] leading-[38px] font-bold text-r-neutral-title2">
+            <div className="text-[30px] leading-[36px] font-bold text-r-neutral-title2">
               {portfolio.totalUsd
                 ? format(portfolio.totalUsd)
                 : mainnet?.unavailable
@@ -93,27 +93,29 @@ export const RedbellyBalanceView = ({
             ) : null}
           </div>
 
-          <div className="mt-[8px] flex flex-col gap-[2px] text-[13px] text-r-neutral-title2">
-            <div className="flex justify-between">
-              <span className="opacity-80">
+          {/* Side by side, not stacked: the tile grid overlaps the bottom
+              of the banner, so the card has a fixed height to work in. */}
+          <div className="mt-[10px] flex gap-[16px] text-r-neutral-title2">
+            <div className="min-w-0">
+              <div className="text-[12px] opacity-70">
                 {t('page.dashboard.redbelly.available')}
-              </span>
-              <span className="font-medium">
+              </div>
+              <div className="text-[13px] font-medium truncate">
                 {portfolio.mainnetRbnt
                   ? rbnt(portfolio.mainnetRbnt)
                   : t('page.dashboard.redbelly.unavailable')}
-              </span>
+              </div>
             </div>
             {portfolio.stakedRbnt.gt(0) || portfolio.stakingUnavailable ? (
-              <div className="flex justify-between">
-                <span className="opacity-80">
+              <div className="min-w-0">
+                <div className="text-[12px] opacity-70">
                   {t('page.dashboard.redbelly.stakedWithRewards')}
-                </span>
-                <span className="font-medium">
+                </div>
+                <div className="text-[13px] font-medium truncate">
                   {portfolio.stakingUnavailable && portfolio.stakedRbnt.eq(0)
                     ? t('page.dashboard.redbelly.unavailable')
                     : rbnt(portfolio.stakedRbnt)}
-                </span>
+                </div>
               </div>
             ) : null}
           </div>

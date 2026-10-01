@@ -50,7 +50,7 @@ const BiometricsImage = styled.div`
 `;
 
 const UnlockPage = styled.div`
-  background-color: #ecf3ff;
+  background-color: #fff3f3;
   background-image: url(${unlockBackground});
   background-position: center;
   background-repeat: no-repeat;
@@ -70,21 +70,21 @@ const UnlockMethodSwitch = styled.button`
   padding: 7px 10.5px;
   border: 0;
   border-radius: 8px;
-  background: #ccd2ff;
+  background: #ffd2d2;
   color: var(--r-blue-default);
   font-size: 13px;
   font-weight: 500;
 
   &:hover {
-    background: #b8c1ff;
+    background: #ffc1c1;
   }
 
   html.dark & {
-    background: #232b4e;
+    background: #3a1d22;
   }
 
   html.dark &:hover {
-    background: #2a3770;
+    background: #4a232a;
   }
 `;
 

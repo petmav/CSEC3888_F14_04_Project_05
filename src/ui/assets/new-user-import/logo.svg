@@ -14,18 +14,18 @@
     <defs>
         <linearGradient id="paint0_linear_111797_37674" x1="32.3886" y1="48.683" x2="91.836" y2="65.4777"
             gradientUnits="userSpaceOnUse">
-            <stop stop-color="#8697FF" />
+            <stop stop-color="#FF7373" />
             <stop offset="1" stop-color="#ABB7FF" />
         </linearGradient>
         <linearGradient id="paint1_linear_111797_37674" x1="81.7981" y1="47.549" x2="38.7661" y2="4.57407"
             gradientUnits="userSpaceOnUse">
-            <stop stop-color="#8697FF" />
+            <stop stop-color="#FF7373" />
             <stop offset="1" stop-color="#5156D8" stop-opacity="0" />
         </linearGradient>
         <linearGradient id="paint2_linear_111797_37674" x1="59.6599" y1="71.6777" x2="18.4015" y2="48.0463"
             gradientUnits="userSpaceOnUse">
             <stop stop-color="#465EED" />
-            <stop offset="1" stop-color="#8697FF" stop-opacity="0" />
+            <stop offset="1" stop-color="#FF7373" stop-opacity="0" />
         </linearGradient>
         <linearGradient id="paint3_linear_111797_37674" x1="35.9357" y1="48.2374" x2="63.901" y2="83.6365"
             gradientUnits="userSpaceOnUse">

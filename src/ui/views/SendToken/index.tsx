@@ -362,8 +362,8 @@ const ChainSelectWrapper = styled.div`
   border: 1px solid transparent;
   border-bottom: 0.5px solid var(--r-neutral-line, rgba(255, 255, 255, 0.1));
   &:hover {
-    border: 1px solid var(--r-blue-default, #7084ff);
-    background-color: var(--r-blue-light-1, #eef1ff);
+    border: 1px solid var(--r-blue-default, #ff4646);
+    background-color: var(--r-blue-light-1, #fff0f0);
     border-radius: 8px;
   }
 `;

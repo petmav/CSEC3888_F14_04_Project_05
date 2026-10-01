@@ -2556,7 +2556,7 @@
         "apr": "{{apr}}% APR",
         "tokensTitle": "Tokens",
         "tokensSubtitle": "Read from a Redbelly node",
-        "transferFee": "Transfer fee {{amount}} RBNT{{usd}}"
+        "transferFee": "Fee {{amount}} RBNT{{usd}}"
       },
       "home": {
         "offline": "The network is disconnected and no data is obtained",

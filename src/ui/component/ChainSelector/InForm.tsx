@@ -48,7 +48,7 @@ const ChainGlobalStyle = createGlobalStyle`
         border-color: var(--r-blue-default);
         color: var(--r-blue-default);
         &:hover {
-          background: var(--r-blue-light1, #eef1ff) !important;
+          background: var(--r-blue-light1, #fff0f0) !important;
         }
       }
     }
@@ -107,23 +107,23 @@ const ChainWrapper = styled.div`
     }
   }
   &:hover {
-    background: var(--r-blue-light2, #eef1ff);
+    background: var(--r-blue-light2, #fff0f0);
   }
 
   &.swap:hover {
-    background: var(--r-blue-light1, #edf0ff);
-    border: 1px solid var(--r-blue-default, #4c65ff);
+    background: var(--r-blue-light1, #ffeded);
+    border: 1px solid var(--r-blue-default, #ff4646);
     border-radius: 8px;
 
     & > .name {
-      color: var(--r-blue-default, #4c65ff);
+      color: var(--r-blue-default, #ff4646);
     }
 
     & > .down {
-      color: var(--r-blue-default, #4c65ff) !important;
+      color: var(--r-blue-default, #ff4646) !important;
 
       path {
-        stroke: var(--r-blue-default, #4c65ff) !important;
+        stroke: var(--r-blue-default, #ff4646) !important;
       }
     }
   }

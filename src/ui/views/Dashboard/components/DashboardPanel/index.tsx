@@ -105,7 +105,7 @@ const GlobalStyle = createGlobalStyle`
       align-items: center;
 
       &:hover {
-        background: var(--r-blue-light1, #edf0ff);
+        background: var(--r-blue-light1, #ffeded);
       }
 
       &:has(.panel-item-jump-button:hover) {
@@ -130,8 +130,8 @@ const GlobalStyle = createGlobalStyle`
         cursor: pointer;
 
         &:hover {
-          color: var(--r-blue-default, #4c65ff);
-          background: var(--r-blue-light1, #edf0ff);
+          color: var(--r-blue-default, #ff4646);
+          background: var(--r-blue-light1, #ffeded);
         }
       }
 
@@ -186,7 +186,7 @@ const GlobalStyle = createGlobalStyle`
 
     .ant-badge {
       .ant-badge-count {
-        background-color: var(--r-blue-default, #7084ff);
+        background-color: var(--r-blue-default, #ff4646);
         padding: 2px 6px;
         font-size: 13px;
         line-height: 1;

@@ -34,8 +34,8 @@ export const MenuButtonStyled = styled.div`
   cursor: pointer;
 
   &:hover {
-    border-color: var(--r-blue-default, #7084ff);
-    background: var(--r-blue-light1, #eef1ff);
+    border-color: var(--r-blue-default, #ff4646);
+    background: var(--r-blue-light1, #fff0f0);
   }
 `;
 
@@ -50,7 +50,7 @@ const MenuItemStyled = styled(Menu.Item)`
   border-color: transparent;
 
   &:hover {
-    background: var(--r-blue-light1, #eef1ff);
+    background: var(--r-blue-light1, #fff0f0);
   }
   .ant-dropdown-menu-title-content {
     display: flex;

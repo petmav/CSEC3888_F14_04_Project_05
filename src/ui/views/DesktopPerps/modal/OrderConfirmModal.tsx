@@ -68,8 +68,8 @@ const OrderConfirmCheckbox: React.FC<{ checked: boolean }> = ({ checked }) => (
       width="11.2"
       height="11.2"
       rx="0.9333"
-      fill={checked ? 'var(--rb-blue-default, #7084ff)' : 'none'}
-      stroke={checked ? 'var(--rb-blue-default, #7084ff)' : 'currentColor'}
+      fill={checked ? 'var(--rb-blue-default, #ff4646)' : 'none'}
+      stroke={checked ? 'var(--rb-blue-default, #ff4646)' : 'currentColor'}
       strokeWidth="0.875"
       strokeLinejoin="round"
     />

@@ -57,7 +57,9 @@ import {
 const Container = styled.div`
   width: 100%;
   height: 196px;
-  background: linear-gradient(0deg, #2539b7 0%, #2539b7 100%), #2539b7;
+  /* Redbelly red (#FF4646, from redbelly.network), deepened towards the
+     bottom so white text on it stays readable. */
+  background: linear-gradient(160deg, #ff4646 0%, #c81e32 100%), #e0283c;
   position: relative;
   overflow: hidden;
   padding: 12px 16px;

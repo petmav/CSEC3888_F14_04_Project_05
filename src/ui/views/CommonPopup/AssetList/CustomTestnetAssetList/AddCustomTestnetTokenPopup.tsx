@@ -49,7 +49,7 @@ const Wraper = styled.div`
     font-weight: 500;
 
     &:focus {
-      border-color: var(--r-blue-default, #7084ff);
+      border-color: var(--r-blue-default, #ff4646);
     }
 
     &::placeholder {

@@ -7,7 +7,7 @@
 <path d="M117.4 -110.123C266.58 -60.5461 407.57 -179.346 357.993 -30.1669C308.417 119.013 147.293 199.757 -1.88646 150.18C-151.066 100.604 -231.81 -60.5199 -182.234 -209.7C-132.657 -358.879 -31.7791 -159.699 117.4 -110.123Z" fill="#2174A3"/>
 </g>
 <g filter="url(#filter2_b_114948_40954)">
-<path d="M0 -10H400L400 520H0V-10Z" fill="#ECF3FF" fill-opacity="0.7"/>
+<path d="M0 -10H400L400 520H0V-10Z" fill="#FFF3F3" fill-opacity="0.7"/>
 </g>
 <rect width="400" height="520" fill="url(#paint0_linear_114948_40954)"/>
 </g>
@@ -29,7 +29,7 @@
 <feBlend mode="normal" in="SourceGraphic" in2="effect1_backgroundBlur_114948_40954" result="shape"/>
 </filter>
 <linearGradient id="paint0_linear_114948_40954" x1="199.467" y1="-148.633" x2="202.352" y2="185.875" gradientUnits="userSpaceOnUse">
-<stop stop-color="#7084FF"/>
+<stop stop-color="#FF4646"/>
 <stop offset="1" stop-color="white" stop-opacity="0"/>
 </linearGradient>
 <clipPath id="clip0_114948_40954">

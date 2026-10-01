@@ -88,6 +88,16 @@ currency rate list.
 Redbelly total as the home card (`utils/redbelly/portfolio.ts`) instead of
 DeBank's cross-chain figure.
 
+## Look and feel
+
+Dark by default (Settings > Theme still switches), with Redbelly's brand
+red (#FF4646, from redbelly.network) in place of Rabby's blue: a red banner
+on the home page, red buttons and accents, near-black backgrounds, and the
+team's Redbelly logo in place of Rabby's artwork. The palette lives in
+`src/constant/theme-colors.js`. Rabby also hardcodes its blues in hundreds
+of styles and icons; `scripts/redbelly-restyle.py` rewrites those and must
+be re-run after merging a new Rabby release (it is safe to run repeatedly).
+
 ## Privacy
 
 A KYC-gated network's wallet should not tell third parties who its users
