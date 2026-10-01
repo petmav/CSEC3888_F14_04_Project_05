@@ -1,5 +1,7 @@
 # Rabby Wallet
 
+> **This is the Redbelly Wallet fork.** See [REDBELLY.md](REDBELLY.md) for what changed, how to build it, and what is still open. The text below is upstream Rabby's.
+
 Rabby Wallet is an open-source browser plugin for the DeFi ecosystem, providing users with a better-to-use and more secure multi-chain experience.
 
 ## Install
