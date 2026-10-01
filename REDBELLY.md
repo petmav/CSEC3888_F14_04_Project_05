@@ -108,6 +108,19 @@ on 2026-10-01; none of these interfaces is documented by Redbelly.
 | US12 block unregistered sends | Done - Sign disabled, fail-closed while checking |
 | US13 tokens and stake | Done - default tokens + discovery; Reddex pool positions |
 
+## Community feedback
+
+A Redbelly community member (Buffy, Discord, Sep-Oct 2026) reported these
+from MetaMask Mobile:
+
+| Report | In this wallet |
+| --- | --- |
+| After claiming staking rewards, the token view showed 0 RBNT; only the Send screen showed the real 5,310 | Balances are read from the node every time the view opens, and a failed read shows "Unavailable", never 0 (US8) |
+| Two "Redbelly Network" entries, one showing 0, with no way to tell which is right | Both networks are built in and cannot be duplicated: a dApp's `wallet_addEthereumChain` for 151/153 is a no-op and other custom networks cannot be added (US10) |
+| No $ amount next to RBNT | RBNT and WRBNT are valued at Redbelly's on-chain price feed and USDT/USDC.e at $1, in the asset list, on the Send screen and in the home total. Testnet RBNT has no price |
+| 4M+ RBNT staked on Reddex invisible in the wallet | Pool positions are shown (US13) |
+| Claim button cut off on mobile | Reddex's layout, not the wallet; passed on to Redbelly |
+
 ## Verified
 
 In Chromium with the built extension (headless Playwright, fresh profiles):

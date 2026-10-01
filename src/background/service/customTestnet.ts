@@ -51,7 +51,12 @@ import {
   builtinRedbellyNetwork,
   REDBELLY_NETWORKS,
 } from '@/constant/redbelly-chains';
-import { REDBELLY_DEFAULT_TOKENS } from '@/constant/redbelly-assets';
+import {
+  RBNT_PEGGED_TOKENS,
+  REDBELLY_DEFAULT_TOKENS,
+  USD_PEGGED_TOKENS,
+} from '@/constant/redbelly-assets';
+import { REDBELLY_MAINNET_CHAIN_ID } from '@/constant/redbelly';
 import redbellyService from './redbelly';
 // import openapiService from './openapi';
 
@@ -98,6 +103,8 @@ export interface CustomTestnetToken extends CustomTestnetTokenBase {
   amount: number;
   rawAmount: string;
   logo?: string;
+  /** US dollars per token, where a trustworthy price exists. */
+  price?: number;
 }
 
 export type CustomTestnetServiceStore = {
@@ -611,6 +618,34 @@ class CustomTestnetService {
     });
   };
 
+  /**
+   * A dollar price for a Redbelly Mainnet token, where one can be stated
+   * honestly (FR2): RBNT and wrapped RBNT at Redbelly's on-chain price feed,
+   * dollar stablecoins at $1. Everything else - Testnet included, whose RBNT
+   * is worthless - has no price rather than a guessed one (US7).
+   *
+   * @param chainId - The chain id.
+   * @param tokenId - The token, or null/native id for RBNT.
+   * @returns The price, or undefined.
+   */
+  redbellyTokenPrice = async (
+    chainId: number,
+    tokenId?: string | null
+  ): Promise<number | undefined> => {
+    if (+chainId !== REDBELLY_MAINNET_CHAIN_ID) {
+      return undefined;
+    }
+    const id = (tokenId || '').toLowerCase();
+    if (USD_PEGGED_TOKENS.has(id)) {
+      return 1;
+    }
+    const isNative = !id || id === `custom_${REDBELLY_MAINNET_CHAIN_ID}`;
+    if (isNative || RBNT_PEGGED_TOKENS.has(id)) {
+      return (await redbellyService.getRbntUsdPrice()) ?? undefined;
+    }
+    return undefined;
+  };
+
   getToken = async ({
     chainId,
     address,
@@ -620,7 +655,7 @@ class CustomTestnetService {
     address: string;
     tokenId?: string | null;
   }): Promise<CustomTestnetToken> => {
-    const [balance, tokenInfo] = await Promise.all([
+    const [balance, tokenInfo, price] = await Promise.all([
       this.getBalance({
         chainId,
         address,
@@ -630,12 +665,14 @@ class CustomTestnetService {
         chainId,
         tokenId,
       }),
+      this.redbellyTokenPrice(chainId, tokenId),
     ]);
 
     const { decimals } = tokenInfo;
 
     return {
       ...tokenInfo,
+      price,
       amount: new BigNumber(balance.toString())
         .div(new BigNumber(10).pow(decimals))
         .toNumber(),

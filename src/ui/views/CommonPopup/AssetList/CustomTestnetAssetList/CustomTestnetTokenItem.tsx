@@ -1,7 +1,12 @@
 import { CustomTestnetToken } from '@/background/service/customTestnet';
 import IconUnknown from '@/ui/assets/token-default.svg';
 import { TooltipWithMagnetArrow } from '@/ui/component/Tooltip/TooltipWithMagnetArrow';
-import { formatAmount, getUITypeName, openInTab } from '@/ui/utils';
+import {
+  formatAmount,
+  formatUsdValue,
+  getUITypeName,
+  openInTab,
+} from '@/ui/utils';
 import { findChain } from '@/utils/chain';
 import { Image } from 'antd';
 import clsx from 'clsx';
@@ -136,6 +141,12 @@ export const TokenItemAmount: React.FC<Props & { className?: string }> = ({
       )}
     >
       {formatAmount(Math.abs(item.amount))}
+      {/* Priced Redbelly tokens only; a missing price shows no figure. */}
+      {item.price !== undefined ? (
+        <div className="text-r-neutral-foot text-12 font-normal">
+          {formatUsdValue(Math.abs(item.amount) * item.price)}
+        </div>
+      ) : null}
     </TCell>
   );
 };

@@ -209,7 +209,7 @@ export const customTestnetTokenToTokenItem = (
     logo_url: token.logo || '',
     name: token.symbol,
     optimized_symbol: token.symbol,
-    price: 0,
+    price: token.price ?? 0,
     symbol: token.symbol,
     time_at: 0,
     price_24h_change: 0,
