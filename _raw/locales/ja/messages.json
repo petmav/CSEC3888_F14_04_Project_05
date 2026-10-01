@@ -59,7 +59,7 @@
       "gasPriceTitle": "ガス価格 (Gwei)",
       "maxPriorityFee": "最大優先手数料 (Gwei)",
       "eip1559Desc1": "EIP-1559 対応チェーンでは、Priority Fee はトランザクションを処理するマイナーへのチップです。Priority Fee を下げると最終的な gas コストを抑えられますが、処理に時間がかかる場合があります。",
-      "eip1559Desc2": "Rabby では、Priority Fee（チップ）= Max Fee - Base Fee です。Max Priority Fee を設定すると、そこから Base Fee が差し引かれ、残りがマイナーへのチップになります。",
+      "eip1559Desc2": "Redbelly Wallet では、Priority Fee（チップ）= Max Fee - Base Fee です。Max Priority Fee を設定すると、そこから Base Fee が差し引かれ、残りがマイナーへのチップになります。",
       "hardwareSupport1559Alert": "ハードウェアウォレットのファームウェアがEIP 1559をサポートするバージョンにアップグレードされていることを確認してください",
       "gasLimitTitle": "Gas Limit",
       "recommendGasLimitTip": "推定{{est}}。現在{{current}}倍、お勧めは ",
@@ -334,7 +334,7 @@
       "gasAccountForGas": "GasAccount の USD を使用してガス代を支払う",
       "nativeTokenForGas": "{{chainName}}でのガス料金の支払いに{{tokenName}}トークンを使用",
       "chain": "チェーン",
-      "decodedTooltip": "この署名は Rabby Wallet によってデコードされます。",
+      "decodedTooltip": "この署名は Redbelly Wallet によってデコードされます。",
       "importedAddress": "インポートされたアドレス",
       "l2GasEstimateTooltip": "L2チェーンのガス見積もりにはL1ガス料金は含まれていません。実際の料金は現在の見積もりよりも高くなります。",
       "address": "アドレス",
@@ -356,7 +356,7 @@
         "selfHostConfirm": {
           "button": "OK",
           "title": "RabbyのSafeサービスに切り替える",
-          "content": "Safe API は利用できません。Rabby によってデプロイされた Safe サービスに切り替えて、Safe を機能させ続けてください。<strong>すべての Safe 署名者は Rabby Wallet を使用してトランザクションを承認する必要があります。</strong>"
+          "content": "Safe API は利用できません。Redbelly Wallet によってデプロイされた Safe サービスに切り替えて、Safe を機能させ続けてください。<strong>すべての Safe 署名者は Redbelly Wallet を使用してトランザクションを承認する必要があります。</strong>"
         }
       },
       "errorRetry": {
@@ -988,7 +988,7 @@
       "amount-in": "{{symbol}} での金額",
       "unlimited-allowance": "無制限の許可",
       "insufficient-balance": "残高が不足しています",
-      "rabby-fee": "Rabby 手数料",
+      "rabby-fee": "Redbelly Wallet 手数料",
       "minimum-received": "最低受取額",
       "preferMEV": "MEV保護",
       "preferMEVTip": "EthereumとBNB Chainのスワップで「MEV保護」を有効にし、サンドイッチ攻撃のリスクを軽減します。注：カスタムRPCまたはWalletConnectアドレスを使用する場合、この機能はサポートされません。",
@@ -1002,7 +1002,7 @@
       "this-exchange-is-not-enabled-to-trade-by-you": "この取引所では取引できません。",
       "enable-it": "有効にする",
       "this-token-pair-is-not-supported": "トークンペアはサポートされていません",
-      "QuoteLessWarning": "受け取り額は Rabby トランザクションのシミュレーションからの見積もりです。DEXが提供するオファーは {{receive}} です。期待されるオファーより {{diff}} 少なく受け取ります。",
+      "QuoteLessWarning": "受け取り額は Redbelly Wallet トランザクションのシミュレーションからの見積もりです。DEXが提供するオファーは {{receive}} です。期待されるオファーより {{diff}} 少なく受け取ります。",
       "by-transaction-simulation-the-quote-is-valid": "トランザクションのシミュレーションによると、見積もりは有効です",
       "wrap-contract": "ラップコントラクト",
       "directlySwap": "スマートコントラクトで {{symbol}} トークンを直接 Wrap",
@@ -1031,18 +1031,18 @@
       "i-understand-and-accept-it": "内容を理解し、同意します",
       "confirm": "確認",
       "tradingSettingTip1": "1. 有効にすると、取引所のコントラクトを直接操作します",
-      "tradingSettingTip2": "2. Rabby は取引所の契約から発生するリスクについて責任を負いません",
+      "tradingSettingTip2": "2. Redbelly Wallet は取引所の契約から発生するリスクについて責任を負いません",
       "gas-fee": "ガス料金: {{gasUsed}}",
       "estimate": "見積もり:",
       "actual": "実際:",
       "rabbyFee": {
         "button": "了解しました",
         "rate": "手数料率",
-        "title": "Rabby 手数料",
+        "title": "Redbelly Wallet 手数料",
         "wallet": "ウォレット",
-        "bridgeDesc": "Rabby Walletは常にトップアグリゲーターから可能な限り最良のレートを見つけ、それらのオファーの信頼性を検証します。Rabbyは0.25%の手数料を請求し、この手数料は見積もりに自動的に含まれます。",
-        "swapDesc": "Rabby Wallet は常にトップアグリゲーターから最適なレートを見つけ、オファーの信頼性を検証します。Rabby は 0.25% の手数料（Wrap は 0%）を請求し、これは見積もりに自動的に含まれます。",
-        "discountTitle": "Rabby 手数料割引",
+        "bridgeDesc": "Redbelly Walletは常にトップアグリゲーターから可能な限り最良のレートを見つけ、それらのオファーの信頼性を検証します。Rabbyは0.25%の手数料を請求し、この手数料は見積もりに自動的に含まれます。",
+        "swapDesc": "Redbelly Wallet は常にトップアグリゲーターから最適なレートを見つけ、オファーの信頼性を検証します。Redbelly Wallet は 0.25% の手数料（Wrap は 0%）を請求し、これは見積もりに自動的に含まれます。",
+        "discountTitle": "Redbelly Wallet 手数料割引",
         "free": "無料",
         "cases": {
           "wrap": "ネイティブトークンのラップ/アンラップ",
@@ -1064,12 +1064,12 @@
       "Gas-fee-too-high": "ガス代が高すぎます。",
       "approve-and-swap": "{{name}} で承認してスワップする",
       "no-slippage-for-wrap": "Wrap にスリッページはありません",
-      "no-fee-for-wrap": "Wrap に Rabby 手数料はかかりません",
+      "no-fee-for-wrap": "Wrap に Redbelly Wallet 手数料はかかりません",
       "hidden-no-quote-rates_one": "{{count}} 件のレートは利用できません",
       "two-step-approve": "2 つのトランザクションに署名してアローワンスを変更してください。",
       "process-with-two-step-approve": "2段階承認を進める",
       "usd-after-fees": "≈ {{usd}} ",
-      "no-fees-for-wrap": "Wrap に Rabby 手数料はかかりません",
+      "no-fees-for-wrap": "Wrap に Redbelly Wallet 手数料はかかりません",
       "Auto": "自動",
       "no-quote-found": "見積もりが見つかりませんでした",
       "fetch-best-quote": "最適な見積もりを取得中",
@@ -1095,7 +1095,7 @@
       "whitelisted-address": "ホワイトリストされたアドレス",
       "addressTypeTip": "{{type}} によってインポート",
       "delete-desc": "削除する前に、資産を保護する方法を理解するために以下のポイントを考慮してください。",
-      "delete-checklist-1": "このアドレスを削除すると、このアドレスの対応するプライベートキーとシードフレーズが削除され、Rabby はそれを回復できなくなります。",
+      "delete-checklist-1": "このアドレスを削除すると、このアドレスの対応するプライベートキーとシードフレーズが削除され、Redbelly Wallet はそれを回復できなくなります。",
       "delete-checklist-2": "プライベートキーまたはシードフレーズをバックアップし、削除の準備ができていることを確認します。",
       "confirm": "確認",
       "cancel": "キャンセル",
@@ -1150,7 +1150,7 @@
           "manageAddress": "アドレス管理",
           "nft": "NFT",
           "ecology": "エコシステム",
-          "rabbyPoints": "Rabby Points",
+          "rabbyPoints": "Redbelly Wallet Points",
           "bridge": "ブリッジ",
           "mobile": "モバイル同期",
           "perps": "Perps",
@@ -1222,16 +1222,16 @@
         "dapps": "DApp",
         "noConnectedDapps": "接続されているDappsはありません",
         "metamaskModeTooltip": "このDappでRabbyに接続できませんか？<1>MetaMaskモード</1>を有効にしてみてください。",
-        "metamaskModeTooltipNew": "Rabby Walletは、Dappで「MetaMask」を選択すると接続されます。これを管理するには、[その他] > [MetaMaskとして偽装してRabbyを接続]に進んでください。"
+        "metamaskModeTooltipNew": "Redbelly Walletは、Dappで「MetaMask」を選択すると接続されます。これを管理するには、[その他] > [MetaMaskとして偽装してRabbyを接続]に進んでください。"
       },
       "feedback": {
         "directMessage": {
           "content": "ダイレクトメッセージ",
-          "description": "DeBankのRabby Wallet公式とチャット"
+          "description": "DeBankのRedbelly Wallet公式とチャット"
         },
         "proposal": {
           "content": "提案",
-          "description": "Rabby Walletに関する提案をDeBankに提出"
+          "description": "Redbelly Walletに関する提案をDeBankに提出"
         },
         "title": "フィードバック"
       },
@@ -1256,10 +1256,10 @@
         }
       },
       "rabbyBadge": {
-        "imageLabel": "Rabby バッジ",
+        "imageLabel": "Redbelly Wallet バッジ",
         "title": "Rabbyバッジを受け取る：",
         "enterClaimCode": "受取コードを入力",
-        "swapTip": "Rabby Wallet内で注目のDEXでスワップを完了する必要があります。",
+        "swapTip": "Redbelly Wallet内で注目のDEXでスワップを完了する必要があります。",
         "goToSwap": "スワップに進む",
         "claim": "受け取る",
         "viewYourClaimCode": "DeBankで受取コードを確認",
@@ -1268,7 +1268,7 @@
         "rabbyValuedUserNo": "Rabby優良ユーザー No.{{num}}",
         "claimSuccess": "受け取りに成功しました",
         "viewOnDebank": "DeBankで表示",
-        "rabbyFreeGasUserNo": "Rabby Free Gas ユーザー No.{{num}}",
+        "rabbyFreeGasUserNo": "Redbelly Wallet Free Gas ユーザー No.{{num}}",
         "freeGasTitle": "Free Gasバッジを受け取る：",
         "freeGasNoCode": "下のボタンからDeBankに移動し、現在のアドレスで受取コードを取得してください。",
         "learnMore": "詳細情報",
@@ -1315,7 +1315,7 @@
         "warning": "警告",
         "clearWatchAddressContent": "閲覧専用アドレスをすべて削除しますか？",
         "updateVersion": {
-          "content": "新しいRabby Walletのアップデートが利用可能です。手動でアップデート方法を確認するにはクリックしてください。",
+          "content": "新しいRedbelly Walletのアップデートが利用可能です。手動でアップデート方法を確認するにはクリックしてください。",
           "okText": "チュートリアルを見る",
           "successTip": "最新バージョンを使用中です",
           "title": "アップデート利用可能"
@@ -1328,7 +1328,7 @@
           "connectedDapp": "接続されたDapp",
           "gasTopUp": "ガス補充",
           "searchDapps": "Dappsを検索",
-          "rabbyPoints": "Rabby Points",
+          "rabbyPoints": "Redbelly Wallet Points",
           "ecosystem": "エコシステム"
         },
         "settings": {
@@ -1367,7 +1367,7 @@
           "desc": "有効にすると、DAppごとに接続するアドレスを選択できます。メインアドレスを切り替えても、各DAppに接続済みのアドレスには影響しません。"
         },
         "rateModalTriggerOnHome": {
-          "description": "Rabby Walletをどのように評価しますか？"
+          "description": "Redbelly Walletをどのように評価しますか？"
         },
         "rateModal": {
           "submitFeedbackButton": "送信",
@@ -1590,7 +1590,7 @@
       },
       "rabbyPointsPopup": {
         "title": "Rabbyポイント",
-        "desc": "Rabby Mobileでポイントを確認してください。",
+        "desc": "Redbelly Wallet Mobileでポイントを確認してください。",
         "downloadIntro": "アプリをまだお持ちではありませんか？今すぐダウンロードしてください。"
       },
       "noData": "一致する通貨がありません",
@@ -1904,7 +1904,7 @@
         "manageImtokenOffline": "imToken を管理",
         "manageImKey": "imKey を管理",
         "importBtn": "インポート ({{count}})",
-        "nonAddr": "このシードフレーズにはアドレスが追加されていません。このフレーズは、Rabby Extension > アドレスの管理で削除できます。"
+        "nonAddr": "このシードフレーズにはアドレスが追加されていません。このフレーズは、Redbelly Wallet Extension > アドレスの管理で削除できます。"
       },
       "importYourKeystore": "KeyStoreをインポート",
       "incorrectPassword": "パスワードが正しくありません",
@@ -1932,7 +1932,7 @@
         "noDeviceFoundError": "Keystone を一つ差し込んでください",
         "title": "Keystoneを接続",
         "allowRabbyPermissionsTitle": "Rabbyに以下の権限を許可する：",
-        "deviceRejectedExportAddress": "Rabby への接続を承認",
+        "deviceRejectedExportAddress": "Redbelly Wallet への接続を承認",
         "keystonePermissionTip": "以下のポップアップウィンドウで \"許可\" をクリックして、Keystone へのアクセスを承認し、Keystone 3 Pro がホームページにあることを確認してください。",
         "exportAddressJustAllowedOnHomePage": "Keystoneのホーム画面でのみアドレスをエクスポートできます。",
         "deviceIsLockedError": "パスワードを入力してロックを解除してください",
@@ -1991,7 +1991,7 @@
         "placeholder": "アンロックするにはパスワードを入力してください",
         "error": "パスワードが正しくありません"
       },
-      "title": "Rabby Wallet",
+      "title": "Redbelly Wallet",
       "btnForgotPassword": "パスワードをお忘れですか?",
       "description": "EthereumとEVMのための定番ウォレット",
       "biometricFailed": "生体認証の解除に失敗しました"
@@ -2008,7 +2008,7 @@
       "hasAdded": "このトークンが追加されました。"
     },
     "switchChain": {
-      "title": "Rabby にカスタムネットワークを追加",
+      "title": "Redbelly Wallet にカスタムネットワークを追加",
       "chainNotSupport": "要求されたチェーンはまだRabbyでサポートされていません",
       "testnetTip": "テストネットに接続する前に、「詳細設定」の下にある「テストネットを有効にする」をオンにしてください",
       "unknownChain": "不明なチェーン",
@@ -2269,7 +2269,7 @@
         "confirmModal": {
           "i-understand-and-accept-it": "内容を理解し、同意します",
           "tip1": "有効にすると、このアグリゲーターから直接コントラクトとやり取りします。",
-          "tip2": "2. Rabby は、このアグリゲーターのコントラクトから生じるいかなるリスクに対しても責任を負いません。",
+          "tip2": "2. Redbelly Wallet は、このアグリゲーターのコントラクトから生じるいかなるリスクに対しても責任を負いません。",
           "title": "このアグリゲーターを使用して取引を有効にする"
         },
         "SupportedBridge": "サポートされているBridge:",
@@ -2305,7 +2305,7 @@
       "tokenPairPlaceholder": "トークンペアを選択",
       "slippage-adjusted-refresh-quote": "スリッページが調整されました。ルートをリフレッシュしてください。",
       "bridge-cost": "ブリッジコスト",
-      "rabby-fee": "Rabby 手数料",
+      "rabby-fee": "Redbelly Wallet 手数料",
       "approve-and-bridge": "承認してブリッジする",
       "insufficient-balance": "残高不足",
       "bridge-via-x": "{{name}}でブリッジ",
@@ -2457,12 +2457,12 @@
       "claimModal": {
         "addressBalance": "ウォレット残高",
         "claim": "受け取る",
-        "rabbyUser": "Rabby アクティブユーザー",
+        "rabbyUser": "Redbelly Wallet アクティブユーザー",
         "placeholder": "リファラルコードを入力して追加ポイントを獲得 (オプション)",
         "MetaMaskSwap": "MetaMask Swap",
         "snapshotTime": "スナップショット時間: {{time}}",
         "title": "初期ポイントを申請する",
-        "rabbyDesktopGenesisNft": "Rabby Desktop Genesis NFT",
+        "rabbyDesktopGenesisNft": "Redbelly Wallet Desktop Genesis NFT",
         "season2": "シーズン2",
         "rabbyValuedUserBadge": "Rabby優良ユーザーバッジ",
         "walletBalance": "ウォレット残高",
@@ -2491,14 +2491,14 @@
         "max-15-characters-use-numbers-and-letters-only": "最大 15 文字、数字と文字のみを使用してください。"
       },
       "top-100": "トップ 100",
-      "title": "Rabby Points",
+      "title": "Redbelly Wallet Points",
       "share-on": "シェアする",
       "out-of-x-current-total-points": "{{total}} 点数の合計中",
       "earn-points": "ポイントを獲得",
       "referral-code-copied": "紹介コードをコピーしました。",
       "initialPointsClaimEnded": "初期ポイントの受取期間は終了しました",
       "firstRoundEnded": "🎉 第1回のRabby Pointsは終了しました",
-      "secondRoundEnded": "🎉 Rabby Points の第2ラウンドが終了しました",
+      "secondRoundEnded": "🎉 Redbelly Wallet Points の第2ラウンドが終了しました",
       "code-set-successfully": "リファーラルコードが正常に設定されました"
     },
     "customTestnet": {
@@ -2516,7 +2516,7 @@
       "AddFromChainList": {
         "tips": {
           "added": "このチェーンはすでに追加されています。",
-          "supported": "Rabby Walletによってすでに統合されているチェーン"
+          "supported": "Redbelly Walletによってすでに統合されているチェーン"
         },
         "search": "カスタムネットワーク名またはIDを検索",
         "empty": "チェーンが見つかりませんでした",
@@ -2533,10 +2533,10 @@
       "currency": "通貨",
       "id": "ID",
       "empty": "カスタムネットワークなし",
-      "desc": "Rabby はカスタムネットワークの安全性を検証できません。信頼できるネットワークのみを追加してください。"
+      "desc": "Redbelly Wallet はカスタムネットワークの安全性を検証できません。信頼できるネットワークのみを追加してください。"
     },
     "addChain": {
-      "title": "Rabby にカスタムネットワークを追加",
+      "title": "Redbelly Wallet にカスタムネットワークを追加",
       "desc": "Rabbyはカスタムネットワークのセキュリティを確認できません。信頼できるネットワークのみを追加してください。"
     },
     "sign": {
@@ -2760,7 +2760,7 @@
         "title2": "Gas Accountの使い方",
         "title1": "GasAccountとは何ですか",
         "title4": "GasAccountは安全ですか",
-        "desc3": "Rabby Walletは追加料金を請求しません。あなたはトランザクションのガス代と、そのガスをGasAccountからあなたのアドレスに送るための少額のガス代のみを支払います。",
+        "desc3": "Redbelly Walletは追加料金を請求しません。あなたはトランザクションのガス代と、そのガスをGasAccountからあなたのアドレスに送るための少額のガス代のみを支払います。",
         "desc4": "GasAccountは、契約の承認や権限を必要としません。あなたはRabbyのGasAccountアドレスに入金し、必要な時にRabbyがあなたのアドレスにガスを送ります。設計上、完全に安全です。",
         "desc2": "GasAccountに資金を追加し、任意の取引に使用してください。署名する際、ネイティブトークンまたはGasAccountでガスを支払うオプションを選択し、いつでも切り替えてください。",
         "desc1": "GasAccountはガス料金を支払う新しい方法です。各チェーンのネイティブトークンを使用する代わりに、1つのアカウントを使用してすべてのチェーンのすべてのアドレスのガスをカバーできます。シンプルでオプションの機能で、ガス切れになることもありません。"
@@ -2798,7 +2798,7 @@
       "guide": {
         "createNewAddress": "新しいアドレスを作成",
         "importAddress": "すでにアドレスを持っています。",
-        "title": "Rabby Walletへようこそ",
+        "title": "Redbelly Walletへようこそ",
         "desc": "EthereumとEVMのための定番ウォレット"
       },
       "createNewAddress": {
@@ -2851,14 +2851,14 @@
         "backupSeedPhrase": "バックアップシードフレーズ"
       },
       "readyToUse": {
-        "pin": "Rabby Wallet をピン留め",
+        "pin": "Redbelly Wallet をピン留め",
         "guides": {
           "step1": "ブラウザー拡張アイコンをクリックしてください",
-          "step2": "Rabby Walletをピン留めする"
+          "step2": "Redbelly Walletをピン留めする"
         },
         "title": "あなたのRabbyウォレットの準備ができました！",
         "extensionTip": "クリック<1/>、次に<3/>",
-        "desc": "Rabby Walletを見つけてピン留めしてください。"
+        "desc": "Redbelly Walletを見つけてピン留めしてください。"
       },
       "importSeedPhrase": {
         "title": "シードフレーズをインポート",
@@ -2944,8 +2944,8 @@
         "title": "パスワードを忘れた場合",
         "button": "リセットプロセスを開始",
         "buttonNoData": "パスワードを設定",
-        "descriptionNoData": "Rabby Walletはパスワードを保存せず、パスワードを取得するお手伝いはできません。忘れた場合は新しいパスワードを設定してください。",
-        "description": "Rabby Walletはパスワードを保存せず、パスワードの復元をお手伝いすることができません。ウォレットをリセットして新しいウォレットを設定してください。"
+        "descriptionNoData": "Redbelly Walletはパスワードを保存せず、パスワードを取得するお手伝いはできません。忘れた場合は新しいパスワードを設定してください。",
+        "description": "Redbelly Walletはパスワードを保存せず、パスワードの復元をお手伝いすることができません。ウォレットをリセットして新しいウォレットを設定してください。"
       },
       "reset": {
         "alert": {
@@ -2962,11 +2962,11 @@
           "title": "保持されるデータ："
         },
         "button": "リセットを確認",
-        "title": "Rabby Wallet をリセット",
+        "title": "Redbelly Wallet をリセット",
         "confirm": "ボックスに<1>RESET</1>と入力して確認し、続行します。"
       },
       "tip": {
-        "title": "Rabby Wallet リセットが完了しました",
+        "title": "Redbelly Wallet リセットが完了しました",
         "description": "新しいパスワードを作成して続行してください",
         "buttonNoData": "アドレスを追加",
         "button": "パスワードを設定",
@@ -2974,7 +2974,7 @@
       },
       "success": {
         "button": "完了",
-        "description": "Rabby Wallet を使用する準備が整いました。",
+        "description": "Redbelly Wallet を使用する準備が整いました。",
         "title": "パスワードが正常に設定されました"
       }
     },
@@ -2993,16 +2993,16 @@
       "step1Desc": "Rabbyに現在のDappでMetaMaskとして偽装を許可する",
       "manage": "許可されたDappsを管理",
       "title": "MetaMaskとして偽装してRabbyを接続する",
-      "alert": "Dappに接続できません。Rabby Walletがオプションとして表示されていないためですか？"
+      "alert": "Dappに接続できません。Redbelly Walletがオプションとして表示されていないためですか？"
     },
     "syncToMobile": {
       "downloadGooglePlay": "Google Play",
       "steps2Description": " あなたのQRコードには機密データが含まれています。これを秘密にして、決して他人と共有しないでください。",
       "downloadAppleStore": "App Store",
-      "steps1": "Rabby Mobile をダウンロードする",
+      "steps1": "Redbelly Wallet Mobile をダウンロードする",
       "description": "あなたのアドレスデータは完全にオフラインで保持され、暗号化され、QRコードを通じて安全に転送されます。",
-      "steps2": "2. Rabby Mobileでスキャン",
-      "title": "Rabby Extensionからモバイルへウォレットアドレスを同期",
+      "steps2": "2. Redbelly Wallet Mobileでスキャン",
+      "title": "Redbelly Wallet Extensionからモバイルへウォレットアドレスを同期",
       "clickToShowQr": "クリックしてアドレスを選択し、QRコードを表示します",
       "disableSelectAddress": "{{type}}アドレスのサポートされていない同期",
       "disableSelectAddressWithPassphrase": "パスフレーズを使用する{{type}}アドレスは同期できません",
@@ -3060,7 +3060,7 @@
       "riskAlert": {
         "riskType": {
           "risks": {
-            "scamAddress": "Rabby によってフラグされた詐欺アドレス",
+            "scamAddress": "Redbelly Wallet によってフラグされた詐欺アドレス",
             "contractAddress": "契約アドレスが検出されました、資金が失われる可能性があります",
             "dexNoDeposite": "CEXの入金アドレスではありません。資金が失われる可能性があります。",
             "noSend": "このアドレスには180日間送信していません。"
@@ -3276,7 +3276,7 @@
           "proceeds": "収益",
           "creatorFee": "クリエイター手数料 ({{fee}}%)",
           "floorDifference": "フロア差",
-          "rabbyFee": "Rabby 手数料 (0%)",
+          "rabbyFee": "Redbelly Wallet 手数料 (0%)",
           "approveAndList": "承認とリスト",
           "platformFee": " Openseaプラットフォーム手数料 ({{fee}}%)",
           "creatorFeeTips": "クリエイターの収益は販売者によって支払われます。",
@@ -3535,7 +3535,7 @@
       "invitePopup": {
         "activateFailed": "失敗",
         "activateNow": "今すぐ有効化",
-        "description": "Rabby のコードを使用して有効化する",
+        "description": "Redbelly Wallet のコードを使用して有効化する",
         "title": "Hyperliquidの手数料を節約",
         "activatedSuccess": "4%のHyperliquid手数料節約を有効化しました",
         "hyperliquidFee": "Hyperliquidの無期限契約の取引手数料。"
@@ -3624,7 +3624,7 @@
       "completed": "完了",
       "logInPerpsAccount": "Perps アカウントにログイン",
       "marginCross": "クロスマージン",
-      "rabbyFeeTipsV2": "Rabby 手数料: 0.02%",
+      "rabbyFeeTipsV2": "Redbelly Wallet 手数料: 0.02%",
       "openPositionTips": "無期限契約の取引には、投資額および担保の突然かつ全損につながる可能性を含む、重大なリスクが伴います。高いレバレッジと市場のボラティリティのため、すべてのユーザーに適しているとは限りません。価格はファンディングレートと流動性の影響を受けることがあり、通知なしに自動清算されることがあります。市場データはHyperliquidによって提供されます。",
       "directDepositFast": "迅速、スリッページなし",
       "details": "詳細情報",
@@ -4255,7 +4255,7 @@
         "takeProfitWhenPriceAbove": "価格が上回ったときに利確",
         "stopLossWhenPriceBelow": "価格が下回った場合のストップロス",
         "stopLossWhenPriceAbove": "価格が上回った場合のストップロス",
-        "rabbyFee": "Rabby 手数料",
+        "rabbyFee": "Redbelly Wallet 手数料",
         "providerFee": "Hyperliquid手数料",
         "maxMargin": "最大証拠金は {{amount}} です",
         "insufficientBalance": "証拠金不足",
@@ -4725,7 +4725,7 @@
     "EcologyNoticeModal": {
       "title": "通知",
       "notRemind": "再び通知しない",
-      "desc": "以下のサービスは、サードパーティーのエコシステムパートナーによって直接提供されます。Rabby Walletはこれらのサービスのセキュリティに対して責任を負いません。"
+      "desc": "以下のサービスは、サードパーティーのエコシステムパートナーによって直接提供されます。Redbelly Walletはこれらのサービスのセキュリティに対して責任を負いません。"
     },
     "ReserveGasPopup": {
       "title": "ガスを予約する",
@@ -4735,9 +4735,9 @@
       "fast": "ノーマル"
     },
     "OpenExternalWebsiteModal": {
-      "title": "Rabby Wallet を離れようとしています",
+      "title": "Redbelly Wallet を離れようとしています",
       "button": "続行",
-      "content": "外部のウェブサイトを訪れようとしています。Rabby Walletはこのサイトの内容やセキュリティに責任を負いません。"
+      "content": "外部のウェブサイトを訪れようとしています。Redbelly Walletはこのサイトの内容やセキュリティに責任を負いません。"
     },
     "TokenChart": {
       "price": "価格",

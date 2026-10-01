@@ -221,7 +221,7 @@
         "selfHostConfirm": {
           "button": "OK",
           "title": "Rabby의 Safe 서비스로 전환",
-          "content": "Safe API를 사용할 수 없습니다. Safe 기능을 계속 사용하려면 Rabby가 배포한 Safe 서비스로 전환하세요. <strong>모든 Safe 서명자는 Rabby Wallet을 사용해 거래를 승인해야 합니다.</strong>"
+          "content": "Safe API를 사용할 수 없습니다. Safe 기능을 계속 사용하려면 Rabby가 배포한 Safe 서비스로 전환하세요. <strong>모든 Safe 서명자는 Redbelly Wallet을 사용해 거래를 승인해야 합니다.</strong>"
         }
       },
       "SafeNonceSelector": {
@@ -312,11 +312,11 @@
       "popularity": "인기",
       "trusted": "신뢰할 수 있는",
       "contractAddress": "계약 주소",
-      "decodedTooltip": "이 서명은 Rabby Wallet에 의해 디코딩됩니다.",
+      "decodedTooltip": "이 서명은 Redbelly Wallet에 의해 디코딩됩니다.",
       "markRemoved": "표시가 제거되었습니다",
       "markAsBlock": "차단됨으로 표시됨",
       "unknownAction": "알 수 없는 서명 유형",
-      "sigCantDecode": "이 서명은 Rabby Wallet에 의해 디코드될 수 없습니다.",
+      "sigCantDecode": "이 서명은 Redbelly Wallet에 의해 디코드될 수 없습니다.",
       "blocked": "차단됨",
       "transacted": "이전 거래",
       "unknownActionType": "알 수 없는 작업 유형",
@@ -964,13 +964,13 @@
     },
     "swap": {
       "rabbyFee": {
-        "title": "Rabby 수수료",
+        "title": "Redbelly Wallet 수수료",
         "button": "알겠어요",
         "rate": "수수료 비율",
         "wallet": "지갑",
-        "swapDesc": "Rabby Wallet은 항상 주요 애그리게이터에서 가능한 최적의 환율을 찾고, 해당 오퍼의 신뢰성을 검증합니다. Rabby는 0.25% 수수료를 부과하며(Wrap은 0%), 이 수수료는 견적에 자동으로 포함됩니다.",
-        "bridgeDesc": "Rabby Wallet은 항상 최고의 집계기에서 가장 좋은 환율을 찾고, 그들의 제안의 신뢰성을 검증합니다. Rabby는 0.25%의 수수료를 부과하며, 이는 자동으로 견적에 포함됩니다.",
-        "discountTitle": "Rabby 수수료 할인",
+        "swapDesc": "Redbelly Wallet은 항상 주요 애그리게이터에서 가능한 최적의 환율을 찾고, 해당 오퍼의 신뢰성을 검증합니다. Rabby는 0.25% 수수료를 부과하며(Wrap은 0%), 이 수수료는 견적에 자동으로 포함됩니다.",
+        "bridgeDesc": "Redbelly Wallet은 항상 최고의 집계기에서 가장 좋은 환율을 찾고, 그들의 제안의 신뢰성을 검증합니다. Rabby는 0.25%의 수수료를 부과하며, 이는 자동으로 견적에 포함됩니다.",
+        "discountTitle": "Redbelly Wallet 수수료 할인",
         "free": "무료",
         "cases": {
           "wrap": "네이티브 토큰 래핑/언래핑",
@@ -1020,7 +1020,7 @@
       "minimum-received": "최소 수신",
       "preferMEV": "MEV 보호",
       "preferMEVTip": "Ethereum 및 BNB Chain 스왑에서 \"MEV 보호\"를 활성화하여 샌드위치 공격 위험을 줄이세요. 사용자 지정 RPC 또는 WalletConnect 주소를 사용하는 경우 이 기능은 지원되지 않습니다.",
-      "no-fee-for-wrap": "Wrap에는 Rabby 수수료가 없습니다",
+      "no-fee-for-wrap": "Wrap에는 Redbelly Wallet 수수료가 없습니다",
       "enable-it": "사용 가능하게 하세요",
       "rates-from-cex": "CEX에서의 요금",
       "sort-with-gas": "가스로 정렬",
@@ -1034,7 +1034,7 @@
       "this-token-pair-is-not-supported": "토큰 쌍은 지원되지 않습니다",
       "need-to-approve-token-before-swap": "교환하기 전에 토큰을 승인해야 합니다.",
       "hidden-no-quote-rates_other": "{{count}} 요금 정보를 사용할 수 없습니다.",
-      "rabby-fee": "Rabby 수수료",
+      "rabby-fee": "Redbelly Wallet 수수료",
       "unable-to-fetch-the-price": "가격을 가져올 수 없습니다.",
       "approve-tips": "1. 승인 → 2. 스왑",
       "directlySwap": "스마트 컨트랙트로 {{symbol}} 토큰을 직접 Wrap",
@@ -1059,7 +1059,7 @@
       "slippage-tolerance": "슬리피지 허용 한도",
       "two-step-approve": "2개의 거래에 서명하여 허용량을 변경하십시오.",
       "dex": "덱스",
-      "no-fees-for-wrap": "Wrap에는 Rabby 수수료가 없습니다",
+      "no-fees-for-wrap": "Wrap에는 Redbelly Wallet 수수료가 없습니다",
       "est-receiving": "예상 수신:",
       "enable-trading": "거래 활성화",
       "actual": "실제:",
@@ -1071,7 +1071,7 @@
       "tradingSettingTip1": "1. 활성화되면, 거래소에서 직접 계약과 상호작용하게 됩니다.",
       "two-step-approve-details": "USDT 토큰은 허용량을 변경하기 위해 2개의 거래가 필요합니다. 먼저 허용량을 0으로 재설정해야 하며, 그 후에 새로운 허용량 값을 설정할 수 있습니다.",
       "selected-offer-differs-greatly-from-current-rate-may-cause-big-losses": "선택한 오퍼가 현재 요금과 크게 다르며, 큰 손실을 초래할 수 있습니다.",
-      "QuoteLessWarning": "수신 금액은 Rabby 거래 시뮬레이션에서 추정됩니다. dex에서 제공된 제안은 {{receive}}입니다. 예상 제안보다 {{diff}}만큼 적게 수령하게 됩니다.",
+      "QuoteLessWarning": "수신 금액은 Redbelly Wallet 거래 시뮬레이션에서 추정됩니다. dex에서 제공된 제안은 {{receive}}입니다. 예상 제안보다 {{diff}}만큼 적게 수령하게 됩니다.",
       "Auto": "자동",
       "price-impact": "가격 영향",
       "source": "소스",
@@ -1145,7 +1145,7 @@
       "slippage-adjusted-refresh-quote": "슬리피지 조정됨. 경로 새로 고침.",
       "price-expired-refresh-route": "가격이 만료되었습니다. 경로를 새로 고치세요.",
       "getRoutes": "경로 가져오기",
-      "rabby-fee": "Rabby 수수료",
+      "rabby-fee": "Redbelly Wallet 수수료",
       "recommendFromToken": "<1></1>에서 사용할 수 있는 견적으로 브리지합니다.",
       "est-receiving": "예상 수신:",
       "best": "최고",
@@ -1235,7 +1235,7 @@
           "mobile": "모바일 동기화",
           "more": "더 보기",
           "feedback": "피드백",
-          "rabbyPoints": "Rabby 포인트",
+          "rabbyPoints": "Redbelly Wallet 포인트",
           "receive": "받기",
           "gasTopUp": "가스 충전",
           "nft": "NFT",
@@ -1314,17 +1314,17 @@
         "noPinnedDapps": "고정된 dapps가 없습니다.",
         "metamaskModeTooltip": "이 Dapp에서 Rabby에 연결할 수 없나요? <1>MetaMask Mode</1>를 활성화해 보세요.",
         "metamaskTooltip": "이 DApp에서는 MetaMask를 우선 사용합니다. 설정 > MetaMask 우선 DApp에서 언제든지 변경할 수 있습니다.",
-        "metamaskModeTooltipNew": "DApp에서 \"MetaMask\"를 선택하면 Rabby Wallet이 연결됩니다. 더 보기 > MetaMask로 위장해 Rabby 연결에서 관리할 수 있습니다.",
+        "metamaskModeTooltipNew": "DApp에서 \"MetaMask\"를 선택하면 Redbelly Wallet이 연결됩니다. 더 보기 > MetaMask로 위장해 Redbelly Wallet 연결에서 관리할 수 있습니다.",
         "connectedDapp": "Rabby는 현재 Dapp에 연결되어 있지 않습니다. 연결하려면 Dapp 웹페이지에서 연결 버튼을 찾아 클릭하세요."
       },
       "feedback": {
         "directMessage": {
           "content": "다이렉트 메시지",
-          "description": "DeBank에서 Rabby Wallet 공식 채팅하기"
+          "description": "DeBank에서 Redbelly Wallet 공식 채팅하기"
         },
         "proposal": {
           "content": "제안",
-          "description": "Rabby Wallet에 대한 제안을 DeBank에 제출하세요."
+          "description": "Redbelly Wallet에 대한 제안을 DeBank에 제출하세요."
         },
         "title": "피드백"
       },
@@ -1351,20 +1351,20 @@
       "rabbyBadge": {
         "learnMoreOnDebank": "DeBank에서 자세히 알아보세요",
         "noCode": "이 주소에 대한 수령 코드를 활성화하지 않았습니다.",
-        "rabbyValuedUserNo": "Rabby 우수 사용자 No.{{num}}",
+        "rabbyValuedUserNo": "Redbelly Wallet 우수 사용자 No.{{num}}",
         "enterClaimCode": "수령 코드 입력",
         "claim": "수령",
         "viewOnDebank": "DeBank에서 보기",
-        "rabbyFreeGasUserNo": "Rabby Free Gas 사용자 번호.{{num}}",
+        "rabbyFreeGasUserNo": "Redbelly Wallet Free Gas 사용자 번호.{{num}}",
         "claimSuccess": "수령 성공",
         "goToSwap": "스왑 하러 가기",
         "learnMore": "자세히 알아보기",
         "imageLabel": "rabby 배지",
-        "title": "Rabby 배지를 수령하세요.",
+        "title": "Redbelly Wallet 배지를 수령하세요.",
         "viewYourClaimCode": "DeBank에서 수령 코드를 확인하세요.",
         "freeGasTip": "트랜잭션을 Free Gas를 사용하여 서명해 주세요. 가스가 부족할 때 'Free Gas' 버튼이 자동으로 나타납니다.",
         "freeGasNoCode": "아래 버튼을 클릭하여 DeBank를 방문하고 현재 주소를 사용하여 클레임 코드를 가져오세요.",
-        "swapTip": "Rabby Wallet 내에서 주목할 만한 dex와 스왑을 완료해야 합니다.",
+        "swapTip": "Redbelly Wallet 내에서 주목할 만한 dex와 스왑을 완료해야 합니다.",
         "freeGasTitle": "Free Gas Badge 받기"
       },
       "contacts": {
@@ -1386,7 +1386,7 @@
         "updateVersion": {
           "okText": "튜토리얼 보기",
           "title": "업데이트 가능",
-          "content": "Rabby Wallet에 대한 새로운 업데이트가 있습니다. 수동으로 업데이트하는 방법을 클릭하여 확인하세요.",
+          "content": "Redbelly Wallet에 대한 새로운 업데이트가 있습니다. 수동으로 업데이트하는 방법을 클릭하여 확인하세요.",
           "successTip": "최신 버전을 사용하고 있습니다."
         },
         "features": {
@@ -1395,7 +1395,7 @@
           "connectedDapp": "연결된 Dapps",
           "gasTopUp": "가스 충전",
           "lockWallet": "잠금 지갑",
-          "rabbyPoints": "Rabby 포인트",
+          "rabbyPoints": "Redbelly Wallet 포인트",
           "signatureRecord": "서명 기록",
           "searchDapps": "Dapps 검색",
           "ecosystem": "생태계"
@@ -1436,7 +1436,7 @@
         "host": "호스트",
         "reset": "초기 설정 복원",
         "4Hours": "4시간",
-        "claimRabbyBadge": "Rabby 배지 수령!",
+        "claimRabbyBadge": "Redbelly Wallet 배지 수령!",
         "disableWhitelistTip": "비활성화되면 자산을 원하는 주소로 보낼 수 있습니다.",
         "enableWhitelistTip": "활성화하면 Rabby를 사용하여 화이트리스트에 있는 주소로만 자산을 전송할 수 있습니다.",
         "clearPendingTip2": "귀하의 계정 잔액에 영향을 주지 않으며 시드 구문을 다시 입력할 필요가 없습니다. 모든 자산 및 계정 세부정보는 안전하게 유지됩니다.",
@@ -1460,7 +1460,7 @@
           "desc": "활성화하면 DApp마다 연결할 주소를 선택할 수 있습니다. 기본 주소를 전환해도 각 DApp에 이미 연결된 주소에는 영향을 주지 않습니다."
         },
         "rateModalTriggerOnHome": {
-          "description": "Rabby Wallet은 어떻게 평가하시나요?"
+          "description": "Redbelly Wallet은 어떻게 평가하시나요?"
         },
         "rateModal": {
           "thxTitle": "감사합니다!",
@@ -1502,7 +1502,7 @@
         "noTransactions": "거래 없음",
         "customizedButton": "사용자 정의 토큰",
         "swap": "스왑",
-        "notSelectedCustom": "이 토큰은 Rabby 토큰 목록에 등록되지 않았습니다. 스위치를 켜면 목록에 추가됩니다.",
+        "notSelectedCustom": "이 토큰은 Redbelly Wallet 토큰 목록에 등록되지 않았습니다. 스위치를 켜면 목록에 추가됩니다.",
         "scamTx": "사기 거래",
         "blockedButtons": "차단된 토큰",
         "selectedCustom": "토큰이 Rabby에 등록되지 않았습니다. 수동으로 토큰 목록에 추가했습니다.",
@@ -1616,7 +1616,7 @@
         "price": "가격",
         "side": "방향",
         "searchTokenPlaceholder": "토큰 검색",
-        "openInTab": "Rabby 탭에서 열기",
+        "openInTab": "Redbelly Wallet 탭에서 열기",
         "openProMode": "프로 모드 열기",
         "openInTabV2": "탭에서 열기",
         "addAssets": "자산 추가"
@@ -1679,9 +1679,9 @@
         "button": "확인"
       },
       "rabbyPointsPopup": {
-        "title": "Rabby 포인트",
+        "title": "Redbelly Wallet 포인트",
         "downloadIntro": "아직 앱이 없으신가요? 지금 다운로드하세요.",
-        "desc": "Rabby Mobile에서 포인트를 확인하세요."
+        "desc": "Redbelly Wallet Mobile에서 포인트를 확인하세요."
       },
       "noData": "일치하는 통화가 없습니다",
       "ZeroAssets": {
@@ -1997,7 +1997,7 @@
         "manageSeedPhrase": "시드 구문 관리",
         "manageNgraveZero": "NGRAVE ZERO 관리하기",
         "connectedToTrezor": "Trezor에 연결됨",
-        "addressesInRabby": "Rabby{{0}}의 주소",
+        "addressesInRabby": "Redbelly Wallet{{0}}의 주소",
         "importBtn": "가져오기 ({{count}})",
         "manageImtokenOffline": "imToken 관리하십시오",
         "manageBitbox02": "BitBox02 관리하기",
@@ -2006,7 +2006,7 @@
         "manageKeystone": "Keystone 관리",
         "advancedSettings": "고급 설정",
         "customAddressHdPath": "사용자 정의 주소 HD path",
-        "nonAddr": "이 시드 구문에 대해 추가된 주소가 없습니다. Rabby Extension > 주소 관리에서 이 문구를 삭제할 수 있습니다."
+        "nonAddr": "이 시드 구문에 대해 추가된 주소가 없습니다. Redbelly Wallet Extension > 주소 관리에서 이 문구를 삭제할 수 있습니다."
       },
       "keystore": {
         "password": {
@@ -2059,7 +2059,7 @@
       "duplicateAddressesSkippedTitle": "이미 일부 주소가 임포트되었습니다",
       "bulkImportPrivateKeyExceeded": "최대 {{count}}개의 개인 키를 동시에 지원합니다.",
       "duplicateAddressesSkippedDesc_one": "{{count}} 개의 주소는 이미 존재하므로 건너뛰었습니다.",
-      "openExtensionToGetStarted": "Rabby 확장을 열어 시작하세요.",
+      "openExtensionToGetStarted": "Redbelly Wallet 확장을 열어 시작하세요.",
       "bulkImportPrivateKeySupport": "최대 1000개의 EVM 호환 개인 키를 지원합니다.",
       "duplicateAddressesSkippedDesc_other": "{{count}} 개의 주소는 이미 존재하므로 건너뛰었습니다.",
       "bulkImportPrivateKey": "개인 키 일괄 가져오기",
@@ -2081,7 +2081,7 @@
         "placeholder": "비밀번호를 입력하여 잠금을 해제하세요.",
         "error": "잘못된 비밀번호"
       },
-      "title": "Rabby 지갑",
+      "title": "Redbelly Wallet 지갑",
       "btnForgotPassword": "비밀번호를 잊으셨나요?",
       "description": "이더리움 및 EVM을 위한 귀하의 필수 지갑입니다.",
       "biometricFailed": "생체 인식 잠금 해제 실패"
@@ -2258,9 +2258,9 @@
       "requestBtn": "요청",
       "title": "DeBank 테스트넷 가스 토큰 요청",
       "time": "하루에",
-      "notMintedTip": "Rabby 배지 보유자만 요청 가능합니다.",
-      "claimBadgeBtn": "Rabby 배지 받기",
-      "mintedTip": "Rabby 배지 보유자는 하루에 한 번 요청할 수 있습니다."
+      "notMintedTip": "Redbelly Wallet 배지 보유자만 요청 가능합니다.",
+      "claimBadgeBtn": "Redbelly Wallet 배지 받기",
+      "mintedTip": "Redbelly Wallet 배지 보유자는 하루에 한 번 요청할 수 있습니다."
     },
     "safeQueue": {
       "action": {
@@ -2452,7 +2452,7 @@
         "earnTip": "하루에 한 번 한도. 00:00 UTC+0 이후에 포인트를 적립해 주세요."
       },
       "claimModal": {
-        "rabbyUser": "Rabby 활성 사용자",
+        "rabbyUser": "Redbelly Wallet 활성 사용자",
         "walletBalance": "지갑 잔액",
         "addressBalance": "지갑 잔액",
         "claim": "수령",
@@ -2460,8 +2460,8 @@
         "title": "초기 포인트 수령",
         "placeholder": "추천 코드를 입력하여 추가 포인트를 받으세요 (선택 사항)",
         "snapshotTime": "스냅샷 시간: {{time}}",
-        "rabbyValuedUserBadge": "Rabby 우수 사용자 배지",
-        "rabbyDesktopGenesisNft": "Rabby Desktop Genesis NFT",
+        "rabbyValuedUserBadge": "Redbelly Wallet 우수 사용자 배지",
+        "rabbyDesktopGenesisNft": "Redbelly Wallet Desktop Genesis NFT",
         "activeStats": "활성 상태",
         "cantUseOwnCode": "자신의 추천 코드는 사용할 수 없습니다.",
         "invalid-code": "잘못된 코드",
@@ -2489,14 +2489,14 @@
       },
       "share-on": "공유하기",
       "referral-code-copied": "추천 코드가 복사되었습니다.",
-      "title": "Rabby 포인트",
+      "title": "Redbelly Wallet 포인트",
       "out-of-x-current-total-points": "총 {{total}} 배포된 포인트 중에서",
       "top-100": "상위 100",
       "earn-points": "포인트 적립",
       "initialPointsClaimEnded": "초기 포인트 수령 기간이 종료되었습니다",
       "code-set-successfully": "추천 코드가 성공적으로 설정되었습니다.",
-      "secondRoundEnded": "🎉 Rabby Points의 두 번째 라운드가 종료되었습니다",
-      "firstRoundEnded": "🎉 Rabby Points의 첫 번째 라운드가 종료되었습니다."
+      "secondRoundEnded": "🎉 Redbelly Wallet Points의 두 번째 라운드가 종료되었습니다",
+      "firstRoundEnded": "🎉 Redbelly Wallet Points의 첫 번째 라운드가 종료되었습니다."
     },
     "customTestnet": {
       "CustomTestnetForm": {
@@ -2513,7 +2513,7 @@
       "AddFromChainList": {
         "tips": {
           "added": "이미 이 체인을 추가했습니다.",
-          "supported": "Rabby Wallet에 통합된 체인"
+          "supported": "Redbelly Wallet에 통합된 체인"
         },
         "empty": "체인이 발견되지 않았습니다",
         "search": "사용자 정의 네트워크 이름 또는 ID 검색",
@@ -2757,7 +2757,7 @@
         "title4": "GasAccount은 안전한가요?",
         "title1": "GasAccount은 무엇인가요?",
         "title3": "GasAccount에 추가 수수료가 있나요?",
-        "desc3": "Rabby Wallet은 추가 요금을 부과하지 않습니다. 거래를 위한 가스 요금과 GasAccount에서 귀하의 주소로 가스를 전송하는 데 필요한 소량의 가스 요금만 지불하시면 됩니다.",
+        "desc3": "Redbelly Wallet은 추가 요금을 부과하지 않습니다. 거래를 위한 가스 요금과 GasAccount에서 귀하의 주소로 가스를 전송하는 데 필요한 소량의 가스 요금만 지불하시면 됩니다.",
         "desc2": "GasAccount에 자금을 추가하고 모든 거래에 사용하세요. 서명할 때, 네이티브 토큰 또는 GasAccount로 가스를 지불하도록 선택하고 언제든지 전환하세요.",
         "desc4": "GasAccount는 계약 승인이나 권한이 필요하지 않습니다. Rabby의 GasAccount 주소로 입금하면 필요할 때 Rabby가 사용자의 주소로 가스를 보냅니다. 설계상 안전합니다.",
         "desc1": "GasAccount는 가스 요금을 지불하는 새로운 방법입니다. 각 체인의 네이티브 토큰을 사용하는 대신, 모든 체인의 모든 주소에 대한 가스를 커버할 수 있는 하나의 계정을 사용할 수 있습니다. 간단하고 선택적이며, 가스가 부족해지는 일이 없습니다."
@@ -2765,7 +2765,7 @@
       "benefitCard": {
         "title": "모든 체인에서 Gas 수수료 결제",
         "subtitle": "가스가 부족할 때",
-        "item1": "Rabby 수수료 없음",
+        "item1": "Redbelly Wallet 수수료 없음",
         "desc1": "가스 지불을 위한 추가 수수료 없음",
         "item2": "모든 네트워크 지원",
         "desc2": "80개 이상의 네트워크에서 자동 Gas 결제",
@@ -2794,7 +2794,7 @@
     "newUserImport": {
       "guide": {
         "importAddress": "저는 이미 주소가 있습니다.",
-        "title": "Rabby Wallet에 오신 것을 환영합니다.",
+        "title": "Redbelly Wallet에 오신 것을 환영합니다.",
         "createNewAddress": "새 주소 만들기",
         "desc": "Ethereum 및 EVM을 위한 최고의 지갑"
       },
@@ -2844,17 +2844,17 @@
         "import": "성공적으로 가져왔습니다",
         "openWallet": "지갑 열기",
         "backupSeedPhraseNow": "지금 백업 시드 구문",
-        "desc": "Rabby Wallet을 사용할 준비가 되었습니다!",
+        "desc": "Redbelly Wallet을 사용할 준비가 되었습니다!",
         "backupSeedPhrase": "백업 시드 구문"
       },
       "readyToUse": {
-        "pin": "Rabby Wallet 핀 고정",
+        "pin": "Redbelly Wallet 핀 고정",
         "guides": {
           "step1": "브라우저 확장 아이콘을 클릭하세요.",
-          "step2": "Rabby Wallet 고정하기"
+          "step2": "Redbelly Wallet 고정하기"
         },
-        "title": "당신의 Rabby Wallet이 준비되었습니다!",
-        "desc": "Rabby Wallet을 찾아 고정하세요.",
+        "title": "당신의 Redbelly Wallet이 준비되었습니다!",
+        "desc": "Redbelly Wallet을 찾아 고정하세요.",
         "extensionTip": "클릭 <1/> 그리고 나서 <3/>"
       },
       "importSeedPhrase": {
@@ -2941,8 +2941,8 @@
         "title": "비밀번호를 잊으셨나요",
         "button": "초기화 프로세스 시작",
         "buttonNoData": "비밀번호 설정",
-        "description": "Rabby Wallet은 비밀번호를 저장하지 않으며 복구해 드릴 수도 없습니다. 새 지갑을 설정하려면 지갑을 초기화하세요.",
-        "descriptionNoData": "Rabby Wallet은 귀하의 비밀번호를 저장하지 않으며, 복구를 도와드릴 수 없습니다. 비밀번호를 잊으셨다면 새 비밀번호를 설정하세요."
+        "description": "Redbelly Wallet은 비밀번호를 저장하지 않으며 복구해 드릴 수도 없습니다. 새 지갑을 설정하려면 지갑을 초기화하세요.",
+        "descriptionNoData": "Redbelly Wallet은 귀하의 비밀번호를 저장하지 않으며, 복구를 도와드릴 수 없습니다. 비밀번호를 잊으셨다면 새 비밀번호를 설정하세요."
       },
       "reset": {
         "alert": {
@@ -2958,19 +2958,19 @@
           "hardware": "가져온 하드웨어 지갑",
           "safe": "가져온 Safe Wallet"
         },
-        "title": "Rabby Wallet 초기화",
+        "title": "Redbelly Wallet 초기화",
         "button": "재설정 확인",
         "confirm": "<1>RESET</1>를 확인하고 진행하려면 상자에 입력하세요."
       },
       "tip": {
         "descriptionNoData": "주소를 추가하여 시작하세요",
         "buttonNoData": "주소 추가",
-        "title": "Rabby Wallet 초기화 완료",
+        "title": "Redbelly Wallet 초기화 완료",
         "description": "새 비밀번호를 생성하여 계속하세요",
         "button": "비밀번호 설정"
       },
       "success": {
-        "description": "Rabby Wallet을 사용할 준비가 완료되었습니다.",
+        "description": "Redbelly Wallet을 사용할 준비가 완료되었습니다.",
         "title": "비밀번호가 성공적으로 설정되었습니다.",
         "button": "완료"
       }
@@ -2983,12 +2983,12 @@
         "disabled": "변장 비활성화. Dapp을 새로고침하세요.",
         "enabled": "변장 기능이 활성화되었습니다. Dapp을 새로 고쳐서 다시 연결하세요."
       },
-      "title": "MetaMask로 가장하여 Rabby 연결하기",
+      "title": "MetaMask로 가장하여 Redbelly Wallet 연결하기",
       "noDappFound": "Dapp을 찾을 수 없습니다.",
       "step2": "2단계",
       "step1": "1단계",
       "step2Desc": "MetaMask를 통해 새로 고치고 연결하세요",
-      "alert": "Dapp에 연결할 수 없나요? Rabby Wallet이 옵션으로 표시되지 않아서요?",
+      "alert": "Dapp에 연결할 수 없나요? Redbelly Wallet이 옵션으로 표시되지 않아서요?",
       "step1Desc": "Rabby가 현재 Dapp에서 MetaMask로 가장하도록 허용합니다.",
       "manage": "허용된 Dapp 관리하기"
     },
@@ -2997,9 +2997,9 @@
         "title": "주소 동기화 선택"
       },
       "disableSelectAddressWithSlip39": "SLIP-39를 사용하는 {{type}} 주소는 동기화할 수 없습니다.",
-      "steps1": "1. Rabby Mobile을 다운로드하세요",
+      "steps1": "1. Redbelly Wallet Mobile을 다운로드하세요",
       "downloadAppleStore": "앱 스토어",
-      "title": "Rabby 확장 프로그램에서 모바일로 지갑 주소 동기화",
+      "title": "Redbelly Wallet 확장 프로그램에서 모바일로 지갑 주소 동기화",
       "downloadGooglePlay": "구글 플레이",
       "clickToShowQr": "주소 선택 및 QR 코드 표시 클릭",
       "disableSelectAddress": "{{type}} 주소에 대한 동기화를 지원하지 않습니다.",
@@ -3008,7 +3008,7 @@
       "selectedLenAddressesForSync_one": "선택된 {{len}} 주소를 동기화합니다.",
       "selectedLenAddressesForSync_other": "선택된 {{len}} 주소를 동기화합니다.",
       "steps2Description": " *귀하의 QR 코드에는 민감한 데이터가 포함되어 있습니다. 개인 정보를 유지하고 누구와도 공유하지 마십시오.",
-      "steps2": "2. Rabby Mobile로 스캔하세요",
+      "steps2": "2. Redbelly Wallet Mobile로 스캔하세요",
       "verifyPassword": "비밀번호 확인"
     },
     "search": {
@@ -3266,7 +3266,7 @@
           "cost": "비용",
           "listedAs": "등록 형식",
           "quantity": "수량",
-          "rabbyFee": "Rabby 수수료 (0%)",
+          "rabbyFee": "Redbelly Wallet 수수료 (0%)",
           "floor": "바닥",
           "totalEst": "총 예상 수익",
           "listOn": "OpenSea에 목록 추가",
@@ -3292,7 +3292,7 @@
           "creatorFee": "제작자 수수료 ({{fee}}%)",
           "platformFee": " Opensea 플랫폼 수수료 ({{fee}}%)",
           "platformFeeTips": "이 수수료는 OpenSea의 서비스 요금입니다.",
-          "rabbyFee": "Rabby 수수료 (0%)",
+          "rabbyFee": "Redbelly Wallet 수수료 (0%)",
           "creatorFeeTips1": "판매자가 크리에이터 수익을 지급합니다. 크리에이터 수익은 강제됩니다.",
           "offer": "제안"
         },
@@ -3589,8 +3589,8 @@
       "direction": "방향",
       "review": "검토",
       "takeProfitWhen": "이익실현 가격 설정",
-      "rabbyFeeTipsV2": "Rabby 수수료: 0.02%",
-      "rabbyFeeTipsZero": "Rabby 수수료: 0%",
+      "rabbyFeeTipsV2": "Redbelly Wallet 수수료: 0.02%",
+      "rabbyFeeTipsZero": "Redbelly Wallet 수수료: 0%",
       "takeProfit": "이익 실현",
       "add": "추가",
       "insufficientBalance": "잔액이 부족합니다.",
@@ -4238,7 +4238,7 @@
         "mayExecuteImmediately": "이 지정가 주문은 즉시 체결될 수 있습니다",
         "setLimitOrderBtn": "지정가 주문하기",
         "margin": "마진",
-        "rabbyFee": "Rabby 수수료",
+        "rabbyFee": "Redbelly Wallet 수수료",
         "maximumOrderSize": "최대 주문 수량은 {{amount}}입니다.",
         "insufficientBalance": "잔액 부족",
         "leverage": "레버리지",
@@ -4721,7 +4721,7 @@
     },
     "EcologyNoticeModal": {
       "title": "알림",
-      "desc": "다음 서비스는 제3자 생태계 파트너에 의해 직접 제공됩니다. Rabby Wallet은 이러한 서비스의 보안에 대한 책임을 지지 않습니다.",
+      "desc": "다음 서비스는 제3자 생태계 파트너에 의해 직접 제공됩니다. Redbelly Wallet은 이러한 서비스의 보안에 대한 책임을 지지 않습니다.",
       "notRemind": "다시 나를 상기시키지 마세요"
     },
     "ReserveGasPopup": {
@@ -4732,9 +4732,9 @@
       "normal": "느림"
     },
     "OpenExternalWebsiteModal": {
-      "title": "당신은 Rabby Wallet을 떠나고 있습니다.",
+      "title": "당신은 Redbelly Wallet을 떠나고 있습니다.",
       "button": "계속",
-      "content": "외부 웹사이트를 방문하려고 합니다. Rabby Wallet은 이 사이트의 내용이나 보안에 대해 책임을 지지 않습니다."
+      "content": "외부 웹사이트를 방문하려고 합니다. Redbelly Wallet은 이 사이트의 내용이나 보안에 대해 책임을 지지 않습니다."
     },
     "TokenChart": {
       "price": "가격",
@@ -4803,9 +4803,9 @@
       "placeholderRequired": "문제를 설명해 주세요 (필수)"
     },
     "feedbackPopup": {
-      "title": "Rabby Support의 응답",
+      "title": "Redbelly Wallet Support의 응답",
       "issueReported": "귀하가 보고하신 문제:",
-      "issueReplied": "Rabby Support가 회신했습니다:"
+      "issueReplied": "Redbelly Wallet Support가 회신했습니다:"
     }
   },
   "global": {
@@ -4814,7 +4814,7 @@
     "ok": "OK",
     "scamTx": "사기 tx",
     "failed": "실패",
-    "appName": "Rabby 지갑",
+    "appName": "Redbelly Wallet 지갑",
     "copied": "복사됨",
     "refresh": "새로 고침",
     "confirm": "확인",
