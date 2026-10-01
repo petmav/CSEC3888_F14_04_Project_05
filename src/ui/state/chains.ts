@@ -59,7 +59,12 @@ export const useChainsStore = create<ChainsStore>()((set) => ({
       getMainnetListFromLocal().then((mainnetList) => {
         if (mainnetList.length) {
           updateChainStore({ mainnetList });
-          set({ mainnetList });
+          // Read the list back rather than reusing the local one: what came
+          // out of browser.storage.local is the raw DeBank sync, and
+          // updateChainStore is what injects the Redbelly chains. Setting the
+          // raw list here would leave the chain selector - which renders this
+          // field - without Redbelly.
+          set({ mainnetList: getChainList('mainnet') });
         }
       }),
     ]);
