@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRequest } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
@@ -99,11 +99,24 @@ export function useRedbellyTxGate({
   const checking = isRedbelly && !!recipientAddress && !verdict;
   const needsAcknowledgement = !!verdict && requiresAcknowledgement(verdict);
 
-  // An acknowledgement is for one recipient; a new one starts unticked.
-  const [acknowledged, setAcknowledged] = useState(false);
+  // An acknowledgement is for one recipient on one chain. It is stored
+  // against that pair rather than reset by an effect, so a tick can never
+  // carry over to a new recipient - not even for the render before an
+  // effect would run.
+  const ackKey = recipientAddress
+    ? `${Number(chainId)}:${recipientAddress.toLowerCase()}`
+    : null;
+  const [acknowledgedKey, setAcknowledgedKey] = useState<string | null>(null);
+  const acknowledged = !!ackKey && acknowledgedKey === ackKey;
+  const setAcknowledged = useCallback(
+    (value: boolean) => setAcknowledgedKey(value ? ackKey : null),
+    [ackKey]
+  );
+  // And a tick for an earlier recipient is dropped, so switching away and
+  // back again starts unticked.
   useEffect(() => {
-    setAcknowledged(false);
-  }, [recipientAddress, chainId]);
+    setAcknowledgedKey(null);
+  }, [ackKey]);
 
   const { data: senderRegistered = null } = useRequest(
     async () =>
