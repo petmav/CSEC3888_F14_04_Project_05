@@ -734,6 +734,7 @@ export const ConnectContent = (
                 if (rule.id === '1006') {
                   return (
                     <RuleResult
+                      key="1006"
                       rule={{
                         id: '1006',
                         desc: t('page.connect.markRuleText'),

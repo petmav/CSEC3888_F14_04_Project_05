@@ -1,4 +1,5 @@
 import { isManifestV3 } from '@/utils/env';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import browser from 'webextension-polyfill';
 import { createPersistStore } from '../utils';
 import { ALARMS_SYNC_METAMASK_DAPPS } from '../utils/alarms';
@@ -39,6 +40,11 @@ class MetamaskModeService {
   };
 
   syncMetamaskModeList = async () => {
+    // Redbelly-only: the list is DeBank's, and the network guard would
+    // refuse it anyway.
+    if (REDBELLY_ONLY) {
+      return [];
+    }
     if (dayjs().isBefore(dayjs(this.store.updatedAt || 0).add(55, 'minute'))) {
       return [];
     }

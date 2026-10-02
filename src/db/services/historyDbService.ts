@@ -1,4 +1,5 @@
 import type { OpenApiService } from '@rabby-wallet/rabby-api';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import type { TxAllHistoryResult, TxHistoryResult } from '@/services/openapi';
 import { db } from '..';
 import { last } from 'lodash';
@@ -138,6 +139,8 @@ class HistoryDbService {
     });
   }
 
+  // Redbelly-only: DeBank's history is not Redbelly's; the history page
+  // reads Routescan instead (views/History/RedbellyHistory.tsx).
   async syncWithAllHistoryApi({
     openapi,
     address,
@@ -149,6 +152,9 @@ class HistoryDbService {
     startTime: number;
     latestTime?: number;
   }) {
+    if (REDBELLY_ONLY) {
+      return;
+    }
     const latestTime =
       _latestTime ?? (await this.getLatestItemTime(address)) ?? 0;
     const isExpiredTimeAgo = new Date().getTime() - 15 * 24 * 60 * 60 * 1000; // 15 days ago
@@ -270,6 +276,10 @@ class HistoryDbService {
     startTime: number;
     latestTime?: number;
   }) {
+    // Redbelly-only: DeBank's history is not Redbelly's.
+    if (REDBELLY_ONLY) {
+      return;
+    }
     const notNeedUpdateTime = new Date().getTime() / 1000 - 30 * 24 * 60 * 60; // 30 days ago
     const latestTime = _latestTime || notNeedUpdateTime;
     const startTime = _startTime || 0;

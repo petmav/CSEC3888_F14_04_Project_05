@@ -1,4 +1,5 @@
 import { CHAINS_ENUM } from '@debank/common';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { TokenItem } from '@rabby-wallet/rabby-api/dist/types';
 
 import { SwapServiceStore } from '@/background/service/swap';
@@ -68,6 +69,10 @@ export const useSwapStore = createRabbyStore<SwapStore>(
       set({ mevProtection });
     },
     async getSwapSupportedDEXList() {
+      // Redbelly-only: no swap, so no DEX list.
+      if (REDBELLY_ONLY) {
+        return;
+      }
       const data = await wallet.openapi.getSupportedDEXList();
       if (data.dex_list) {
         set({

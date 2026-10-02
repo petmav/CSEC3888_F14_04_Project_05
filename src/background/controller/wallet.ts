@@ -2877,7 +2877,11 @@ export class WalletController extends BaseController {
       accounts.push(currentGasAccountInVisibleAccounts);
     }
 
-    return discoverGasAccountRuntimeState(accounts, options);
+    // Redbelly-only: Rabby's gas account does not serve Redbelly.
+    return discoverGasAccountRuntimeState(
+      REDBELLY_ONLY ? [] : accounts,
+      options
+    );
   };
   setGasAccountBalanceState = (accountId?: string, hasBalance?: boolean) => {
     gasAccountService.setCurrentBalanceState(accountId, hasBalance);

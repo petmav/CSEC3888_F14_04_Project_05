@@ -1,4 +1,5 @@
 import { ALL_SUPPORTED_BRIDGE_CHAINS } from '@rabby-wallet/rabby-bridge';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import type { TokenItem } from '@rabby-wallet/rabby-api/dist/types';
 
 import type { BridgeServiceStore } from '@/background/service/bridge';
@@ -72,12 +73,19 @@ export const useBridgeStore = createRabbyStore<BridgeStore>(
       set({ selectedToToken });
     },
     async fetchAggregatorsList() {
+      // Redbelly-only: no bridge.
+      if (REDBELLY_ONLY) {
+        return;
+      }
       const aggregatorsList = await wallet.openapi.getBridgeAggregatorList();
       if (aggregatorsList.length) {
         set({ aggregatorsListInit: true, aggregatorsList });
       }
     },
     async fetchSupportedChains() {
+      if (REDBELLY_ONLY) {
+        return;
+      }
       const chains = await wallet.openapi.getBridgeSupportChainV2();
       if (chains.length) {
         const mappings = Object.values(CHAINS).reduce((result, chain) => {

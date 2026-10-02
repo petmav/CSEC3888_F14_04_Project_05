@@ -401,8 +401,8 @@ const ResetAccountModal = ({
                     <path
                       d="M7.97578 13.7748C11.179 13.7748 13.7758 11.1781 13.7758 7.9748C13.7758 4.77155 11.179 2.1748 7.97578 2.1748C4.77253 2.1748 2.17578 4.77155 2.17578 7.9748C2.17578 11.1781 4.77253 13.7748 7.97578 13.7748Z"
                       stroke="var(--r-neutral-body)"
-                      stroke-width="0.90625"
-                      stroke-miterlimit="10"
+                      strokeWidth="0.90625"
+                      strokeMiterlimit="10"
                     />
                   </svg>
                 )
@@ -808,6 +808,10 @@ const SettingsInner = ({
   };
 
   const { value: hasNewVersion = false } = useAsync(async () => {
+    // Redbelly-only: this is Rabby's latest version, not this wallet's.
+    if (REDBELLY_ONLY) {
+      return false;
+    }
     const data = await wallet.openapi.getLatestVersion();
 
     return semver(process.env.release || '0.0.0', data.version_tag) === -1;

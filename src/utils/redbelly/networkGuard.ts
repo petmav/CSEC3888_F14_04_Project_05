@@ -58,6 +58,10 @@ export function isBlockedRequest(input: string | URL): boolean {
 const blockedError = (url: string) =>
   new TypeError(`Blocked by the Redbelly-only network guard: ${url}`);
 
+/** Debug-level, so a blocked call is traceable without cluttering errors. */
+const logBlocked = (url: string) =>
+  console.debug('[redbelly] network guard blocked', url);
+
 /** Where a blocked XHR is pointed: an unsafe port fails immediately. */
 const UNREACHABLE = 'http://0.0.0.0:0/redbelly-blocked';
 
@@ -81,6 +85,7 @@ export function installNetworkGuard() {
           ? String(input)
           : input.url;
       if (isBlockedRequest(url)) {
+        logBlocked(url);
         return Promise.reject(blockedError(url));
       }
       return originalFetch(input, init);
@@ -95,7 +100,11 @@ export function installNetworkGuard() {
       url: string | URL,
       ...rest: unknown[]
     ) {
-      const target = isBlockedRequest(url) ? UNREACHABLE : url;
+      const blocked = isBlockedRequest(url);
+      if (blocked) {
+        logBlocked(String(url));
+      }
+      const target = blocked ? UNREACHABLE : url;
       return (originalOpen as (...args: unknown[]) => void).call(
         this,
         method,
