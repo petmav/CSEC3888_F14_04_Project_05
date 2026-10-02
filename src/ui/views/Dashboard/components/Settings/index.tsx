@@ -1666,6 +1666,8 @@ const SettingsInner = ({
     RcIconFeedback,
     RcIconSettingsAboutSupporetedChains,
     RcIconSettingsAboutFollowUs,
+    // English only: the Redbelly screens are not translated.
+    RcIconI18n,
   ]);
   const visibleGroups = Object.values(renderData)
     .map((group) => ({

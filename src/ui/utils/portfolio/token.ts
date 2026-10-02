@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 import { useAsync } from 'react-use';
 
@@ -129,7 +130,10 @@ export const useTokens = (
       }
     };
 
-    if (!userAddr || isTestnet) {
+    // DeBank's token list has nothing for Redbelly, and the network guard
+    // blocks it: loading it would only throw. Redbelly tokens come from the
+    // custom-network list.
+    if (!userAddr || isTestnet || REDBELLY_ONLY) {
       return;
     }
 
