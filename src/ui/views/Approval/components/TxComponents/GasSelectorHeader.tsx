@@ -907,18 +907,22 @@ const GasSelectorHeader = ({
                 >
                   {gasMethod ? (
                     <div className="truncate max-w-[210px] group text-r-neutral-body">
+                      {/* No dollar figure (Redbelly peg unreadable): the token
+                          amount stands alone rather than beside a blank. */}
                       <span className="text-[16px] font-medium text-r-blue-default">
-                        {gasCostUsdStr}
+                        {gasCostUsdStr || gasCostAmountStr}
                       </span>
 
-                      <span className="text-14 text-r-neutral-body font-normal pl-4">{`~${gasCostAmountStr}`}</span>
+                      {gasCostUsdStr ? (
+                        <span className="text-14 text-r-neutral-body font-normal pl-4">{`~${gasCostAmountStr}`}</span>
+                      ) : null}
                     </div>
                   ) : (
                     <span
                       className="truncate max-w-[110px]"
-                      title={gasCostUsdStr}
+                      title={gasCostUsdStr || gasCostAmountStr}
                     >
-                      {gasCostUsdStr}
+                      {gasCostUsdStr || gasCostAmountStr}
                     </span>
                   )}
                   {chain.needEstimateGas &&
@@ -940,7 +944,7 @@ const GasSelectorHeader = ({
               </div>
             )}
           </div>
-          {!gasMethod && gas.success ? (
+          {!gasMethod && gas.success && gasCostUsdStr ? (
             <div className="mt-2 shrink-1 text-r-neutral-body text-14 gas-amount">
               {isGasHovering
                 ? calcGasEstimated(selectedGas?.estimated_seconds)
@@ -1001,8 +1005,13 @@ const GasSelectorHeader = ({
             </>
           ) : (
             <>
-              <div className="gas-selector-modal-amount">{gasCostUsdStr}</div>
-              <div className="gas-selector-modal-usd">
+              <div className="gas-selector-modal-amount">
+                {gasCostUsdStr || gasCostAmountStr}
+              </div>
+              <div
+                className="gas-selector-modal-usd"
+                style={gasCostUsdStr ? undefined : { display: 'none' }}
+              >
                 <img
                   src={
                     resolvedGasToken.logoUrl ||

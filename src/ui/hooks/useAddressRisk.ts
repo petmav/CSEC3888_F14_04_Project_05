@@ -43,6 +43,8 @@ export const enum RiskType {
   FORBIDDEN_TIP = 5,
   /** Redbelly recipient is confirmed not KYC registered. */
   REDBELLY_NOT_VERIFIED = 6,
+  /** The Redbelly check could not run; silence must not read as safe. */
+  REDBELLY_UNKNOWN = 7,
 }
 
 const riskTypePriority = {
@@ -52,6 +54,7 @@ const riskTypePriority = {
   [RiskType.SCAM_ADDRESS]: 10e3,
   [RiskType.FORBIDDEN_TIP]: 10e4,
   [RiskType.REDBELLY_NOT_VERIFIED]: 10e5,
+  [RiskType.REDBELLY_UNKNOWN]: 10e2,
 };
 
 export function sortRisksDesc(a: { type: RiskType }, b: { type: RiskType }) {
@@ -165,6 +168,12 @@ export const useAddressRisks = (options: {
         ? {
             type: RiskType.REDBELLY_NOT_VERIFIED,
             value: t('page.sendToken.redbelly.notVerified'),
+          }
+        : null,
+      isRedbelly && redbellyVerdict === 'UNKNOWN'
+        ? {
+            type: RiskType.REDBELLY_UNKNOWN,
+            value: t('page.sendToken.redbelly.unknown'),
           }
         : null,
       hasNoSent && !isRedbelly

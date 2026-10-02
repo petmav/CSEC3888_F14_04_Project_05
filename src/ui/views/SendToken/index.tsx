@@ -101,6 +101,8 @@ import { TDisableCheckChainFn } from '@/ui/component/ChainSelector/components/Se
 import { AddressInfoFrom } from '@/ui/component/SendLike/AddressInfoFrom';
 import { AddressInfoTo } from '@/ui/component/SendLike/AddressInfoTo';
 import BottomArea from './components/BottomArea';
+import { RedbellyGasFeeRow } from './components/RedbellyGasFeeRow';
+import { RedbellySenderStatusRow } from './components/RedbellySenderStatusRow';
 import {
   RiskType,
   sortRisksDesc,
@@ -1087,9 +1089,19 @@ const SendToken = () => {
       canSubmitBasic &&
       supportedDirectSign(currentAccount?.type || '') &&
       !chainItem?.isTestnet &&
+      // Redbelly goes through the full signing screen: that is where the KYC
+      // sign-block and the Redbelly fee panel live, and the mini-sign
+      // pipeline depends on DeBank services that do not cover Redbelly.
+      !isRedbelly &&
       !sendToOtherChainContract
     );
-  }, [canSubmitBasic, chainItem, currentAccount?.type, addressDesc]);
+  }, [
+    canSubmitBasic,
+    chainItem,
+    currentAccount?.type,
+    addressDesc,
+    isRedbelly,
+  ]);
 
   const { runAsync: handleSubmit, loading: isSubmitLoading } = useRequest(
     async ({
@@ -3423,6 +3435,18 @@ const SendToken = () => {
                 open
                 signatureInstance={instance}
                 // setOpen={setGasFeeOpen}
+              />
+            ) : null}
+            {isRedbelly && chainItem ? (
+              <RedbellyGasFeeRow
+                chainId={chainItem.id}
+                gasLimit={chainTokenGasFees.gasLimit || DEFAULT_GAS_USED}
+              />
+            ) : null}
+            {isRedbelly && chainItem ? (
+              <RedbellySenderStatusRow
+                chainId={chainItem.id}
+                address={currentAccount?.address}
               />
             ) : null}
             {!canSubmitBasic && (

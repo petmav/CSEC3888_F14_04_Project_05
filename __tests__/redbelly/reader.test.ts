@@ -10,6 +10,7 @@ import {
   clearRedbellyContractCache,
   readAddressFacts,
   readBalance,
+  readGasPrice,
   readIsAllowed,
   readUsdPerGas,
   resolvePermissionContract,
@@ -243,6 +244,16 @@ describe('readAddressFacts', () => {
     ).rejects.toThrow('node unreachable');
   });
 
+  it('rejects an empty isAllowed answer rather than reading it as not registered', async () => {
+    const { request } = workingProvider('0x', '0x');
+    await expect(
+      readAddressFacts(request, MAINNET, REGISTERED)
+    ).rejects.toThrow('Unexpected isAllowed result');
+    await expect(readIsAllowed(request, MAINNET, REGISTERED)).rejects.toThrow(
+      'Unexpected isAllowed result'
+    );
+  });
+
   it('rejects a malformed eth_call response rather than reading it as false', async () => {
     const { request } = workingProvider('0x', (undefined as unknown) as string);
     await expect(
@@ -342,4 +353,25 @@ describe('readUsdPerGas', () => {
       'Unexpected getBaseGasFee result'
     );
   });
+});
+
+describe('readGasPrice', () => {
+  it('reads eth_gasPrice as wei', async () => {
+    const request: EthereumRequest = jest.fn().mockResolvedValue('0x3b9aca00');
+    await expect(readGasPrice(request)).resolves.toBe(1000000000n);
+    expect(request).toHaveBeenCalledWith({
+      method: 'eth_gasPrice',
+      params: [],
+    });
+  });
+
+  it.each([[undefined], ['0x'], ['not hex'], [12]])(
+    'rejects a malformed answer (%p) rather than reporting a price',
+    async (bad) => {
+      const request: EthereumRequest = jest.fn().mockResolvedValue(bad);
+      await expect(readGasPrice(request)).rejects.toThrow(
+        'Unexpected eth_gasPrice result'
+      );
+    }
+  );
 });

@@ -14,6 +14,7 @@ import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import MainnetTestnetSwitchTabs from './components/switchTestTab';
 import { TokenList } from './TokenList';
+import { RedbellyAssetSection } from '@/ui/views/CommonPopup/AssetList/RedbellyAssetSection';
 import { LpTokenSwitch } from './components/LpTokenSwitch';
 import { isLpToken } from '@/ui/utils/portfolio/lpToken';
 import styled from 'styled-components';
@@ -62,6 +63,10 @@ export const TokenTab = ({
   const handleInputBlur = () => {
     setIsInputActive(false);
   };
+
+  // DeBank cannot see RBNT, so the list below is empty for a wallet that only
+  // holds RBNT. Redbelly balances come from its own section instead.
+  const [redbellyHasBalance, setRedbellyHasBalance] = useState(false);
 
   const { selectedTab, onTabChange, isShowTestnet } = useSwitchNetTab();
   const isMainnet = selectedTab === 'mainnet';
@@ -149,13 +154,25 @@ export const TokenTab = ({
         </div>
       </div>
 
+      {isMainnet && !searchValue ? (
+        <RedbellyAssetSection
+          selectChainId={selectChainId ?? null}
+          visible
+          className="mx-20 mb-[12px]"
+          onHasBalanceChange={setRedbellyHasBalance}
+        />
+      ) : null}
+
       {isTokensLoading || isOnSearching ? (
         isMainnet ? (
           <div className="mx-20">
             <TokenListSkeleton />
           </div>
         ) : null
-      ) : (
+      ) : isMainnet &&
+        !searchValue &&
+        redbellyHasBalance &&
+        !sortTokens?.length ? null : (
         <TokenList
           list={sortTokens}
           isNoResults={isNoResults}
