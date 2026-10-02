@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import BigNumber from 'bignumber.js';
 
 import { gasUnitsToUsd } from '@/utils/redbelly/fees';
+import type { PaymentTarget } from '@/utils/redbelly/recipient';
 import type { Verdict } from '@/utils/redbelly/verdict';
 import { formatTokenAmount } from '@/ui/utils/number';
 import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
@@ -43,6 +44,13 @@ const VERDICT_KEY: Record<Verdict, string> = {
   NOT_REGISTERED: 'notRegistered',
   CONTRACT: 'contract',
   UNKNOWN: 'unknown',
+};
+
+const PAYING_KEY: Record<Exclude<PaymentTarget['kind'], 'none'>, string> = {
+  native: 'paying',
+  token: 'payingToken',
+  approval: 'approving',
+  call: 'calling',
 };
 
 const Row: React.FC<React.PropsWithChildren<{ label: React.ReactNode }>> = ({
@@ -118,9 +126,7 @@ export const RedbellyTxPanel = ({
             >
               <div className="flex items-center justify-between gap-8">
                 <div className="text-12 text-r-neutral-body">
-                  {target.kind === 'token'
-                    ? t('page.signTx.redbelly.payingToken')
-                    : t('page.signTx.redbelly.paying')}
+                  {t(`page.signTx.redbelly.${PAYING_KEY[target.kind]}`)}
                 </div>
                 <div
                   className={clsx(
@@ -138,7 +144,9 @@ export const RedbellyTxPanel = ({
               </div>
               {verdict ? (
                 <div className={clsx('text-12 mt-6', TONE_TEXT[tone])}>
-                  {t(`page.signTx.redbelly.${VERDICT_KEY[verdict]}Tip`)}
+                  {target.kind === 'approval' && verdict === 'NOT_REGISTERED'
+                    ? t('page.signTx.redbelly.notRegisteredSpenderTip')
+                    : t(`page.signTx.redbelly.${VERDICT_KEY[verdict]}Tip`)}
                 </div>
               ) : null}
             </div>
@@ -163,6 +171,24 @@ export const RedbellyTxPanel = ({
                 {t('page.signTx.redbelly.tokenContract', {
                   address: target.token,
                 })}
+              </div>
+            ) : null}
+            {target.kind === 'approval' ? (
+              <div className="text-12 text-r-orange-default mt-6 break-all">
+                {t('page.signTx.redbelly.approvalNote', {
+                  address: target.token,
+                })}
+              </div>
+            ) : null}
+            {/* A contract can pass funds on to anyone; say what the check
+                could not see rather than let "Contract address" read as
+                "checked, all fine". */}
+            {target.kind === 'call' && verdict === 'CONTRACT' ? (
+              <div
+                className="text-12 text-r-orange-default mt-6"
+                data-testid="redbelly-call-note"
+              >
+                {t('page.signTx.redbelly.callNote')}
               </div>
             ) : null}
           </>
