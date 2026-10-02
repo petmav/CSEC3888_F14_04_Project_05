@@ -7,7 +7,11 @@ import {
   Text,
 } from '@metamask/snaps-sdk/jsx';
 
+import type { PaymentTarget } from './recipient';
 import type { Verdict } from './verdict';
+
+/** A transaction with someone to check. */
+export type CheckedTarget = Exclude<PaymentTarget, { kind: 'none' }>;
 
 type PanelCopy = {
   heading: string;
@@ -38,7 +42,7 @@ const COPY: Record<Verdict, PanelCopy> = {
     heading: 'Contract address',
     body: 'This is a smart contract. The permission list covers user accounts, so no identity check applies to it.',
     footer:
-      'On a token transfer this is the token contract, not the person you are paying.',
+      'A contract is not a person: check that it is the one you meant to use.',
   },
   UNKNOWN: {
     heading: 'Could not verify',
@@ -48,40 +52,65 @@ const COPY: Record<Verdict, PanelCopy> = {
   },
 };
 
+/** An unregistered spender is a different risk from an unregistered payee. */
+const NOT_REGISTERED_SPENDER_BODY =
+  'This address is not on the Redbelly permission list, so it is not a verified participant. Approving it lets it spend your tokens.';
+
+/**
+ * What the panel adds about where the checked address came from.
+ *
+ * @param target - What the transaction pays and to whom.
+ * @param verdict - The conclusion about the address checked.
+ * @returns The note, or `null` if the address is simply `to`.
+ */
+function targetNote(target: CheckedTarget, verdict: Verdict): string | null {
+  if (target.kind === 'token') {
+    return `Token transfer: this is the account being paid, read from the transfer data. The token contract is ${target.token}.`;
+  }
+  if (target.kind === 'approval') {
+    return `Approval: if you confirm, this address can spend your tokens from contract ${target.token}.`;
+  }
+  // A contract can pass funds on to anyone; say what the check could not see
+  // rather than let "Contract address" read as "checked, all fine".
+  if (target.kind === 'call' && verdict === 'CONTRACT') {
+    return 'Contract call: only this contract was checked. If it passes funds on to another address, that address is not checked.';
+  }
+  return null;
+}
+
 /**
  * Build the transaction-insight panel for a verdict.
  *
- * @param verdict - The conclusion about the recipient.
- * @param address - The recipient address, shown in full so the user can
- * compare it against their intended destination.
+ * @param verdict - The conclusion about the address checked.
+ * @param target - What the transaction pays and to whom. The address is
+ * shown in full so the user can compare it against their intended
+ * destination. For a token transfer or approval it is read from the
+ * calldata (US11), and the panel says so, since it is not the `to` MetaMask
+ * shows.
  * @param network - Display name of the network that was checked.
  * @param feeNotes - Extra fee lines to append below the verdict.
- * @param token - For a token transfer, the token contract. The address
- * checked is then the payee read from the transfer data (US11), and the
- * panel says so, since it is not the `to` MetaMask shows.
  * @returns The panel to render on the confirmation screen.
  */
 export function insightPanel(
   verdict: Verdict,
-  address: string,
+  target: CheckedTarget,
   network: string,
   feeNotes: string[] = [],
-  token: string | null = null,
 ) {
   const copy = COPY[verdict];
+  const body =
+    target.kind === 'approval' && verdict === 'NOT_REGISTERED'
+      ? NOT_REGISTERED_SPENDER_BODY
+      : copy.body;
+  const targetLine = targetNote(target, verdict);
 
   return (
     <Box>
       <Heading>{copy.heading}</Heading>
-      <Text>{copy.body}</Text>
-      <Copyable value={address} />
+      <Text>{body}</Text>
+      <Copyable value={target.recipient} />
       <Text>{copy.footer}</Text>
-      {token ? (
-        <Text>
-          Token transfer: this is the account being paid, read from the transfer
-          data. The token contract is {token}.
-        </Text>
-      ) : null}
+      {targetLine ? <Text>{targetLine}</Text> : null}
       <Divider />
       <Text>
         Checked against the Redbelly permission contract on{' '}
