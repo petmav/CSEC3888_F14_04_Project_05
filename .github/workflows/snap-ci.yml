@@ -7,10 +7,11 @@
 name: Snap CI
 
 on:
+  # Every PR into main, not only those touching the Snap: this is a required
+  # check there, and a path-filtered check never reports on other PRs, which
+  # would leave them waiting forever.
   pull_request:
-    paths:
-      - 'redbelly-address-snap/**'
-      - '.github/workflows/snap-ci.yml'
+    branches: [main]
   push:
     branches: [main]
     paths:

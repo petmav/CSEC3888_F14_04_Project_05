@@ -68,8 +68,9 @@ function feeNotesFor(
  * the check applies but fails, we say so explicitly rather than staying
  * silent.
  *
- * For an ERC-20 transfer the address checked is the payee decoded from the
- * calldata, not the token contract in `to` (US11).
+ * For a token transfer the address checked is the payee decoded from the
+ * calldata, not the token contract in `to`, and for an approval it is the
+ * spender (US11).
  *
  * @param args - The handler arguments.
  * @param args.transaction - The unsigned transaction.
@@ -104,10 +105,9 @@ export const onTransaction: OnTransactionHandler = async ({
   const verdict = verdictFor(facts);
   const content = insightPanel(
     verdict,
-    recipient,
+    target,
     networkName(chainId),
     feeNotesFor(transaction, usdPerGas),
-    target.kind === 'token' ? target.token : null,
   );
 
   // `critical` asks MetaMask to raise a modal before the user can confirm,

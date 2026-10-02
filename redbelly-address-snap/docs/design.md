@@ -195,9 +195,10 @@ handler. Fixtures are live-verified addresses from our own probes:
 ## 8. Known limitations
 
 1. **Warns, does not block.** By design; see §2.
-2. **Checks `to` only.** For an ERC-20 transfer the true recipient sits in calldata and
-   the token contract gets the neutral `CONTRACT` panel. Decoding `transfer(address,uint256)`
-   is a clean follow-up.
+2. **Checks only what the calldata shows.** Token transfers (ERC-20, ERC-721, ERC-1155)
+   check the payee decoded from the calldata (`src/recipient.ts`), and approvals check the
+   spender; revoking an approval is not warned about. Any other contract call checks only
+   the contract, and the panel says that an address it passes funds on to is not checked.
 3. **`REGISTERED` does not mean _intended_.** It proves some verified person controls the
    address, not that it is the right one. A typo landing on another permissioned address
    still loses funds, and an attacker could complete IDV on a lookalike address
