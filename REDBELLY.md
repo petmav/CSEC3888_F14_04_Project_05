@@ -3,7 +3,8 @@
 A browser-extension wallet for Redbelly Network, forked from Rabby v0.94.8
 (MIT). It talks only to Redbelly Mainnet (151) and Testnet (153), checks
 every recipient against Redbelly's on-chain KYC permission list before
-signing, and refuses to sign to a confirmed unregistered account.
+signing, and makes the user acknowledge the risk before signing to a
+confirmed unregistered account.
 
 This is the fork deliverable of CSEC3888 P5 (milestones M8-M15). The
 MetaMask Snap in `redbelly-address-snap` remains the assessed baseline.
@@ -49,16 +50,21 @@ enum, but no picker shows it and the dApp provider refuses it
 **The signing gate** (`views/Approval/components/SignTestnetTx/`). The payee
 is decoded locally from `to` and calldata - an ERC-20 `transfer` or
 `transferFrom` pays the address inside the calldata, not the token contract
-(`utils/redbelly/recipient.ts`, shared with the Snap). The Sign button stays
-disabled:
+(`utils/redbelly/recipient.ts`, shared with the Snap). The team chose
+**warn and confirm, not block** (2026-10-02), matching the Send page:
 
-- while the recipient check is running;
-- if the recipient is a confirmed unregistered account (US12);
-- if the signer is a confirmed unregistered account, which the node would
-  reject with -32603 after signing.
+- while the recipient check is running, Sign waits, so nobody signs before
+  the warning appears;
+- a confirmed unregistered recipient is shown in red, and Sign stays disabled
+  until the user ticks "I understand the risks and want to continue" (US12);
+- an unregistered signer gets a warning that the node will reject the
+  transaction (-32603), but signing is not held.
 
-A check that cannot complete (`UNKNOWN`) is shown as a warning but does not
-block: Redbelly has one public endpoint, and an outage must not brick the
+The Send page applies the same verdict to the recipient field before the user
+gets this far.
+
+A check that cannot complete (`UNKNOWN`) is shown as a warning and does not
+hold signing: Redbelly has one public endpoint, and an outage must not brick the
 wallet. Contracts are shown neutrally - every deployed contract reports
 `isAllowed == false`.
 
@@ -146,7 +152,7 @@ on 2026-10-01; none of these interfaces is documented by Redbelly.
 | US9 own KYC status | Done - home chip, asset list, signing screen |
 | US10 no manual network setup | Done - both networks built in |
 | US11 token transfer payee | Done - in the fork and the Snap (0.3.0) |
-| US12 block unregistered sends | Done - Sign disabled, fail-closed while checking |
+| US12 unregistered sends | Done as warn-and-confirm (team decision): Sign waits for "I understand the risks"; also waits while checking. The Week 5 client request was a hard block - confirm the change with the client |
 | US13 tokens and stake | Done - default tokens + discovery; Reddex pool positions |
 
 ## Community feedback

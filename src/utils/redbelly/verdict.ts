@@ -76,23 +76,26 @@ export function isCritical(verdict: Verdict): boolean {
 }
 
 /**
- * Whether the wallet should refuse to sign (US12 / FR7).
+ * Whether signing waits for the user to acknowledge the risk (US12 / FR7).
  *
- * This is the capability the Snap did not have: a Snap can only annotate a
- * confirmation, never veto it. The fork disables the sign button outright.
+ * The capability the Snap did not have: a Snap can only annotate a
+ * confirmation, never hold it. The team chose warn-and-confirm over a hard
+ * block (2026-10-02, matching the Send page's "I understand the risks"):
+ * the sign button stays disabled until the user ticks the acknowledgement,
+ * so nobody signs past the warning without reading it.
  *
- * Only a *confirmed* `NOT_REGISTERED` blocks. `UNKNOWN` deliberately does
+ * Only a *confirmed* `NOT_REGISTERED` needs it. `UNKNOWN` deliberately does
  * not: Redbelly exposes a single public RPC endpoint with no failover, so
- * blocking on a failed check would make an outage indistinguishable from a
+ * gating on a failed check would make an outage indistinguishable from a
  * bricked wallet. An unverifiable recipient is reported loudly instead
- * (NFR2) and the user may proceed.
+ * (NFR2).
  *
- * `CONTRACT` never blocks - see `verdictFor` on why `isAllowed` is false for
+ * `CONTRACT` never does - see `verdictFor` on why `isAllowed` is false for
  * every legitimately deployed contract.
  *
  * @param verdict - The verdict for the recipient.
- * @returns True if signing must be refused.
+ * @returns True if the user must acknowledge before signing.
  */
-export function blocksSigning(verdict: Verdict): boolean {
+export function requiresAcknowledgement(verdict: Verdict): boolean {
   return verdict === 'NOT_REGISTERED';
 }

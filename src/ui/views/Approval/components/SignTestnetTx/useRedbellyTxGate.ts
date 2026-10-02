@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRequest } from 'ahooks';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
@@ -7,7 +7,7 @@ import { isRedbellyChainId } from '@/constant/redbelly';
 import { useRedbellyStore } from '@/ui/state/redbelly';
 import { useWallet } from '@/ui/utils';
 import { paymentTarget, PaymentTarget } from '@/utils/redbelly/recipient';
-import { blocksSigning, Verdict } from '@/utils/redbelly/verdict';
+import { requiresAcknowledgement, Verdict } from '@/utils/redbelly/verdict';
 
 export type RedbellyTxGate = {
   isRedbelly: boolean;
@@ -20,6 +20,10 @@ export type RedbellyTxGate = {
   senderRegistered: boolean | null;
   /** US dollars per unit of gas, or null if the peg could not be read. */
   usdPerGas: number | null;
+  /** The verdict needs the user's acknowledgement before signing. */
+  needsAcknowledgement: boolean;
+  acknowledged: boolean;
+  setAcknowledged: (value: boolean) => void;
   /** Why signing is refused, or null if it may proceed. */
   blockReason: string | null;
 };
@@ -35,13 +39,15 @@ export type RedbellyTxGate = {
  * locally means there is always an answer: a recipient, or "contract
  * creation", which has nobody to check.
  *
- * Signing is refused, fail-closed, while:
- * - the recipient check has not come back - the user cannot outrun it;
- * - the recipient is a confirmed unregistered account (US12);
- * - the signer is a confirmed unregistered account, which the node would
- *   reject with -32603 after the user had already signed (FR5).
- * An `UNKNOWN` verdict does not block: Redbelly has one public endpoint, and
- * an outage must not brick the wallet. It is shown as a warning instead.
+ * Warn, don't block (team decision, 2026-10-02, following PR #1):
+ * - while the recipient check has not come back, signing waits - the user
+ *   cannot outrun the warning;
+ * - a confirmed unregistered recipient is shown in red and signing waits for
+ *   "I understand the risks" (US12), as on the Send page;
+ * - an unregistered signer is a warning only: the node rejects it with
+ *   -32603, and the panel says so before the user signs (FR5).
+ * An `UNKNOWN` verdict does not hold signing: Redbelly has one public
+ * endpoint, and an outage must not brick the wallet.
  *
  * @param params.chainId - The transaction's chain.
  * @param params.to - The transaction's `to`.
@@ -91,6 +97,13 @@ export function useRedbellyTxGate({
     recipient.chainId === Number(chainId);
   const verdict = isCurrent ? recipient.verdict : null;
   const checking = isRedbelly && !!recipientAddress && !verdict;
+  const needsAcknowledgement = !!verdict && requiresAcknowledgement(verdict);
+
+  // An acknowledgement is for one recipient; a new one starts unticked.
+  const [acknowledged, setAcknowledged] = useState(false);
+  useEffect(() => {
+    setAcknowledged(false);
+  }, [recipientAddress, chainId]);
 
   const { data: senderRegistered = null } = useRequest(
     async () =>
@@ -110,10 +123,8 @@ export function useRedbellyTxGate({
   if (isRedbelly) {
     if (checking) {
       blockReason = t('page.signTx.redbelly.checkingReason');
-    } else if (verdict && blocksSigning(verdict)) {
-      blockReason = t('page.signTx.redbelly.blockedReason');
-    } else if (senderRegistered === false) {
-      blockReason = t('page.signTx.redbelly.senderNotRegisteredReason');
+    } else if (needsAcknowledgement && !acknowledged) {
+      blockReason = t('page.signTx.redbelly.acknowledgeReason');
     }
   }
 
@@ -124,6 +135,9 @@ export function useRedbellyTxGate({
     checking,
     senderRegistered,
     usdPerGas,
+    needsAcknowledgement,
+    acknowledged,
+    setAcknowledged,
     blockReason,
   };
 }

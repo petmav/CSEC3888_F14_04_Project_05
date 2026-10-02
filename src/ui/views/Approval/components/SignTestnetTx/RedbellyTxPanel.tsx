@@ -8,6 +8,8 @@ import type { Verdict } from '@/utils/redbelly/verdict';
 import { formatTokenAmount } from '@/ui/utils/number';
 import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 import { Card } from '../Card';
+import { ReactComponent as RcIconCheckboxChecked } from '@/ui/assets/send-token/icon-checkbox-checked.svg';
+import { ReactComponent as RcIconCheckboxUncheck } from '@/ui/assets/send-token/icon-checkbox-uncheck.svg';
 import type { RedbellyTxGate } from './useRedbellyTxGate';
 
 type Tone = 'safe' | 'danger' | 'warning' | 'neutral';
@@ -140,6 +142,22 @@ export const RedbellyTxPanel = ({
                 </div>
               ) : null}
             </div>
+            {gate.needsAcknowledgement ? (
+              <div
+                className="flex items-center gap-8 mt-8 cursor-pointer"
+                data-testid="redbelly-acknowledge"
+                onClick={() => gate.setAcknowledged(!gate.acknowledged)}
+              >
+                {gate.acknowledged ? (
+                  <RcIconCheckboxChecked width={20} height={20} />
+                ) : (
+                  <RcIconCheckboxUncheck width={20} height={20} />
+                )}
+                <span className="text-13 text-r-neutral-title1">
+                  {t('page.sendToken.riskAlert.checkboxText')}
+                </span>
+              </div>
+            ) : null}
             {target.kind === 'token' ? (
               <div className="text-12 text-r-neutral-foot mt-6 break-all">
                 {t('page.signTx.redbelly.tokenContract', {
@@ -166,6 +184,11 @@ export const RedbellyTxPanel = ({
               </span>
             )}
           </Row>
+          {senderRegistered === false ? (
+            <div className="text-12 text-r-orange-default mb-4">
+              {t('page.signTx.redbelly.senderNotRegisteredWarning')}
+            </div>
+          ) : null}
           <Row label={t('page.signTx.redbelly.networkFee')}>
             {feeRbnt ? (
               <>

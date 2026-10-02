@@ -378,8 +378,8 @@
         "networkFee": "Network fee",
         "feeNote": "Redbelly prices gas in US dollars and converts it to RBNT, so fees look large next to Ethereum. This is expected.",
         "checkingReason": "Checking the recipient against the Redbelly permission list.",
-        "senderNotRegisteredReason": "Your account is not registered on Redbelly, so the network will reject this transaction. Complete identity verification at access.redbelly.network first.",
-        "blockedReason": "Recipient is not registered on Redbelly. Funds sent there cannot be spent."
+        "senderNotRegisteredWarning": "Your account is not registered on Redbelly, so the network will reject this transaction. Complete identity verification at access.redbelly.network first.",
+        "acknowledgeReason": "This address is not registered on Redbelly. Tick \"I understand the risks\" to sign anyway."
       },
       "tokenApprove": {
         "title": "Token Approval",
