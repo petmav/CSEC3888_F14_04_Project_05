@@ -256,8 +256,9 @@ const config = {
     ],
   },
   plugins: [
-    // CI lints in its own job; SKIP_WEBPACK_ESLINT spares the build the memory.
-    ...(process.env.SKIP_WEBPACK_ESLINT
+    // CI lints in its own job; SKIP_WEBPACK_ESLINT=true spares the build the
+    // memory.
+    ...(process.env.SKIP_WEBPACK_ESLINT === 'true'
       ? []
       : [
           new ESLintWebpackPlugin({

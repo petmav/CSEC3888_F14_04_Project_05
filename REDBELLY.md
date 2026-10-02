@@ -47,10 +47,24 @@ enum, but no picker shows it and the dApp provider refuses it
 - typed data whose domain names another chain is refused;
 - `net_version` is answered locally (Redbelly nodes do not implement it).
 
-**The signing gate** (`views/Approval/components/SignTestnetTx/`). The payee
-is decoded locally from `to` and calldata - an ERC-20 `transfer` or
-`transferFrom` pays the address inside the calldata, not the token contract
-(`utils/redbelly/recipient.ts`, shared with the Snap). The team chose
+**The signing gate** (`views/Approval/components/SignTestnetTx/`). The address
+checked is decoded locally from `to` and calldata
+(`utils/redbelly/recipient.ts`, shared with the Snap):
+
+- a token transfer (ERC-20 `transfer`/`transferFrom`, ERC-721 and ERC-1155
+  `safeTransferFrom`, `safeBatchTransferFrom`, ERC-677 `transferAndCall`,
+  ERC-777 `send`) checks the payee inside the calldata, not the token
+  contract;
+- an approval (`approve`, `setApprovalForAll`, `increaseAllowance`, EIP-2612
+  `permit`) checks the spender, and says that signing lets it spend the
+  user's tokens. Revoking one (a zero amount, or `false`) is not warned
+  about: it takes a permission away;
+- any other contract call checks the contract, and the panel says plainly
+  that an address the contract passes funds on to is not checked - a swap
+  router's `to` argument, for example. `decreaseAllowance`, Permit2 and
+  batching contracts (multicall, Safe) fall here.
+
+The team chose
 **warn and confirm, not block** (2026-10-02), matching the Send page:
 
 - while the recipient check is running, Sign waits, so nobody signs before
@@ -113,16 +127,36 @@ are or what they do. In the Redbelly-only build:
   preference, the Matomo page-view script is removed from every page, and
   Sentry is disabled.
 - A network guard (`utils/redbelly/networkGuard.ts`, imported first in the
-  background, UI and offscreen entry points) refuses `fetch`, XHR and beacon
-  requests to DeBank, Rabby, Hyperliquid, Google Analytics and Sentry. Every
-  call site upstream adds later is covered without changes. The single
-  exception is the currency rate list, which carries no user data.
+  background, UI and offscreen entry points) refuses `fetch`, XHR, beacon,
+  WebSocket and EventSource requests to DeBank, Rabby, Hyperliquid, Google
+  Analytics and Sentry, and does not load images from them (they would
+  reveal the user's IP address). Every call site upstream adds later is
+  covered without changes. The single exception is the currency rate list,
+  which carries no user data; Settings > Currency shows each currency's
+  symbol instead of DeBank's flag images.
+- The guard patches the browser APIs rather than being enforced by the
+  browser, so it covers code that runs after it - which is why it is the
+  first import. Images that reach the page another way - `innerHTML`, CSS
+  `url()`, SVG `<image>` - are not covered. A blocked image fails to load, so
+  the UI's placeholder icon shows.
 - The hourly DeBank chain sync, default-RPC sync, CEX labelling, uninstall
   survey URL and Perps connections do not start.
 
 Verified by recording every request the extension made through onboarding,
 home, assets, connect, signing, history and settings: the only third-party
 data requests were Redbelly's RPC, Routescan and the currency list.
+
+**What this costs.** Stock Rabby protects signing with services this build
+does not call:
+
+- the security engine's origin rules (known phishing sites, new or flagged
+  dApps) query Rabby's API and are dropped;
+- Redbelly transactions take the custom-network path, which has no
+  simulated balance changes and no DeBank risk preview.
+
+What remains on the signing screen is the Redbelly KYC check, with the
+checked address in full - for a contract call, only the contract. Say so in demos and user docs: the wallet does not
+warn about a phishing site.
 
 ## Contracts and endpoints
 
@@ -184,9 +218,8 @@ Redbelly unit tests; project typecheck clean.
   Before a demo, send RBNT and a token from a funded, KYC-registered
   Testnet account, then a Mainnet one.
 - Hardware wallets, Safe and WalletConnect signing are untested.
-- Images still load from DeBank's CDN in a few places (currency flags in
-  Settings > Currency, some token logos). They carry no user data, but they
-  do reveal the user's IP address to the CDN. Bundling them would close it.
+- Token and chain logos that came from DeBank's CDN now show blank rather
+  than load. Bundling the few that matter would bring them back.
 - Rabby's Send screen and token detail pages show USD regardless of the
   display currency, as upstream Rabby does.
 - Staking is read-only; stake, unstake and claim happen on Reddex through

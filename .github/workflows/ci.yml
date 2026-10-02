@@ -18,10 +18,13 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
-# A new push to a PR supersedes the run for the previous one.
+# A new push to a PR supersedes the run for the previous one. A branch or
+# tag push gets a group of its own commit, so it is never cancelled or
+# dropped from the queue: every merged commit gets a result, and a release
+# is not cut short.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.sha) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

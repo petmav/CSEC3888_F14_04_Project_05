@@ -24,6 +24,8 @@ const ActivityRow = ({
   self: string;
 }) => {
   const { t } = useTranslation();
+  // A transfer to yourself moves nothing; show it as neither in nor out.
+  const toSelf = item.from === self && item.to === self;
   const outgoing = item.from === self;
   const counterparty = outgoing ? item.to : item.from;
   const amount = new BigNumber(item.value).div(
@@ -44,6 +46,8 @@ const ActivityRow = ({
         <div className="text-14 font-medium text-r-neutral-title1">
           {isCall
             ? item.method || t('page.transactions.redbelly.contractCall')
+            : toSelf
+            ? t('page.transactions.redbelly.toSelf')
             : outgoing
             ? t('page.transactions.redbelly.sent')
             : t('page.transactions.redbelly.received')}
@@ -72,7 +76,7 @@ const ActivityRow = ({
             outgoing ? 'text-r-neutral-title1' : 'text-r-green-default'
           )}
         >
-          {outgoing ? '-' : '+'}
+          {toSelf ? '' : outgoing ? '-' : '+'}
           {formatTokenAmount(amount.toFixed())} {item.symbol}
         </div>
       )}
@@ -118,9 +122,10 @@ export const RedbellyHistory = () => {
         </div>
       ) : data?.length ? (
         <div className="flex flex-col gap-8" data-testid="redbelly-activity">
-          {data.map((item) => (
+          {data.map((item, index) => (
             <ActivityRow
-              key={`${item.hash}-${item.kind}-${item.symbol}`}
+              // One transaction can move the same token more than once.
+              key={`${item.hash}-${item.kind}-${item.symbol}-${index}`}
               item={item}
               self={self}
             />
