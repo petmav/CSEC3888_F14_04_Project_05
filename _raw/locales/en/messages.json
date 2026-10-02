@@ -365,9 +365,10 @@
         "notRegisteredTip": "This address is not on the Redbelly permission list. Nobody can spend funds sent here, and the transfer cannot be reversed.",
         "contract": "Contract address",
         "contractTip": "The permission list covers user accounts, so no identity check applies to a smart contract.",
-        "unknown": "Could not verify",
+        "unknown": "Could not verify if address is on the Redbelly Network",
         "unknownTip": "The Redbelly node did not answer, so this address was not checked. This is not a confirmation that the address is valid.",
         "panelTitle": "Redbelly checks",
+        "senderTitle": "Your Redbelly KYC",
         "paying": "Paying",
         "payingToken": "Paying (token transfer)",
         "contractCreation": "Contract creation - no recipient to check",
@@ -991,6 +992,13 @@
       "selectToken": "Select Token",
       "accountSelectorModal": {
         "title": "Select Address"
+      },
+      "redbelly": {
+        "verified": "This address is verified on the Redbelly Network",
+        "notVerified": "This address is not verified in the Redbelly Network",
+        "unknown": "Could not verify if address is on the Redbelly Network",
+        "gasFee": "Gas fee",
+        "gasFeeUnavailable": "Unavailable"
       },
       "riskAlert": {
         "checkboxText": "I understand the risks and want to continue"

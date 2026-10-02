@@ -109,7 +109,11 @@ export function AddressInfoTo({
           {toAddressPositiveTips?.hasPositiveTips && (
             <div className="flex items-center justify-end font-medium text-[15px]">
               <RcCheckRight width={18} height={18} className="mr-[3px]" />
-              {toAddressPositiveTips.inWhitelist ? (
+              {toAddressPositiveTips.redbellyVerified ? (
+                <span className="text-r-green-default">
+                  {t('page.sendToken.redbelly.verified')}
+                </span>
+              ) : toAddressPositiveTips.inWhitelist ? (
                 <span className="text-r-green-default">
                   {t('page.selectToAddress.positiveTips.whitelistAddress')}
                 </span>

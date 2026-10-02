@@ -26,11 +26,18 @@ export const RedbellyAssetSection = ({
   selectChainId,
   visible,
   className,
+  onHasBalanceChange,
 }: {
   /** Chain `serverId` currently filtered on, or null for "all chains". */
   selectChainId?: string | null;
   visible?: boolean;
   className?: string;
+  /**
+   * Reports whether any Redbelly balance is non-zero. The parent's "No assets"
+   * state is driven by DeBank, which cannot see RBNT, so without this a wallet
+   * holding only RBNT is shown as empty.
+   */
+  onHasBalanceChange?: (hasBalance: boolean) => void;
 }) => {
   const { t } = useTranslation();
   const wallet = useWallet();
@@ -50,6 +57,13 @@ export const RedbellyAssetSection = ({
       ready: !!currentAccount?.address && visible !== false,
     }
   );
+
+  const hasBalance = !!summaries?.some(
+    (summary) => BigInt(summary.balanceWei ?? '0') > 0n
+  );
+  React.useEffect(() => {
+    onHasBalanceChange?.(hasBalance);
+  }, [hasBalance, onHasBalanceChange]);
 
   // Respect the chain filter: hidden when the user has narrowed to a
   // non-Redbelly chain.

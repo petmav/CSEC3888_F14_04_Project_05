@@ -142,7 +142,7 @@ export const CustomTestnet = ({
   return (
     <div
       className={clsx(
-        'custom-testnet h-full overflow-auto',
+        'custom-testnet h-full overflow-hidden min-h-0',
         inModal ? 'h-[600px]' : ''
       )}
     >

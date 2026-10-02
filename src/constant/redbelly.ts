@@ -172,3 +172,25 @@ export function redbellyRpcUrl(chainId: number): string {
 export function redbellyNetworkName(chainId: number): string {
   return REDBELLY_NETWORK_NAMES[Number(chainId)] ?? String(chainId);
 }
+
+/**
+ * The Redbelly RPC endpoint for a chain `serverId`.
+ *
+ * The wallet's generic RPC layer keys on `serverId` and takes its hosts from a
+ * list DeBank syncs, which has no Redbelly entry. This lets that layer reach
+ * Redbelly's own public endpoint instead of falling back to DeBank.
+ *
+ * @param serverId - A chain server id.
+ * @returns The endpoint URL, or `undefined` for any non-Redbelly chain.
+ */
+export function redbellyRpcUrlForServerId(
+  serverId: string | undefined | null
+): string | undefined {
+  if (serverId === REDBELLY_MAINNET_SERVER_ID) {
+    return REDBELLY_RPC_ENDPOINTS[REDBELLY_MAINNET_CHAIN_ID];
+  }
+  if (serverId === REDBELLY_TESTNET_SERVER_ID) {
+    return REDBELLY_RPC_ENDPOINTS[REDBELLY_TESTNET_CHAIN_ID];
+  }
+  return undefined;
+}
