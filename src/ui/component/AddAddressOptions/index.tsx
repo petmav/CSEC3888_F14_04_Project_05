@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import './style.less';
 import { UI_TYPE } from '@/constant/ui';
 import { WALLET_BRAND_CONTENT, IWalletBrandContent } from 'consts';
+import { REDBELLY_HIDE_UNTESTED_ACCOUNTS } from '@/constant/redbelly';
 import { connectStore } from '@/ui/store';
 import { useAddAddressWalletOptions } from '@/ui/views/AddAddress/shared';
 import { Item } from '@/ui/component';
@@ -192,6 +193,14 @@ const AddAddressOptions: React.FC<{
     [history, onNavigate, t, createNewSeedPhrase, seedPhraseList?.length]
   );
 
+  const visibleOptions = React.useMemo(
+    () =>
+      REDBELLY_HIDE_UNTESTED_ACCOUNTS
+        ? options.filter((option) => option.key !== 'connect-hardware-wallet')
+        : options,
+    [options]
+  );
+
   if (preventMount) {
     return null;
   }
@@ -201,28 +210,30 @@ const AddAddressOptions: React.FC<{
       className={clsx('add-address-options', UI_TYPE.isDesktop ? 'w-full' : '')}
     >
       <div className="add-address-options__list">
-        {options.map((option) => (
+        {visibleOptions.map((option) => (
           <AddAddressRow key={option.key} option={option} />
         ))}
       </div>
 
-      <button
-        type="button"
-        className="add-address-options__institutional-entry"
-        onClick={() => {
-          if (UI_TYPE.isDesktop) {
-            onNavigate?.('institutional-wallets');
-          } else {
-            history.push('/add-address/institutional-wallets');
-          }
-        }}
-      >
-        <span>{t('page.newAddress.connectInstitutionalWallets')}</span>
-        <RcRightArrow
-          viewBox="0 0 20 20"
-          className="add-address-options__institutional-arrow"
-        />
-      </button>
+      {REDBELLY_HIDE_UNTESTED_ACCOUNTS ? null : (
+        <button
+          type="button"
+          className="add-address-options__institutional-entry"
+          onClick={() => {
+            if (UI_TYPE.isDesktop) {
+              onNavigate?.('institutional-wallets');
+            } else {
+              history.push('/add-address/institutional-wallets');
+            }
+          }}
+        >
+          <span>{t('page.newAddress.connectInstitutionalWallets')}</span>
+          <RcRightArrow
+            viewBox="0 0 20 20"
+            className="add-address-options__institutional-arrow"
+          />
+        </button>
+      )}
     </div>
   );
 };

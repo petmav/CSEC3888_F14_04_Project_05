@@ -46,7 +46,11 @@ import { getFormattedIpfsUrl } from '../utils/ipfs';
 import { storage } from '../webapi';
 import RPCService, { RPCServiceStore } from './rpc';
 import dayjs from 'dayjs';
-import { isRedbellyChainId, REDBELLY_ONLY } from '@/constant/redbelly';
+import {
+  isPinnedRedbellyRpc,
+  isRedbellyChainId,
+  REDBELLY_ONLY,
+} from '@/constant/redbelly';
 import {
   builtinRedbellyNetwork,
   REDBELLY_NETWORKS,
@@ -97,12 +101,13 @@ export interface CustomTestnetTokenBase {
   chainId: number;
   symbol: string;
   decimals: number;
+  /** A bundled logo, for the built-in Redbelly tokens. */
+  logo?: string;
 }
 
 export interface CustomTestnetToken extends CustomTestnetTokenBase {
   amount: number;
   rawAmount: string;
-  logo?: string;
   /** US dollars per token, where a trustworthy price exists. */
   price?: number;
 }
@@ -164,6 +169,7 @@ class CustomTestnetService {
     Object.values(this.store.customTestnet).forEach((chain) => {
       const config =
         CUSTOM_RPC_ENABLED &&
+        !isPinnedRedbellyRpc(chain.enum) &&
         // Optional: a fresh install has no RPC store yet, and with Redbelly
         // built in this loop now runs on first start.
         rpcStorage?.customRPC?.[chain.enum] &&
@@ -680,7 +686,7 @@ class CustomTestnetService {
       logo:
         !tokenId || tokenId?.replace('custom_', '') === String(chainId)
           ? this.nativeLogo(chainId)
-          : undefined,
+          : tokenInfo.logo,
     };
   };
 
@@ -761,6 +767,7 @@ class CustomTestnetService {
         symbol: listed.symbol,
         chainId,
         decimals: listed.decimals,
+        logo: listed.logo,
       };
     }
 
@@ -938,6 +945,7 @@ class CustomTestnetService {
             chainId: id,
             symbol: token.symbol,
             decimals: token.decimals,
+            logo: token.logo,
           }));
       })
     );
@@ -986,7 +994,8 @@ class CustomTestnetService {
 
   setCustomRPC = ({ chainId, url }: { chainId: number; url: string }) => {
     const client = this.getClient(chainId);
-    if (client) {
+    const chain = this.store.customTestnet[chainId];
+    if (client && chain && !isPinnedRedbellyRpc(chain.enum)) {
       this.chains[chainId] = createClientByChain({
         ...this.store.customTestnet[chainId],
         rpcUrl: url,
@@ -1364,7 +1373,7 @@ class CustomTestnetService {
                   id: token.id,
                   chainId: token.chainId,
                   rawAmount: _value.toFixed(),
-                  logo: '',
+                  logo: token.logo || '',
                 }),
               },
             },
@@ -1388,7 +1397,7 @@ class CustomTestnetService {
                   id: token.id,
                   chainId: token.chainId,
                   rawAmount: _value.toFixed(),
-                  logo: '',
+                  logo: token.logo || '',
                 }),
               },
             },

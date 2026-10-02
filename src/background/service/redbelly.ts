@@ -44,6 +44,7 @@ import { readRbntUsdPrice } from '@/utils/redbelly/price';
 import { readStakingPosition } from '@/utils/redbelly/staking';
 import type { StakingPosition } from '@/utils/redbelly/staking';
 import { explorerRows, ExplorerResponse } from '@/utils/redbelly/explorer';
+import { jsonRpcTransport } from '@/utils/redbelly/transport';
 
 /**
  * Per-call ceiling, in milliseconds.
@@ -135,39 +136,8 @@ class RedbellyService {
    * @param chainId - The numeric Redbelly chain ID.
    * @returns A request function bound to that chain's endpoint.
    */
-  private transport = (chainId: number): EthereumRequest => {
-    const url = redbellyRpcUrl(chainId);
-    let nextId = 0;
-
-    return async ({ method, params }) => {
-      nextId += 1;
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: nextId,
-          method,
-          params: params ?? [],
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status} from ${url}`);
-      }
-
-      const payload = (await response.json()) as {
-        result?: unknown;
-        error?: { message?: string };
-      };
-
-      if (payload.error) {
-        throw new Error(`RPC error: ${payload.error.message ?? 'unknown'}`);
-      }
-
-      return payload.result;
-    };
-  };
+  private transport = (chainId: number): EthereumRequest =>
+    jsonRpcTransport(redbellyRpcUrl(chainId));
 
   /**
    * Chain facts about a recipient, or `null` if they could not be gathered.
