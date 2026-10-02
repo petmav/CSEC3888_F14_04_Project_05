@@ -1,3 +1,11 @@
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import type { WalletControllerType } from '@/ui/utils';
 import {
   getCexInfo,
@@ -15,8 +23,7 @@ jest.mock('@/ui/wallet', () => ({
   },
 }));
 
-const mockedGetCexSupportList = wallet.openapi
-  .getCexSupportList as jest.Mock;
+const mockedGetCexSupportList = wallet.openapi.getCexSupportList as jest.Mock;
 
 describe('exchange store', () => {
   beforeEach(() => {
@@ -63,9 +70,7 @@ describe('exchange store', () => {
     expect(useExchangeStore.getState().exchanges).toEqual(
       getDefaultExchangeState().exchanges
     );
-    expect(globalSupportCexList).toEqual(
-      getDefaultExchangeState().exchanges
-    );
+    expect(globalSupportCexList).toEqual(getDefaultExchangeState().exchanges);
   });
 
   test('finds exchange information case-insensitively', async () => {
@@ -74,9 +79,9 @@ describe('exchange store', () => {
       name: 'Binance',
       logo: 'binance.png',
     });
-    const walletController = {
+    const walletController = ({
       getCexId: jest.fn().mockResolvedValue('BINANCE'),
-    } as unknown as WalletControllerType;
+    } as unknown) as WalletControllerType;
 
     await expect(getCexInfo('0x123', walletController)).resolves.toEqual({
       id: 'BINANCE',

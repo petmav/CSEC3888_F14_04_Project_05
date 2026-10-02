@@ -109,12 +109,12 @@ describe('import mnemonics store', () => {
       0,
       2
     );
-    expect(
-      useImportMnemonicsStore.getState().queriedAccountsByAddress
-    ).toEqual({
-      '0x1': accounts[1],
-      '0x2': accounts[0],
-    });
+    expect(useImportMnemonicsStore.getState().queriedAccountsByAddress).toEqual(
+      {
+        '0x1': accounts[1],
+        '0x2': accounts[0],
+      }
+    );
   });
 
   test('sorts, aliases, and confirms fresh-keyring accounts', async () => {
@@ -129,11 +129,10 @@ describe('import mnemonics store', () => {
     mockedGetCachedAlias.mockImplementation((address: string) =>
       Promise.resolve({ name: address === '0x1' ? 'First' : 'Second' })
     );
-    mockedRequestKeyring.mockImplementation(
-      (_type, method: string) =>
-        method === 'getInfoByAddress'
-          ? Promise.resolve({ basePublicKey: 'public-key' })
-          : Promise.resolve(undefined)
+    mockedRequestKeyring.mockImplementation((_type, method: string) =>
+      method === 'getInfoByAddress'
+        ? Promise.resolve({ basePublicKey: 'public-key' })
+        : Promise.resolve(undefined)
     );
 
     await useImportMnemonicsStore
@@ -146,9 +145,7 @@ describe('import mnemonics store', () => {
       { address: '0x2', index: 2, alianName: 'Second' },
     ]);
 
-    await useImportMnemonicsStore
-      .getState()
-      .confirmAllImportingAccountsAsync();
+    await useImportMnemonicsStore.getState().confirmAllImportingAccountsAsync();
 
     expect(mockedRequestKeyring).toHaveBeenCalledWith(
       expect.any(String),

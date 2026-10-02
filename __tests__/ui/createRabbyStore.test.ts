@@ -263,16 +263,16 @@ describe('createRabbyStore', () => {
         revision: 0,
         state: { next: 2 },
       });
-    const { storage, syncEngine } = createSyncedBackgroundStorage<
-      DynamicStore
-    >({
-      get,
-      set: async () => undefined,
-      subscribe(listener) {
-        onRemote = listener;
-        return () => undefined;
-      },
-    });
+    const { storage, syncEngine } = createSyncedBackgroundStorage<DynamicStore>(
+      {
+        get,
+        set: async () => undefined,
+        subscribe(listener) {
+          onRemote = listener;
+          return () => undefined;
+        },
+      }
+    );
     const store = createRabbyStore<DynamicStore>(() => ({}), {
       storage,
       sync: { engine: syncEngine },

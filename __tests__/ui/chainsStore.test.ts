@@ -1,9 +1,14 @@
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import type { TestnetChain } from '@/background/service/customTestnet';
 import { useAccountStore } from '@/ui/state/account';
-import {
-  getDefaultChainsState,
-  useChainsStore,
-} from '@/ui/state/chains';
+import { getDefaultChainsState, useChainsStore } from '@/ui/state/chains';
 import { useSwapStore } from '@/ui/state/swap';
 import { wallet } from '@/ui/wallet';
 import {
@@ -55,12 +60,12 @@ const cachedMainnetChain = {
   serverId: 'bsc',
   name: 'BNB Chain',
 } as Chain;
-const testnetChain = {
+const testnetChain = ({
   enum: 'CUSTOM_1',
   serverId: 'custom-1',
   name: 'Custom Testnet',
   isTestnet: true,
-} as unknown as TestnetChain;
+} as unknown) as TestnetChain;
 
 describe('chains store', () => {
   const checkSwapStore = jest.fn();

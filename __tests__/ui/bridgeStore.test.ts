@@ -1,10 +1,15 @@
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import type { BridgeServiceStore } from '@/background/service/bridge';
 import type { BridgeAggregator } from '@/background/service/openapi';
 import eventBus from '@/eventBus';
-import {
-  initializeBridgeStore,
-  useBridgeStore,
-} from '@/ui/state/bridge';
+import { initializeBridgeStore, useBridgeStore } from '@/ui/state/bridge';
 import { wallet } from '@/ui/wallet';
 import { BROADCAST_TO_UI_EVENTS } from '@/utils/broadcastToUI';
 import { findChain } from '@/utils/chain';
@@ -135,9 +140,7 @@ describe('bridge store', () => {
     await useBridgeStore.getState().fetchAggregatorsList();
     await useBridgeStore.persist.flush();
 
-    expect(useBridgeStore.getState().aggregatorsList).toEqual([
-      nextAggregator,
-    ]);
+    expect(useBridgeStore.getState().aggregatorsList).toEqual([nextAggregator]);
     expect(wallet.setStorageItem).not.toHaveBeenCalled();
   });
 

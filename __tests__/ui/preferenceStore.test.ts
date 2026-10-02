@@ -1,3 +1,11 @@
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import { CHAINS_ENUM, DARK_MODE_TYPE } from '@/constant';
 import { changeLanguage } from '@/i18n';
 import {
@@ -59,9 +67,7 @@ describe('preference store', () => {
     usePreferenceStore.setState(getDefaultPreferenceState());
     (wallet.getPreference as jest.Mock).mockImplementation((key?: string) =>
       Promise.resolve(
-        key
-          ? getDefaultPreferenceState()[key]
-          : getDefaultPreferenceState()
+        key ? getDefaultPreferenceState()[key] : getDefaultPreferenceState()
       )
     );
   });
@@ -156,9 +162,7 @@ describe('preference store', () => {
     );
     (wallet.setTokenApprovalChain as jest.Mock).mockResolvedValue(undefined);
 
-    await usePreferenceStore
-      .getState()
-      .getTokenApprovalChain('0xAbC');
+    await usePreferenceStore.getState().getTokenApprovalChain('0xAbC');
 
     expect(wallet.getTokenApprovalChain).toHaveBeenCalledWith('0xabc');
     expect(usePreferenceStore.getState().tokenApprovalChain['0xabc']).toBe(
@@ -186,9 +190,7 @@ describe('preference store', () => {
     expect(wallet.setLocale).toHaveBeenCalledWith('zh_CN');
 
     (wallet.getPreference as jest.Mock).mockResolvedValue(DARK_MODE_TYPE.dark);
-    await usePreferenceStore
-      .getState()
-      .switchThemeMode(DARK_MODE_TYPE.dark);
+    await usePreferenceStore.getState().switchThemeMode(DARK_MODE_TYPE.dark);
     expect(usePreferenceStore.getState().themeMode).toBe(DARK_MODE_TYPE.dark);
     expect(wallet.setThemeMode).toHaveBeenCalledWith(DARK_MODE_TYPE.dark);
     expect(ga4.fireEvent).toHaveBeenCalledWith('ThemeMode_Dark', {
@@ -217,9 +219,7 @@ describe('preference store', () => {
       time: Date.now() - 1,
       userViewedRate: false,
     });
-    await usePreferenceStore
-      .getState()
-      .setRateGuideLastExposure(lastExposure);
+    await usePreferenceStore.getState().setRateGuideLastExposure(lastExposure);
 
     expect(
       usePreferenceStore.getState().rateGuideLastExposure?.[

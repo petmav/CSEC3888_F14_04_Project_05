@@ -47,9 +47,7 @@ describe('address-management store', () => {
     const addresses = [highlightedAddress('0xabc')];
     (wallet.getHighlightedAddresses as jest.Mock).mockResolvedValue(addresses);
 
-    await useAddressManagementStore
-      .getState()
-      .getHilightedAddressesAsync();
+    await useAddressManagementStore.getState().getHilightedAddressesAsync();
 
     expect(useAddressManagementStore.getState().highlightedAddresses).toBe(
       addresses
@@ -98,9 +96,7 @@ describe('address-management store', () => {
       .getState()
       .toggleHighlightedAddressAsync({ ...removed, nextPinned: false });
 
-    expect(wallet.updateHighlightedAddresses).toHaveBeenCalledWith([
-      remaining,
-    ]);
+    expect(wallet.updateHighlightedAddresses).toHaveBeenCalledWith([remaining]);
   });
 
   test('removes an address before refreshing displayed accounts', async () => {

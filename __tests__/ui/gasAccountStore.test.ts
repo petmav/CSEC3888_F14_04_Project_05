@@ -1,3 +1,11 @@
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import type { GasAccountServiceStore } from '@/background/service/gasAccount';
 import { EVENTS } from '@/constant';
 import eventBus from '@/eventBus';
@@ -87,9 +95,7 @@ describe('gas-account store', () => {
       pendingHardwareAccount
     );
 
-    await useGasAccountStore
-      .getState()
-      .syncState('pendingHardwareAccount');
+    await useGasAccountStore.getState().syncState('pendingHardwareAccount');
 
     expect(wallet.getGasAccountData).toHaveBeenCalledWith(
       'pendingHardwareAccount'
@@ -148,7 +154,9 @@ describe('gas-account store', () => {
       ...serviceState(),
       autoLoginAccount: account,
     };
-    (wallet.discoverGasAccountRuntimeState as jest.Mock).mockResolvedValue(data);
+    (wallet.discoverGasAccountRuntimeState as jest.Mock).mockResolvedValue(
+      data
+    );
 
     await expect(
       useGasAccountStore.getState().discoverRuntimeState({ force: true })

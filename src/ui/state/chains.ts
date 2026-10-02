@@ -74,7 +74,7 @@ export const useChainsStore = create<ChainsStore>()((set) => ({
       getMainnetListFromLocal().then((mainnetList) => {
         if (mainnetList.length) {
           updateChainStore({ mainnetList });
-          set({ mainnetList: visibleMainnetList() });
+          set({ mainnetList: REDBELLY_ONLY ? [] : mainnetList });
         }
       }),
     ]);
