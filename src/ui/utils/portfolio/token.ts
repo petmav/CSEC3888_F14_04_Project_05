@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 import { useAsync } from 'react-use';
 
@@ -128,6 +129,15 @@ export const useTokens = (
         setIsAllTokenLoading(false);
       }
     };
+
+    // DeBank's token list has nothing for Redbelly, and the network guard
+    // blocks it: loading it would only throw. Redbelly tokens come from the
+    // custom-network list. Clear the loading flags so nothing waits on it.
+    if (REDBELLY_ONLY) {
+      setLoading(false);
+      setIsAllTokenLoading(false);
+      return;
+    }
 
     if (!userAddr || isTestnet) {
       return;

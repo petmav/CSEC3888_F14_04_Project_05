@@ -6,8 +6,10 @@ every recipient against Redbelly's on-chain KYC permission list before
 signing, and makes the user acknowledge the risk before signing to a
 confirmed unregistered account.
 
-This is the fork deliverable of CSEC3888 P5 (milestones M8-M15). The
-MetaMask Snap in `redbelly-address-snap` remains the assessed baseline.
+This is the fork deliverable of CSEC3888 P5. The MetaMask Snap in
+`redbelly-address-snap` remains the assessed baseline. For the narrative
+account - why, how, what is and is not checked, and what is left - see
+[docs/redbelly-wallet-writeup.md](docs/redbelly-wallet-writeup.md).
 
 ## Build and load
 
@@ -79,8 +81,24 @@ gets this far.
 
 A check that cannot complete (`UNKNOWN`) is shown as a warning and does not
 hold signing: Redbelly has one public endpoint, and an outage must not brick the
-wallet. Contracts are shown neutrally - every deployed contract reports
+wallet. A failed read is retried once first (`utils/redbelly/transport.ts`).
+Contracts are shown neutrally - every deployed contract reports
 `isAllowed == false`.
+
+**Familiarity** (`utils/redbelly/familiarity.ts`), a local stand-in for the
+phishing checks this build drops. The wallet's known addresses are its own
+accounts, the address book, and everyone it has paid on Redbelly (local
+history, plus Mainnet history from Routescan - only transactions the account
+signed, since the explorer's token list would otherwise let a scammer's
+zero-value `transferFrom` plant the lookalike). A payee not among them gets a
+"first time" note, or, if the history could not be read, a note saying so; one that shares the first and last four hex characters
+with a known address but is not it - address poisoning - is shown in red and
+holds Sign for "I understand the risks", on the signing screen and the Send
+page alike.
+
+**RPC.** The built-in networks ignore custom RPCs in this build
+(`isPinnedRedbellyRpc`), so the KYC check and the broadcast always use the
+same canonical node.
 
 **Fees.** Every gas tier is the node's own `eth_gasPrice`; Rabby's 110-125%
 markup for custom networks is removed, so the quoted fee is the charged fee.
@@ -93,7 +111,7 @@ when unknown:
 | --- | --- |
 | RBNT balance, own KYC status | node: `eth_getBalance`, permission `isAllowed` |
 | RBNT/USD | registry `pricefeed` contract, `getLatestPrice()` (stale > 24h = no figure) |
-| Tokens | default list (Reddex's tokens) + Routescan holdings discovery |
+| Tokens | default list (Reddex's tokens, logos bundled from Reddex in `_raw/images/redbelly-tokens/`) + Routescan holdings discovery |
 | Stake | Reddex RBNT pools: `userInfo`, `getReward`, `getAvailalbeUnstakeAmount`, `getStakeUnlockTimes`, APR from `getCurrentAllocPoint` |
 | Activity | Routescan explorer API (Mainnet); this wallet's own sends (Testnet) |
 
@@ -217,11 +235,13 @@ Redbelly unit tests; project typecheck clean.
   unfunded and unregistered, so every send stopped at the gate as designed.
   Before a demo, send RBNT and a token from a funded, KYC-registered
   Testnet account, then a Mainnet one.
-- Hardware wallets, Safe and WalletConnect signing are untested.
-- Token and chain logos that came from DeBank's CDN now show blank rather
-  than load. Bundling the few that matter would bring them back.
-- Rabby's Send screen and token detail pages show USD regardless of the
-  display currency, as upstream Rabby does.
+- Hardware wallets, WalletConnect and institutional wallets (Safe, Cobo
+  Argus) are hidden (`REDBELLY_HIDE_UNTESTED_ACCOUNTS`) until each has signed
+  and broadcast a Redbelly transaction. Safe is not deployed on Redbelly.
+- English only: the Redbelly screens are not translated, so the language
+  setting is hidden and the locale fixed to English.
+- On the Send screen, entering the amount in dollars is offered only when
+  the display currency is USD.
 - Staking is read-only; stake, unstake and claim happen on Reddex through
   the normal signing screen.
 - Testnet activity shows only what this wallet sent: Routescan's Testnet API

@@ -33,6 +33,16 @@ export const REDBELLY_TESTNET_ENUM = `CUSTOM_${REDBELLY_TESTNET_CHAIN_ID}`;
 export const REDBELLY_ONLY = true;
 
 /**
+ * Hide the account types not yet tested on Redbelly: hardware wallets,
+ * WalletConnect/mobile wallets and institutional wallets (Safe, Cobo Argus).
+ * Safe is not deployed on Redbelly, and a hardware or mobile wallet that
+ * fails mid-signature is worse than one that is not offered. Seed phrase,
+ * private key and watch-only addresses stay. Re-enable a type once a
+ * transaction has been signed and broadcast with it.
+ */
+export const REDBELLY_HIDE_UNTESTED_ACCOUNTS = REDBELLY_ONLY;
+
+/**
  * Public RPC endpoints, by chain ID.
  *
  * NFR3: these are open endpoints - no API key, no IP whitelisting.
@@ -155,6 +165,23 @@ export function isRedbellyServerId(
  * @returns The endpoint URL.
  * @throws If the chain is not a Redbelly network.
  */
+/**
+ * Whether a chain's RPC endpoint is pinned to the canonical one: the
+ * built-in Redbelly networks in the Redbelly-only build. The KYC check reads
+ * `REDBELLY_RPC_ENDPOINTS` directly, so a custom RPC would let broadcasting
+ * and the check talk to different nodes - and a dishonest node could answer
+ * the check falsely. Pinning keeps both on the same endpoint.
+ *
+ * @param chainEnum - A `CHAINS_ENUM` value (string).
+ * @returns True if custom RPCs are ignored for it.
+ */
+export function isPinnedRedbellyRpc(chainEnum: string): boolean {
+  return (
+    REDBELLY_ONLY &&
+    (chainEnum === REDBELLY_MAINNET_ENUM || chainEnum === REDBELLY_TESTNET_ENUM)
+  );
+}
+
 export function redbellyRpcUrl(chainId: number): string {
   const url = REDBELLY_RPC_ENDPOINTS[Number(chainId)];
   if (!url) {

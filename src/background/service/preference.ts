@@ -276,6 +276,11 @@ class PreferenceService {
     ) {
       this.store.locale = defaultLang;
     }
+    // The Redbelly screens are only written in English; any other language
+    // would be half translated. The language setting is hidden to match.
+    if (REDBELLY_ONLY) {
+      this.store.locale = 'en';
+    }
     i18n.changeLanguage(this.store.locale);
     if (
       this.store.isDefaultWallet === undefined ||
@@ -775,8 +780,8 @@ class PreferenceService {
   };
 
   setLocale = (locale: string) => {
-    this.store.locale = locale;
-    i18n.changeLanguage(locale);
+    this.store.locale = REDBELLY_ONLY ? 'en' : locale;
+    i18n.changeLanguage(this.store.locale);
   };
 
   getThemeMode = () => {

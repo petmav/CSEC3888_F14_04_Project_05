@@ -6,6 +6,10 @@ import { useShallow } from 'zustand/react/shallow';
 import { isRedbellyChainId } from '@/constant/redbelly';
 import { useRedbellyStore } from '@/ui/state/redbelly';
 import { useWallet } from '@/ui/utils';
+import {
+  Familiarity,
+  recipientFamiliarity,
+} from '@/utils/redbelly/familiarity';
 import { paymentTarget, PaymentTarget } from '@/utils/redbelly/recipient';
 import { requiresAcknowledgement, Verdict } from '@/utils/redbelly/verdict';
 
@@ -20,7 +24,17 @@ export type RedbellyTxGate = {
   senderRegistered: boolean | null;
   /** US dollars per unit of gas, or null if the peg could not be read. */
   usdPerGas: number | null;
-  /** The verdict needs the user's acknowledgement before signing. */
+  /**
+   * Whether the user has paid this address before, or it imitates one they
+   * have; null while loading, or for a contract call.
+   */
+  familiarity: Familiarity | null;
+  /**
+   * False if the user's history could not be fully read: a "new" address
+   * may then be one they have paid, so it is not called first-time.
+   */
+  historyComplete: boolean;
+  /** The verdict or familiarity needs acknowledgement before signing. */
   needsAcknowledgement: boolean;
   acknowledged: boolean;
   setAcknowledged: (value: boolean) => void;
@@ -44,6 +58,8 @@ export type RedbellyTxGate = {
  *   cannot outrun the warning;
  * - a confirmed unregistered recipient is shown in red and signing waits for
  *   "I understand the risks" (US12), as on the Send page;
+ * - so does an address that imitates one the user has paid before (address
+ *   poisoning); one never paid before is noted, not held;
  * - an unregistered signer is a warning only: the node rejects it with
  *   -32603, and the panel says so before the user signs (FR5).
  * An `UNKNOWN` verdict does not hold signing: Redbelly has one public
@@ -91,13 +107,45 @@ export function useRedbellyTxGate({
   // second.
   useEffect(() => resetCurrentTx, [resetCurrentTx]);
 
+  // Who the user already knows - their accounts, contacts, past payees.
+  // Read once per signer. A failure leaves the list empty rather than
+  // holding signing: it is a hint, not the KYC check.
+  const { data: known = null } = useRequest(
+    async () => {
+      if (!isRedbelly || !from) {
+        return { addresses: [], complete: true };
+      }
+      try {
+        return await wallet.getRedbellyKnownAddresses(from);
+      } catch (error) {
+        console.error('[redbelly] known addresses failed', error);
+        return { addresses: [], complete: false };
+      }
+    },
+    { refreshDeps: [isRedbelly, from] }
+  );
+  const familiarity = useMemo<Familiarity | null>(
+    () =>
+      // A contract call's `to` is the dApp's contract; "first time" there
+      // is noise.
+      recipientAddress && known && target.kind !== 'call'
+        ? recipientFamiliarity(recipientAddress, known.addresses)
+        : null,
+    [recipientAddress, known, target.kind]
+  );
+  const knownAddresses = known?.addresses ?? null;
+
   const isCurrent =
     !!recipientAddress &&
     recipient.address?.toLowerCase() === recipientAddress.toLowerCase() &&
     recipient.chainId === Number(chainId);
   const verdict = isCurrent ? recipient.verdict : null;
-  const checking = isRedbelly && !!recipientAddress && !verdict;
-  const needsAcknowledgement = !!verdict && requiresAcknowledgement(verdict);
+  const checking =
+    isRedbelly && !!recipientAddress && (!verdict || knownAddresses === null);
+  const isLookalike = familiarity?.kind === 'lookalike';
+  const needsAcknowledgement =
+    !checking &&
+    ((!!verdict && requiresAcknowledgement(verdict)) || isLookalike);
 
   // An acknowledgement is for one recipient on one chain. It is stored
   // against that pair rather than reset by an effect, so a tick can never
@@ -137,7 +185,10 @@ export function useRedbellyTxGate({
     if (checking) {
       blockReason = t('page.signTx.redbelly.checkingReason');
     } else if (needsAcknowledgement && !acknowledged) {
-      blockReason = t('page.signTx.redbelly.acknowledgeReason');
+      blockReason =
+        verdict && requiresAcknowledgement(verdict)
+          ? t('page.signTx.redbelly.acknowledgeReason')
+          : t('page.signTx.redbelly.lookalikeReason');
     }
   }
 
@@ -148,6 +199,8 @@ export function useRedbellyTxGate({
     checking,
     senderRegistered,
     usdPerGas,
+    familiarity,
+    historyComplete: known?.complete ?? true,
     needsAcknowledgement,
     acknowledged,
     setAcknowledged,

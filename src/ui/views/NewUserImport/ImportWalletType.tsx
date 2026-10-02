@@ -10,6 +10,7 @@ import IconOKX from '@/ui/assets/new-user-import/wallet/okx.svg';
 import IconPhantom from '@/ui/assets/new-user-import/wallet/phantom.svg';
 import { Item } from '@/ui/component';
 import { Card } from '@/ui/component/NewUserImport';
+import { REDBELLY_HIDE_UNTESTED_ACCOUNTS } from '@/constant/redbelly';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -127,34 +128,38 @@ export const ImportWalletType = () => {
             </div>
           </div>
         </Item>
-        <Item
-          bgColor="var(--r-neutral-card2, #F2F4F7)"
-          px={16}
-          py={20}
-          leftIconClassName="w-24 h-24 mr-12"
-          onClick={() => {
-            history.push({
-              pathname: '/new-user/import-hardware-list',
-            });
-          }}
-          className="pl-[18px] rounded-[8px] text-[20px] leading-[24px] py-[21px] font-medium text-r-neutral-title1"
-        >
-          <div className="space-y-[12px]">
-            <div>{t('page.newUserImport.importWalletType.hardwareWallet')}</div>
-            <div className="flex items-center gap-[12px]">
-              {hardwareWallets.map((item) => {
-                return (
-                  <img
-                    key={item.logo}
-                    src={item.logo}
-                    alt=""
-                    className="w-[20px] h-[20px] rounded-full"
-                  />
-                );
-              })}
+        {REDBELLY_HIDE_UNTESTED_ACCOUNTS ? null : (
+          <Item
+            bgColor="var(--r-neutral-card2, #F2F4F7)"
+            px={16}
+            py={20}
+            leftIconClassName="w-24 h-24 mr-12"
+            onClick={() => {
+              history.push({
+                pathname: '/new-user/import-hardware-list',
+              });
+            }}
+            className="pl-[18px] rounded-[8px] text-[20px] leading-[24px] py-[21px] font-medium text-r-neutral-title1"
+          >
+            <div className="space-y-[12px]">
+              <div>
+                {t('page.newUserImport.importWalletType.hardwareWallet')}
+              </div>
+              <div className="flex items-center gap-[12px]">
+                {hardwareWallets.map((item) => {
+                  return (
+                    <img
+                      key={item.logo}
+                      src={item.logo}
+                      alt=""
+                      className="w-[20px] h-[20px] rounded-full"
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        </Item>
+          </Item>
+        )}
       </div>
     </Card>
   );

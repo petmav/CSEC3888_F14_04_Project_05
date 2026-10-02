@@ -1,4 +1,5 @@
 import {
+  isPinnedRedbellyRpc,
   isRedbellyServerId,
   redbellyRpcUrlForServerId,
 } from '@/constant/redbelly';
@@ -341,13 +342,16 @@ class RPCService {
   hasCustomRPC = (chain: CHAINS_ENUM) => {
     return (
       CUSTOM_RPC_ENABLED &&
+      !isPinnedRedbellyRpc(chain) &&
       this.store.customRPC[chain] &&
       this.store.customRPC[chain].enable
     );
   };
 
   getRPCByChain = (chain: CHAINS_ENUM): RPCItem | undefined => {
-    return CUSTOM_RPC_ENABLED ? this.store.customRPC[chain] : undefined;
+    return CUSTOM_RPC_ENABLED && !isPinnedRedbellyRpc(chain)
+      ? this.store.customRPC[chain]
+      : undefined;
   };
 
   getAllRPC = (): Record<string, RPCItem> => {
@@ -355,7 +359,7 @@ class RPCService {
   };
 
   setRPC = (chain: CHAINS_ENUM, url: string) => {
-    if (!CUSTOM_RPC_ENABLED) return;
+    if (!CUSTOM_RPC_ENABLED || isPinnedRedbellyRpc(chain)) return;
     const rpcItem = this.store.customRPC[chain]
       ? {
           ...this.store.customRPC[chain],

@@ -20,7 +20,15 @@ export type RedbellyTokenInfo = {
   symbol: string;
   name: string;
   decimals: number;
+  /**
+   * Bundled logo (`_raw/images/redbelly-tokens/`), taken from Reddex's
+   * token images. Bundled, not linked: the network guard keeps the wallet
+   * off third-party CDNs.
+   */
+  logo?: string;
 };
+
+const tokenLogo = (name: string) => `/images/redbelly-tokens/${name}.png`;
 
 /** ERC-20s listed by default, by chain id. Order is display order. */
 export const REDBELLY_DEFAULT_TOKENS: Record<number, RedbellyTokenInfo[]> = {
@@ -30,36 +38,42 @@ export const REDBELLY_DEFAULT_TOKENS: Record<number, RedbellyTokenInfo[]> = {
       symbol: 'USDT',
       name: 'Tether USD',
       decimals: 6,
+      logo: tokenLogo('usdt'),
     },
     {
       address: '0x8201c02d4ab2214471e8c3ad6475c8b0cd9f2d06',
       symbol: 'USDC.e',
       name: 'Bridged USDC',
       decimals: 6,
+      logo: tokenLogo('usdc'),
     },
     {
       address: '0x6ed1f491e2d31536d6561f6bdb2adc8f092a6076',
       symbol: 'WRBNT',
       name: 'Wrapped RBNT',
       decimals: 18,
+      logo: tokenLogo('wrbnt'),
     },
     {
       address: '0x0fa205c0446cd9eedcc7538c9e24bc55ad08207f',
       symbol: 'WETH',
       name: 'Wrapped Ether',
       decimals: 18,
+      logo: tokenLogo('weth'),
     },
     {
       address: '0x0233971bd2de29e81029336c46997055df3b5282',
       symbol: 'LQDX',
       name: 'Liquid Crypto',
       decimals: 18,
+      logo: tokenLogo('lqdx'),
     },
     {
       address: '0x4ab8302453bff522847bd8609e3264719c6bbd13',
       symbol: 'SNEC',
       name: 'Slithery Lil Sneaky Snec',
       decimals: 18,
+      logo: tokenLogo('snec'),
     },
   ],
   [REDBELLY_TESTNET_CHAIN_ID]: [
@@ -68,6 +82,7 @@ export const REDBELLY_DEFAULT_TOKENS: Record<number, RedbellyTokenInfo[]> = {
       symbol: 'WRBNT',
       name: 'Wrapped RedBelly Token',
       decimals: 18,
+      logo: tokenLogo('wrbnt'),
     },
   ],
 };

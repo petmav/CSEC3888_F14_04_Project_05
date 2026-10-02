@@ -4,7 +4,12 @@
 // The Redbelly-only switches, with the flag as shipped (on). Rabby's own
 // tests for the same code run with it off; these pin what it does on.
 import browser from 'webextension-polyfill';
-import { REDBELLY_ONLY } from '@/constant/redbelly';
+import {
+  isPinnedRedbellyRpc,
+  REDBELLY_MAINNET_ENUM,
+  REDBELLY_ONLY,
+  REDBELLY_TESTNET_ENUM,
+} from '@/constant/redbelly';
 import {
   resetUserDataTrackingCache,
   shouldReportUserBehaviorData,
@@ -23,6 +28,14 @@ const mockStorageGet = browser.storage.local.get as jest.Mock;
 describe('Redbelly-only build', () => {
   it('ships with the flag on', () => {
     expect(REDBELLY_ONLY).toBe(true);
+  });
+
+  it('pins both Redbelly networks to the canonical RPC, and only them', () => {
+    // Broadcasting and the KYC check must use the same node.
+    expect(isPinnedRedbellyRpc(REDBELLY_MAINNET_ENUM)).toBe(true);
+    expect(isPinnedRedbellyRpc(REDBELLY_TESTNET_ENUM)).toBe(true);
+    expect(isPinnedRedbellyRpc('ETH')).toBe(false);
+    expect(isPinnedRedbellyRpc('CUSTOM_1')).toBe(false);
   });
 
   describe('analytics', () => {

@@ -1,4 +1,5 @@
-import { REDBELLY_ONLY } from '@/constant/redbelly';
+import { isRedbellyChainId, REDBELLY_ONLY } from '@/constant/redbelly';
+import { paymentTarget } from '@/utils/redbelly/recipient';
 import {
   stripHexPrefix,
   isValidPrivate,
@@ -6720,6 +6721,57 @@ export class WalletController extends BaseController {
   getRedbellyStakingPositions = redbellyService.getStakingPositions;
   getRedbellyActivity = redbellyService.getActivity;
   clearRedbellyCaches = redbellyService.clearCaches;
+
+  /**
+   * Addresses the user already knows, for the first-time and lookalike
+   * checks (`utils/redbelly/familiarity.ts`): their own accounts, the
+   * address book, and everyone this account has paid or approved on
+   * Redbelly - from local history, plus Mainnet history from the explorer
+   * for an account imported with a past (transactions it signed only; see
+   * `explorerPayees`). Nothing about the recipient leaves the wallet.
+   *
+   * @param from - The account sending.
+   * @returns Lowercased addresses, and whether the history was complete -
+   * false if the explorer did not answer, so a "first time" would be a
+   * guess.
+   */
+  getRedbellyKnownAddresses = async (
+    from: string
+  ): Promise<{ addresses: string[]; complete: boolean }> => {
+    const known = new Set<string>();
+    const add = (address?: string | null) => {
+      if (address) {
+        known.add(address.toLowerCase());
+      }
+    };
+
+    (await keyringService.getAccounts()).forEach(add);
+    contactBookService.listContacts().forEach((item) => add(item.address));
+
+    let complete = true;
+    if (from) {
+      const { pendings, completeds } = transactionHistoryService.getList(from);
+      [...pendings, ...completeds]
+        .filter((group) => isRedbellyChainId(group.chainId))
+        .forEach((group) =>
+          group.txs.forEach(({ rawTx }) => {
+            const target = paymentTarget(rawTx);
+            if (target.kind !== 'none') {
+              add(target.recipient);
+            }
+          })
+        );
+
+      const paid = await redbellyService.getPaidAddresses(from);
+      if (paid === null) {
+        complete = false;
+      } else {
+        paid.forEach(add);
+      }
+    }
+
+    return { addresses: [...known], complete };
+  };
 
   hasPrivateKeyInWallet = async (address: string) => {
     let pk: any = null;

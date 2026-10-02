@@ -1,5 +1,6 @@
 /* eslint "react-hooks/exhaustive-deps": ["error"] */
 /* eslint-enable react-hooks/exhaustive-deps */
+import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 import {
   isRedbellyServerId,
   RBNT_SYMBOL,
@@ -764,6 +765,11 @@ const SendToken = () => {
   // not-verified messages, and replaces the DeBank "not sent in 180 days"
   // check, which has no data for Redbelly.
   const isRedbelly = isRedbellyChainId(chainItem?.id);
+  // Redbelly values follow the display currency, like the home page.
+  const {
+    format: formatRedbellyValue,
+    currencyCode: redbellyCurrencyCode,
+  } = useRedbellyCurrency();
   const redbellyRecipient = useRedbellyStore(
     (state) => state.currentTx.recipient
   );
@@ -1509,7 +1515,11 @@ const SendToken = () => {
   }, [currentTokenKey, usdPriceSnapshot]);
   const activeUsdPrice =
     amountInputMode === 'usd' ? snapshotUsdPrice : currentTokenUsdPrice;
-  const canEnterUsdMode = Boolean(currentTokenUsdPrice);
+  // Entering the amount in dollars only makes sense when dollars are what
+  // the Redbelly screens show; in another currency the toggle would mix two.
+  const canEnterUsdMode =
+    Boolean(currentTokenUsdPrice) &&
+    !(isRedbelly && redbellyCurrencyCode !== 'USD');
   const getAmountInputUrlStateForTokenAmount = useCallback(
     (
       tokenAmount = '',
@@ -3184,6 +3194,8 @@ const SendToken = () => {
               : ''
           }`
         : ''
+      : isRedbelly
+      ? formatRedbellyValue(safeFormAmount.times(currentTokenUsdPrice || 0))
       : formatUsdValue(
           safeFormAmount.times(currentTokenUsdPrice || 0).toString()
         );

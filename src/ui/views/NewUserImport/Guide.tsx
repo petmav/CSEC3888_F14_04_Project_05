@@ -1,3 +1,4 @@
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import React, { useEffect } from 'react';
 import { Card } from '@/ui/component/NewUserImport';
 import rabbyLogo from '@/ui/assets/unlock/rabby.svg';
@@ -45,7 +46,7 @@ export const Guide = () => {
         alt=""
       />
       <div className="fixed top-[40px] right-[40px] z-10">
-        <LangSelector />
+        {REDBELLY_ONLY ? null : <LangSelector />}
       </div>
       <div className="relative z-10">
         <div className="flex flex-col items-center">
