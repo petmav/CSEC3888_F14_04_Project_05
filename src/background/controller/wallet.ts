@@ -1,4 +1,5 @@
-import { REDBELLY_ONLY } from '@/constant/redbelly';
+import { isRedbellyChainId, REDBELLY_ONLY } from '@/constant/redbelly';
+import { paymentTarget } from '@/utils/redbelly/recipient';
 import {
   stripHexPrefix,
   isValidPrivate,
@@ -6720,6 +6721,51 @@ export class WalletController extends BaseController {
   getRedbellyStakingPositions = redbellyService.getStakingPositions;
   getRedbellyActivity = redbellyService.getActivity;
   clearRedbellyCaches = redbellyService.clearCaches;
+
+  /**
+   * Addresses the user already knows, for the first-time and lookalike
+   * checks (`utils/redbelly/familiarity.ts`): their own accounts, the
+   * address book, and everyone this wallet has paid or approved on Redbelly -
+   * from local history, plus Mainnet history from the explorer for an
+   * account imported with a past. Nothing about the recipient leaves the
+   * wallet.
+   *
+   * @param from - The account sending.
+   * @returns Lowercased addresses.
+   */
+  getRedbellyKnownAddresses = async (from: string): Promise<string[]> => {
+    const known = new Set<string>();
+    const add = (address?: string | null) => {
+      if (address) {
+        known.add(address.toLowerCase());
+      }
+    };
+
+    (await keyringService.getAccounts()).forEach(add);
+    contactBookService.listContacts().forEach((item) => add(item.address));
+
+    if (from) {
+      const { pendings, completeds } = transactionHistoryService.getList(from);
+      [...pendings, ...completeds]
+        .filter((group) => isRedbellyChainId(group.chainId))
+        .forEach((group) =>
+          group.txs.forEach(({ rawTx }) => {
+            const target = paymentTarget(rawTx);
+            if (target.kind !== 'none') {
+              add(target.recipient);
+            }
+          })
+        );
+
+      const activity = await redbellyService.getActivity(from);
+      const self = from.toLowerCase();
+      (activity || [])
+        .filter((item) => item.from === self)
+        .forEach((item) => add(item.to));
+    }
+
+    return [...known];
+  };
 
   hasPrivateKeyInWallet = async (address: string) => {
     let pk: any = null;

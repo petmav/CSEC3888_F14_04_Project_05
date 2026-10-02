@@ -150,6 +150,24 @@ export const RedbellyTxPanel = ({
                 </div>
               ) : null}
             </div>
+            {gate.familiarity?.kind === 'lookalike' ? (
+              <div
+                className="text-12 text-r-red-default mt-6 break-all"
+                data-testid="redbelly-lookalike"
+              >
+                {t('page.signTx.redbelly.lookalike', {
+                  address: gate.familiarity.similarTo,
+                })}
+              </div>
+            ) : null}
+            {gate.familiarity?.kind === 'new' && verdict !== 'CONTRACT' ? (
+              <div
+                className="text-12 text-r-neutral-foot mt-6"
+                data-testid="redbelly-first-time"
+              >
+                {t('page.signTx.redbelly.firstTime')}
+              </div>
+            ) : null}
             {gate.needsAcknowledgement ? (
               <div
                 className="flex items-center gap-8 mt-8 cursor-pointer"

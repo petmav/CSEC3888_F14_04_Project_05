@@ -21,6 +21,7 @@ import { KEYRING_CLASS } from 'consts';
 import { useDebouncedValue } from './useDebounceValue';
 import { useExchangeStore } from '../state/exchange';
 import type { Verdict } from '@/utils/redbelly/verdict';
+import { recipientFamiliarity } from '@/utils/redbelly/familiarity';
 
 const queue = new PQueue({ intervalCap: 5, concurrency: 5, interval: 1000 });
 
@@ -45,6 +46,8 @@ export const enum RiskType {
   REDBELLY_NOT_VERIFIED = 6,
   /** The Redbelly check could not run; silence must not read as safe. */
   REDBELLY_UNKNOWN = 7,
+  /** Imitates an address the user has paid before (address poisoning). */
+  REDBELLY_LOOKALIKE = 8,
 }
 
 const riskTypePriority = {
@@ -55,6 +58,7 @@ const riskTypePriority = {
   [RiskType.FORBIDDEN_TIP]: 10e4,
   [RiskType.REDBELLY_NOT_VERIFIED]: 10e5,
   [RiskType.REDBELLY_UNKNOWN]: 10e2,
+  [RiskType.REDBELLY_LOOKALIKE]: 10e4 * 5,
 };
 
 export function sortRisksDesc(a: { type: RiskType }, b: { type: RiskType }) {
@@ -116,6 +120,40 @@ export const useAddressRisks = (options: {
   const [hasError, setHasError] = useState(false);
   const [loadingHasTransfer, setLoadingHasTransfer] = useState(true);
 
+  // Redbelly has no DeBank transfer history, so "never sent" and the
+  // lookalike check come from the wallet's own data instead (accounts,
+  // contacts, past payees). Read once per sender, not per keystroke.
+  const [redbellyKnown, setRedbellyKnown] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!isRedbelly) {
+      setRedbellyKnown(null);
+      return;
+    }
+    let cancelled = false;
+    setRedbellyKnown(null);
+    wallet
+      .getRedbellyKnownAddresses(fromAddress || '')
+      .catch((error) => {
+        console.error('[redbelly] known addresses failed', error);
+        return [] as string[];
+      })
+      .then((list) => {
+        if (!cancelled) {
+          setRedbellyKnown(list);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isRedbelly, fromAddress, wallet]);
+  const redbellyFamiliarity = useMemo(
+    () =>
+      isRedbelly && redbellyKnown && isValidAddress(toAddress)
+        ? recipientFamiliarity(toAddress, redbellyKnown)
+        : null,
+    [isRedbelly, redbellyKnown, toAddress]
+  );
+
   const risks = useMemo(() => {
     const isContract = Object.keys(addressDesc?.contract || {}).length > 0;
     const isSafeAddress = Object.keys(addressDesc?.contract || {}).some(
@@ -176,7 +214,15 @@ export const useAddressRisks = (options: {
             value: t('page.sendToken.redbelly.unknown'),
           }
         : null,
-      hasNoSent && !isRedbelly
+      redbellyFamiliarity?.kind === 'lookalike'
+        ? {
+            type: RiskType.REDBELLY_LOOKALIKE,
+            value: t('page.sendToken.redbelly.lookalike', {
+              address: redbellyFamiliarity.similarTo,
+            }),
+          }
+        : null,
+      (isRedbelly ? redbellyFamiliarity?.kind === 'new' : hasNoSent)
         ? {
             type: RiskType.NEVER_SEND,
             value:
@@ -193,6 +239,7 @@ export const useAddressRisks = (options: {
     hasNoSent,
     isRedbelly,
     redbellyVerdict,
+    redbellyFamiliarity,
     t,
   ]);
 
@@ -441,7 +488,9 @@ export const useAddressRisks = (options: {
       loadingHasTransfer ||
       loadingAddrDesc ||
       // A verdict still in flight must not let the user submit unwarned.
-      (isRedbelly && isValidAddress(toAddress) && redbellyVerdict === null),
+      (isRedbelly &&
+        isValidAddress(toAddress) &&
+        (redbellyVerdict === null || redbellyKnown === null)),
     loadingAddrDesc,
     loadingHasTransfer,
     hasNotRisk:

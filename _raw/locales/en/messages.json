@@ -379,6 +379,9 @@
         "notRegisteredSpenderTip": "This address is not on the Redbelly permission list, so it is not a verified participant. Approving it lets it spend your tokens.",
         "calling": "Calling",
         "callNote": "Only the contract above was checked. If this call passes funds on to another address, that address is not checked.",
+        "firstTime": "You have not paid this address from this wallet before. Check it against where you got it.",
+        "lookalike": "This address looks like {{address}}, which you have used before - but it is a different address. Scammers create lookalikes to catch copy-paste mistakes.",
+        "lookalikeReason": "This address imitates one you have used. Tick \"I understand the risks\" to sign anyway.",
         "yourAccount": "Your account",
         "senderNotRegistered": "NOT registered",
         "networkFee": "Network fee",
@@ -1002,6 +1005,7 @@
       "redbelly": {
         "verified": "This address is verified on the Redbelly Network",
         "notVerified": "This address is not verified in the Redbelly Network",
+        "lookalike": "Looks like {{address}}, which you have used before - but it is a different address. Scammers create lookalikes to catch copy-paste mistakes.",
         "unknown": "Could not verify if address is on the Redbelly Network",
         "gasFee": "Gas fee",
         "gasFeeUnavailable": "Unavailable"

@@ -23,6 +23,7 @@ jest.mock('@/ui/wallet', () => ({
 const mockUiWallet = {
   getRedbellyIsRegistered: jest.fn(),
   getRedbellyUsdPerGas: jest.fn(),
+  getRedbellyKnownAddresses: jest.fn(),
 };
 jest.mock('@/ui/utils', () => ({
   useWallet: () => mockUiWallet,
@@ -43,6 +44,9 @@ const SIGNER = '0x30025e9f7b5b3b2e389ba1a1de08a006aa217fe1';
 
 const CHECKING = 'page.signTx.redbelly.checkingReason';
 const ACKNOWLEDGE = 'page.signTx.redbelly.acknowledgeReason';
+const LOOKALIKE = 'page.signTx.redbelly.lookalikeReason';
+// Same first four and last four hex characters as ALICE.
+const POISONED = '0xfbc7000000000000000000000000000000d0d1af';
 
 type Props = Parameters<typeof useRedbellyTxGate>[0];
 
@@ -116,6 +120,7 @@ beforeEach(() => {
   getRedbellyVerdict.mockReset();
   mockUiWallet.getRedbellyIsRegistered.mockReset().mockResolvedValue(true);
   mockUiWallet.getRedbellyUsdPerGas.mockReset().mockResolvedValue(null);
+  mockUiWallet.getRedbellyKnownAddresses.mockReset().mockResolvedValue([]);
   root = createRoot(document.createElement('div'));
   renders = [];
 });
@@ -288,5 +293,84 @@ describe('useRedbellyTxGate', () => {
     expect(gate.isRedbelly).toBe(false);
     expect(getRedbellyVerdict).not.toHaveBeenCalled();
     expect(gate.blockReason).toBeNull();
+  });
+
+  describe('familiarity', () => {
+    it('notes a first-time payee without holding signing', async () => {
+      getRedbellyVerdict.mockResolvedValue('REGISTERED');
+
+      await render(send(ALICE));
+      await settle();
+      expect(mockUiWallet.getRedbellyKnownAddresses).toHaveBeenCalledWith(
+        SIGNER
+      );
+      expect(gate.familiarity).toEqual({ kind: 'new' });
+      expect(gate.blockReason).toBeNull();
+    });
+
+    it('knows a payee the user has paid before', async () => {
+      getRedbellyVerdict.mockResolvedValue('REGISTERED');
+      mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue([ALICE]);
+
+      await render(send(ALICE));
+      await settle();
+      expect(gate.familiarity).toEqual({ kind: 'known' });
+      expect(gate.blockReason).toBeNull();
+    });
+
+    it('holds signing on a lookalike, even of a registered address', async () => {
+      getRedbellyVerdict.mockResolvedValue('REGISTERED');
+      mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue([ALICE]);
+
+      await render(send(POISONED));
+      await settle();
+      expect(gate.familiarity).toEqual({
+        kind: 'lookalike',
+        similarTo: ALICE,
+      });
+      expect(gate.needsAcknowledgement).toBe(true);
+      expect(gate.blockReason).toBe(LOOKALIKE);
+
+      await act(async () => gate.setAcknowledged(true));
+      expect(gate.blockReason).toBeNull();
+    });
+
+    it('waits for the known addresses before allowing signing', async () => {
+      getRedbellyVerdict.mockResolvedValue('REGISTERED');
+      let resolveKnown!: (list: string[]) => void;
+      mockUiWallet.getRedbellyKnownAddresses.mockReturnValue(
+        new Promise<string[]>((res) => {
+          resolveKnown = res;
+        })
+      );
+
+      await render(send(POISONED));
+      await settle();
+      expect(gate.verdict).toBe('REGISTERED');
+      expect(gate.blockReason).toBe(CHECKING);
+
+      await act(async () => resolveKnown([ALICE]));
+      expect(gate.blockReason).toBe(LOOKALIKE);
+    });
+
+    it('does not hold signing when the list cannot be read', async () => {
+      getRedbellyVerdict.mockResolvedValue('REGISTERED');
+      mockUiWallet.getRedbellyKnownAddresses.mockRejectedValue(
+        new Error('boom')
+      );
+
+      await render(send(ALICE));
+      await settle();
+      expect(gate.familiarity).toEqual({ kind: 'new' });
+      expect(gate.blockReason).toBeNull();
+    });
+
+    it('says nothing about a contract call', async () => {
+      getRedbellyVerdict.mockResolvedValue('CONTRACT');
+
+      await render(send(BOB, { data: '0x12345678' }));
+      await settle();
+      expect(gate.familiarity).toBeNull();
+    });
   });
 });
