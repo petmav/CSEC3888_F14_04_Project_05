@@ -256,10 +256,15 @@ const config = {
     ],
   },
   plugins: [
-    new ESLintWebpackPlugin({
-      extensions: ['ts', 'tsx', 'js', 'jsx'],
-      ...(useForkTsChecker ? { lintDirtyModulesOnly: true } : {}),
-    }),
+    // CI lints in its own job; SKIP_WEBPACK_ESLINT spares the build the memory.
+    ...(process.env.SKIP_WEBPACK_ESLINT
+      ? []
+      : [
+          new ESLintWebpackPlugin({
+            extensions: ['ts', 'tsx', 'js', 'jsx'],
+            ...(useForkTsChecker ? { lintDirtyModulesOnly: true } : {}),
+          }),
+        ]),
     ...(useForkTsChecker
       ? [
           new ForkTsCheckerWebpackPlugin({
