@@ -124,7 +124,9 @@ one at a time.
 5. **Decision.** Sign waits while either check is running. A confirmed
    unregistered recipient, or a lookalike of a known address, holds Sign
    until the user ticks "I understand the risks"; the tick belongs to that
-   recipient and chain only. Unknown and Contract do not hold signing.
+   recipient and chain only. Unknown and Contract do not hold signing. If
+   the user's history could not be read, the panel says so rather than
+   calling the payee new.
 6. **Broadcast** goes to the same canonical endpoint the checks used.
 
 ## 5. What the wallet does, by user story
@@ -182,7 +184,7 @@ recipient on that chain.
 | --- | --- |
 | Paying an unregistered account (funds stuck) | KYC verdict, risk tick |
 | Wrong recipient inside a token transfer | Calldata decoding (US11) |
-| Address poisoning (lookalike in history) | Familiarity check, risk tick |
+| Address poisoning (lookalike in history) | Familiarity check, risk tick. Only payees of transactions the user signed count as known, so a scammer's zero-value `transferFrom` cannot make the lookalike "known" |
 | dApp switching the wallet to another chain | Provider allowlist (4901) |
 | dApp replacing Redbelly's RPC | `wallet_addEthereumChain` ignored for 151/153; custom RPCs ignored for the built-in networks, so the check and the broadcast use the same node |
 | Funds forwarded by a contract to an unregistered account | **Not covered.** The panel says only the contract was checked |
@@ -208,13 +210,14 @@ monkey-patching, not browser enforcement; its limits are listed in
 
 ## 8. Quality
 
-- **Unit tests.** The Redbelly suites (`__tests__/redbelly/`) cover every
-  pure module and the signing gate itself: verdicts, calldata decoding
+- **Unit tests.** The Redbelly suites (`__tests__/redbelly/`) cover the
+  decision logic and the signing gate itself: verdicts, calldata decoding
   (including dirty and truncated words and revokes), familiarity, fees,
-  price and staking decoding, explorer responses, the transport's retry, the
-  network guard and the chain allowlist. The gate tests check every render,
-  not just the settled one, and were confirmed by mutation: removing the
-  per-recipient acknowledgement makes them fail.
+  price and staking decoding, explorer responses and payees, the transport's
+  retry, the network guard and the chain allowlist. The gate tests check
+  every render, not just the settled one; a mutation check (keying the
+  acknowledgement to nothing but a reset effect) makes them fail, as it
+  should.
 - **Browser verification.** A headless Chromium harness loads the built
   extension and drives a local dApp: connect, chain refusal, signing verdicts
   for registered, unregistered, token-transfer and contract transactions on

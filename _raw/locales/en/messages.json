@@ -380,6 +380,7 @@
         "calling": "Calling",
         "callNote": "Only the contract above was checked. If this call passes funds on to another address, that address is not checked.",
         "firstTime": "You have not paid this address from this wallet before. Check it against where you got it.",
+        "historyIncomplete": "Your transaction history could not be read, so this address was not checked against the addresses you have paid.",
         "lookalike": "This address looks like {{address}}, which you have used before - but it is a different address. Scammers create lookalikes to catch copy-paste mistakes.",
         "lookalikeReason": "This address imitates one you have used. Tick \"I understand the risks\" to sign anyway.",
         "yourAccount": "Your account",

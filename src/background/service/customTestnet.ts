@@ -49,6 +49,7 @@ import dayjs from 'dayjs';
 import {
   isPinnedRedbellyRpc,
   isRedbellyChainId,
+  redbellyRpcUrl,
   REDBELLY_ONLY,
 } from '@/constant/redbelly';
 import {
@@ -230,6 +231,11 @@ class CustomTestnetService {
           message: 'This wallet only supports Redbelly Network',
         },
       };
+    }
+    // A built-in network keeps its canonical endpoint: the KYC check reads
+    // it directly, and broadcasting must use the same node.
+    if (isPinnedRedbellyRpc(createTestnetChain(chain).enum)) {
+      chain = { ...chain, rpcUrl: redbellyRpcUrl(chain.id) };
     }
     const local = findChain({
       id: +chain.id,
@@ -754,13 +760,16 @@ class CustomTestnetService {
         chainId,
       });
     });
-    if (local) {
-      return local;
-    }
-
     const listed = REDBELLY_DEFAULT_TOKENS[chainId]?.find(
       (item) => item.address.toLowerCase() === tokenId.toLowerCase()
     );
+    if (local) {
+      // Added by hand before logos were bundled: still show the logo.
+      return local.logo || !listed?.logo
+        ? local
+        : { ...local, logo: listed.logo };
+    }
+
     if (listed) {
       return {
         id: listed.address.toLowerCase(),

@@ -43,7 +43,11 @@ import type { RedbellyTokenInfo } from '@/constant/redbelly-assets';
 import { readRbntUsdPrice } from '@/utils/redbelly/price';
 import { readStakingPosition } from '@/utils/redbelly/staking';
 import type { StakingPosition } from '@/utils/redbelly/staking';
-import { explorerRows, ExplorerResponse } from '@/utils/redbelly/explorer';
+import {
+  explorerPayees,
+  explorerRows,
+  ExplorerResponse,
+} from '@/utils/redbelly/explorer';
 import { jsonRpcTransport } from '@/utils/redbelly/transport';
 
 /**
@@ -466,6 +470,55 @@ class RedbellyService {
    * `null` if the explorer could not be reached - shown as unavailable, not
    * as "no activity".
    */
+  /**
+   * One Mainnet explorer list query (Etherscan format), newest 50 rows.
+   *
+   * @param action - `txlist` or `tokentx`.
+   * @param address - The account.
+   * @returns The parsed body.
+   */
+  private explorerQuery = (action: string, address: string) => {
+    const api = REDBELLY_EXPLORER_API[REDBELLY_MAINNET_CHAIN_ID];
+    return withTimeout(
+      fetch(
+        `${api}/etherscan/api?module=account&action=${action}&address=${address}&page=1&offset=50&sort=desc`
+      ).then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json() as Promise<ExplorerResponse>;
+      }),
+      RPC_TIMEOUT
+    );
+  };
+
+  /**
+   * Who an account has paid on Mainnet, from the explorer - only
+   * transactions it signed (`explorerPayees`).
+   *
+   * @param address - The account.
+   * @returns Lowercased payees, or `null` if the explorer did not answer.
+   */
+  getPaidAddresses = async (address: string): Promise<string[] | null> => {
+    if (!REDBELLY_EXPLORER_API[REDBELLY_MAINNET_CHAIN_ID] || !address) {
+      return [];
+    }
+    try {
+      const [native, tokens] = await Promise.all([
+        this.explorerQuery('txlist', address),
+        this.explorerQuery('tokentx', address),
+      ]);
+      return explorerPayees(
+        address,
+        explorerRows(native),
+        explorerRows(tokens)
+      );
+    } catch (error) {
+      console.error('[redbelly] paid addresses read failed', error);
+      return null;
+    }
+  };
+
   getActivity = async (
     address: string
   ): Promise<RedbellyActivityItem[] | null> => {
@@ -473,18 +526,7 @@ class RedbellyService {
     if (!api || !address) {
       return [];
     }
-    const query = (action: string) =>
-      withTimeout(
-        fetch(
-          `${api}/etherscan/api?module=account&action=${action}&address=${address}&page=1&offset=50&sort=desc`
-        ).then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-          }
-          return response.json() as Promise<ExplorerResponse>;
-        }),
-        RPC_TIMEOUT
-      );
+    const query = (action: string) => this.explorerQuery(action, address);
     try {
       const [native, tokens] = await Promise.all([
         query('txlist'),

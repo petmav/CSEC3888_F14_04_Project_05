@@ -29,6 +29,11 @@ export type RedbellyTxGate = {
    * have; null while loading, or for a contract call.
    */
   familiarity: Familiarity | null;
+  /**
+   * False if the user's history could not be fully read: a "new" address
+   * may then be one they have paid, so it is not called first-time.
+   */
+  historyComplete: boolean;
   /** The verdict or familiarity needs acknowledgement before signing. */
   needsAcknowledgement: boolean;
   acknowledged: boolean;
@@ -105,16 +110,16 @@ export function useRedbellyTxGate({
   // Who the user already knows - their accounts, contacts, past payees.
   // Read once per signer. A failure leaves the list empty rather than
   // holding signing: it is a hint, not the KYC check.
-  const { data: knownAddresses = null } = useRequest(
+  const { data: known = null } = useRequest(
     async () => {
       if (!isRedbelly || !from) {
-        return [];
+        return { addresses: [], complete: true };
       }
       try {
         return await wallet.getRedbellyKnownAddresses(from);
       } catch (error) {
         console.error('[redbelly] known addresses failed', error);
-        return [];
+        return { addresses: [], complete: false };
       }
     },
     { refreshDeps: [isRedbelly, from] }
@@ -123,11 +128,12 @@ export function useRedbellyTxGate({
     () =>
       // A contract call's `to` is the dApp's contract; "first time" there
       // is noise.
-      recipientAddress && knownAddresses && target.kind !== 'call'
-        ? recipientFamiliarity(recipientAddress, knownAddresses)
+      recipientAddress && known && target.kind !== 'call'
+        ? recipientFamiliarity(recipientAddress, known.addresses)
         : null,
-    [recipientAddress, knownAddresses, target.kind]
+    [recipientAddress, known, target.kind]
   );
+  const knownAddresses = known?.addresses ?? null;
 
   const isCurrent =
     !!recipientAddress &&
@@ -194,6 +200,7 @@ export function useRedbellyTxGate({
     senderRegistered,
     usdPerGas,
     familiarity,
+    historyComplete: known?.complete ?? true,
     needsAcknowledgement,
     acknowledged,
     setAcknowledged,

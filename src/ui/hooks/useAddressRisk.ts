@@ -123,7 +123,10 @@ export const useAddressRisks = (options: {
   // Redbelly has no DeBank transfer history, so "never sent" and the
   // lookalike check come from the wallet's own data instead (accounts,
   // contacts, past payees). Read once per sender, not per keystroke.
-  const [redbellyKnown, setRedbellyKnown] = useState<string[] | null>(null);
+  const [redbellyKnown, setRedbellyKnown] = useState<{
+    addresses: string[];
+    complete: boolean;
+  } | null>(null);
   useEffect(() => {
     if (!isRedbelly) {
       setRedbellyKnown(null);
@@ -135,7 +138,7 @@ export const useAddressRisks = (options: {
       .getRedbellyKnownAddresses(fromAddress || '')
       .catch((error) => {
         console.error('[redbelly] known addresses failed', error);
-        return [] as string[];
+        return { addresses: [] as string[], complete: false };
       })
       .then((list) => {
         if (!cancelled) {
@@ -149,7 +152,7 @@ export const useAddressRisks = (options: {
   const redbellyFamiliarity = useMemo(
     () =>
       isRedbelly && redbellyKnown && isValidAddress(toAddress)
-        ? recipientFamiliarity(toAddress, redbellyKnown)
+        ? recipientFamiliarity(toAddress, redbellyKnown.addresses)
         : null,
     [isRedbelly, redbellyKnown, toAddress]
   );
@@ -222,7 +225,12 @@ export const useAddressRisks = (options: {
             }),
           }
         : null,
-      (isRedbelly ? redbellyFamiliarity?.kind === 'new' : hasNoSent)
+      // "Never sent" only from a complete history; otherwise it is a guess.
+      (
+        isRedbelly
+          ? redbellyFamiliarity?.kind === 'new' && !!redbellyKnown?.complete
+          : hasNoSent
+      )
         ? {
             type: RiskType.NEVER_SEND,
             value:
@@ -240,6 +248,7 @@ export const useAddressRisks = (options: {
     isRedbelly,
     redbellyVerdict,
     redbellyFamiliarity,
+    redbellyKnown,
     t,
   ]);
 

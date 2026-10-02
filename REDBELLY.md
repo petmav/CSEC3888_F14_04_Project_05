@@ -88,8 +88,10 @@ Contracts are shown neutrally - every deployed contract reports
 **Familiarity** (`utils/redbelly/familiarity.ts`), a local stand-in for the
 phishing checks this build drops. The wallet's known addresses are its own
 accounts, the address book, and everyone it has paid on Redbelly (local
-history, plus Mainnet history from Routescan). A payee not among them gets a
-"first time" note; one that shares the first and last four hex characters
+history, plus Mainnet history from Routescan - only transactions the account
+signed, since the explorer's token list would otherwise let a scammer's
+zero-value `transferFrom` plant the lookalike). A payee not among them gets a
+"first time" note, or, if the history could not be read, a note saying so; one that shares the first and last four hex characters
 with a known address but is not it - address poisoning - is shown in red and
 holds Sign for "I understand the risks", on the signing screen and the Send
 page alike.

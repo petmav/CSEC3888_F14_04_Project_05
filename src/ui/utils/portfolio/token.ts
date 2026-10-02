@@ -132,8 +132,14 @@ export const useTokens = (
 
     // DeBank's token list has nothing for Redbelly, and the network guard
     // blocks it: loading it would only throw. Redbelly tokens come from the
-    // custom-network list.
-    if (!userAddr || isTestnet || REDBELLY_ONLY) {
+    // custom-network list. Clear the loading flags so nothing waits on it.
+    if (REDBELLY_ONLY) {
+      setLoading(false);
+      setIsAllTokenLoading(false);
+      return;
+    }
+
+    if (!userAddr || isTestnet) {
       return;
     }
 

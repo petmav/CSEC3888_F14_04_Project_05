@@ -161,12 +161,21 @@ export const RedbellyTxPanel = ({
               </div>
             ) : null}
             {gate.familiarity?.kind === 'new' && verdict !== 'CONTRACT' ? (
-              <div
-                className="text-12 text-r-neutral-foot mt-6"
-                data-testid="redbelly-first-time"
-              >
-                {t('page.signTx.redbelly.firstTime')}
-              </div>
+              gate.historyComplete ? (
+                <div
+                  className="text-12 text-r-neutral-foot mt-6"
+                  data-testid="redbelly-first-time"
+                >
+                  {t('page.signTx.redbelly.firstTime')}
+                </div>
+              ) : (
+                <div
+                  className="text-12 text-r-orange-default mt-6"
+                  data-testid="redbelly-history-incomplete"
+                >
+                  {t('page.signTx.redbelly.historyIncomplete')}
+                </div>
+              )
             ) : null}
             {gate.needsAcknowledgement ? (
               <div

@@ -120,7 +120,9 @@ beforeEach(() => {
   getRedbellyVerdict.mockReset();
   mockUiWallet.getRedbellyIsRegistered.mockReset().mockResolvedValue(true);
   mockUiWallet.getRedbellyUsdPerGas.mockReset().mockResolvedValue(null);
-  mockUiWallet.getRedbellyKnownAddresses.mockReset().mockResolvedValue([]);
+  mockUiWallet.getRedbellyKnownAddresses
+    .mockReset()
+    .mockResolvedValue({ addresses: [], complete: true });
   root = createRoot(document.createElement('div'));
   renders = [];
 });
@@ -310,7 +312,10 @@ describe('useRedbellyTxGate', () => {
 
     it('knows a payee the user has paid before', async () => {
       getRedbellyVerdict.mockResolvedValue('REGISTERED');
-      mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue([ALICE]);
+      mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue({
+        addresses: [ALICE],
+        complete: true,
+      });
 
       await render(send(ALICE));
       await settle();
@@ -320,7 +325,10 @@ describe('useRedbellyTxGate', () => {
 
     it('holds signing on a lookalike, even of a registered address', async () => {
       getRedbellyVerdict.mockResolvedValue('REGISTERED');
-      mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue([ALICE]);
+      mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue({
+        addresses: [ALICE],
+        complete: true,
+      });
 
       await render(send(POISONED));
       await settle();
@@ -337,9 +345,12 @@ describe('useRedbellyTxGate', () => {
 
     it('waits for the known addresses before allowing signing', async () => {
       getRedbellyVerdict.mockResolvedValue('REGISTERED');
-      let resolveKnown!: (list: string[]) => void;
+      let resolveKnown!: (known: {
+        addresses: string[];
+        complete: boolean;
+      }) => void;
       mockUiWallet.getRedbellyKnownAddresses.mockReturnValue(
-        new Promise<string[]>((res) => {
+        new Promise((res) => {
           resolveKnown = res;
         })
       );
@@ -349,7 +360,9 @@ describe('useRedbellyTxGate', () => {
       expect(gate.verdict).toBe('REGISTERED');
       expect(gate.blockReason).toBe(CHECKING);
 
-      await act(async () => resolveKnown([ALICE]));
+      await act(async () =>
+        resolveKnown({ addresses: [ALICE], complete: true })
+      );
       expect(gate.blockReason).toBe(LOOKALIKE);
     });
 
@@ -362,6 +375,21 @@ describe('useRedbellyTxGate', () => {
       await render(send(ALICE));
       await settle();
       expect(gate.familiarity).toEqual({ kind: 'new' });
+      // Not "first time": the history behind that claim was not read.
+      expect(gate.historyComplete).toBe(false);
+      expect(gate.blockReason).toBeNull();
+    });
+
+    it('says when the history was incomplete', async () => {
+      getRedbellyVerdict.mockResolvedValue('REGISTERED');
+      mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue({
+        addresses: [],
+        complete: false,
+      });
+
+      await render(send(ALICE));
+      await settle();
+      expect(gate.historyComplete).toBe(false);
       expect(gate.blockReason).toBeNull();
     });
 
