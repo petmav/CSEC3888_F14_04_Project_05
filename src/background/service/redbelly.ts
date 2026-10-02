@@ -43,6 +43,7 @@ import type { RedbellyTokenInfo } from '@/constant/redbelly-assets';
 import { readRbntUsdPrice } from '@/utils/redbelly/price';
 import { readStakingPosition } from '@/utils/redbelly/staking';
 import type { StakingPosition } from '@/utils/redbelly/staking';
+import { explorerRows, ExplorerResponse } from '@/utils/redbelly/explorer';
 
 /**
  * Per-call ceiling, in milliseconds.
@@ -510,11 +511,7 @@ class RedbellyService {
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
           }
-          return response.json() as Promise<{
-            status?: string;
-            message?: string;
-            result?: Record<string, string>[] | string;
-          }>;
+          return response.json() as Promise<ExplorerResponse>;
         }),
         RPC_TIMEOUT
       );
@@ -523,10 +520,7 @@ class RedbellyService {
         query('txlist'),
         query('tokentx'),
       ]);
-      // "No transactions found" comes back as status 0 with an empty list.
-      const rows = (payload: typeof native) =>
-        Array.isArray(payload.result) ? payload.result : [];
-      const tokenRows = rows(tokens).map(
+      const tokenRows = explorerRows(tokens).map(
         (row): RedbellyActivityItem => ({
           hash: row.hash,
           timestamp: Number(row.timeStamp),
@@ -541,7 +535,7 @@ class RedbellyService {
         })
       );
       const tokenHashes = new Set(tokenRows.map((row) => row.hash));
-      const nativeRows = rows(native)
+      const nativeRows = explorerRows(native)
         // A token transfer also appears here as a zero-value call to the
         // token contract; the token row already says it better.
         .filter((row) => !(tokenHashes.has(row.hash) && row.value === '0'))
