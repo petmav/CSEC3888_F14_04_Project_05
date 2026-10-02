@@ -7,6 +7,7 @@ import IconSearch from 'ui/assets/search.svg';
 import { CurrencyItem } from '@/background/service/openapi';
 import { useCurrency } from '@/ui/hooks/useCurrency';
 import styled from 'styled-components';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 export const CurrencyModal = ({
   visible,
@@ -108,7 +109,13 @@ export const CurrencyModal = ({
               }}
             >
               <div className="currency-icon-wrapper">
-                <img src={item.logo_url} alt="" className="currency-icon" />
+                {/* The flags are on DeBank's CDN, which the Redbelly-only
+                    network guard does not load. */}
+                {REDBELLY_ONLY ? (
+                  <span className="currency-symbol">{item.symbol}</span>
+                ) : (
+                  <img src={item.logo_url} alt="" className="currency-icon" />
+                )}
               </div>
               {item.code} ({item.symbol})
               {currency.code === item.code && (
@@ -205,6 +212,19 @@ const Wrapper = styled.div<{
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+  }
+
+  .currency-symbol {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--r-neutral-title-1);
+    background: var(--r-neutral-card-2);
   }
 
   .currency-icon {

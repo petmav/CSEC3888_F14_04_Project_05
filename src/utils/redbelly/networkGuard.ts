@@ -4,9 +4,15 @@
  * Rabby talks to its own and DeBank's servers from dozens of places - config
  * lists, scam checks, history, analytics, gas accounts, perps. Gating each
  * call site would miss the next one added upstream, so the guard sits under
- * all of them instead: `fetch`, `XMLHttpRequest` and `sendBeacon` refuse
- * these hosts in the extension's own contexts. Callers see an ordinary
- * network error, which every one of them already has to handle.
+ * all of them instead: `fetch`, `XMLHttpRequest`, `sendBeacon`, `WebSocket`
+ * and `EventSource` refuse these hosts in the extension's own contexts, and
+ * images from them are not loaded (a logo from DeBank's CDN still tells it
+ * the user's IP address). Callers see an ordinary network error, which every
+ * one of them already has to handle.
+ *
+ * This is monkey-patching, not enforcement: code that captured `fetch`
+ * before the guard ran would get past it, which is why it must be the first
+ * import.
  *
  * Installed by importing this module first in each extension entry point
  * (background, UI, offscreen). Never imported by the content scripts, which
@@ -46,7 +52,7 @@ export function isBlockedRequest(input: string | URL): boolean {
   } catch {
     return false;
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+  if (!['https:', 'http:', 'wss:', 'ws:'].includes(url.protocol)) {
     return false;
   }
   if (ALLOWED.some((allow) => allow(url))) {
@@ -62,8 +68,50 @@ const blockedError = (url: string) =>
 const logBlocked = (url: string) =>
   console.debug('[redbelly] network guard blocked', url);
 
-/** Where a blocked XHR is pointed: an unsafe port fails immediately. */
+/**
+ * Where a blocked XHR, WebSocket or EventSource is pointed: port 0 is on the
+ * Fetch standard's bad-port list, so the connection fails at once, through
+ * the caller's usual error handling.
+ */
 const UNREACHABLE = 'http://0.0.0.0:0/redbelly-blocked';
+const UNREACHABLE_WS = 'ws://0.0.0.0:0/redbelly-blocked';
+
+/** What a blocked image shows instead: a transparent 1x1 GIF. */
+export const BLANK_IMAGE =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+/**
+ * Whether an `<img>`/`<source>` `srcset` names a blocked host anywhere.
+ *
+ * @param srcset - The attribute value.
+ * @returns True if any candidate URL is blocked.
+ */
+export function isBlockedSrcset(srcset: string): boolean {
+  return srcset
+    .split(',')
+    .map((candidate) => candidate.trim().split(/\s+/u)[0])
+    .some((url) => !!url && isBlockedRequest(url));
+}
+
+/**
+ * The value to actually set for an image attribute.
+ *
+ * @param name - The attribute name.
+ * @param value - The value asked for.
+ * @returns `value`, or a blank stand-in if it would load a blocked host.
+ */
+export function guardImageAttribute(name: string, value: string): string {
+  const attribute = name.toLowerCase();
+  if (attribute === 'src' && isBlockedRequest(value)) {
+    logBlocked(value);
+    return BLANK_IMAGE;
+  }
+  if (attribute === 'srcset' && isBlockedSrcset(value)) {
+    logBlocked(value);
+    return '';
+  }
+  return value;
+}
 
 let installed = false;
 
@@ -118,6 +166,90 @@ export function installNetworkGuard() {
     const originalBeacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = (url: string | URL, data?: BodyInit | null) =>
       isBlockedRequest(url) ? false : originalBeacon(url, data);
+  }
+
+  if (typeof scope.WebSocket === 'function') {
+    const OriginalWebSocket = scope.WebSocket;
+    scope.WebSocket = class GuardedWebSocket extends OriginalWebSocket {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        const blocked = isBlockedRequest(url);
+        if (blocked) {
+          logBlocked(String(url));
+        }
+        super(blocked ? UNREACHABLE_WS : url, protocols);
+      }
+    };
+  }
+
+  if (typeof scope.EventSource === 'function') {
+    const OriginalEventSource = scope.EventSource;
+    scope.EventSource = class GuardedEventSource extends OriginalEventSource {
+      constructor(url: string | URL, init?: EventSourceInit) {
+        const blocked = isBlockedRequest(url);
+        if (blocked) {
+          logBlocked(String(url));
+        }
+        super(blocked ? UNREACHABLE : url, init);
+      }
+    };
+  }
+
+  installImageGuard();
+}
+
+/**
+ * Stop `<img>` and `<source>` elements loading blocked hosts, whether the
+ * URL arrives as a property (`img.src = ...`) or an attribute (React sets
+ * `src` with `setAttribute`).
+ */
+function installImageGuard() {
+  if (
+    typeof Element === 'undefined' ||
+    typeof HTMLImageElement === 'undefined'
+  ) {
+    return;
+  }
+  const isImage = (element: Element) =>
+    element instanceof HTMLImageElement ||
+    (typeof HTMLSourceElement !== 'undefined' &&
+      element instanceof HTMLSourceElement);
+
+  const originalSetAttribute = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function setAttribute(
+    this: Element,
+    name: string,
+    value: string
+  ) {
+    const guarded = isImage(this)
+      ? guardImageAttribute(name, String(value))
+      : value;
+    return originalSetAttribute.call(this, name, guarded);
+  };
+
+  const prototypes = [
+    HTMLImageElement.prototype,
+    typeof HTMLSourceElement !== 'undefined'
+      ? HTMLSourceElement.prototype
+      : null,
+  ];
+  for (const proto of prototypes) {
+    if (!proto) {
+      continue;
+    }
+    for (const name of ['src', 'srcset']) {
+      const descriptor = Object.getOwnPropertyDescriptor(proto, name);
+      if (!descriptor?.set || !descriptor.get) {
+        continue;
+      }
+      const { get, set } = descriptor;
+      Object.defineProperty(proto, name, {
+        ...descriptor,
+        get,
+        set(this: Element, value: string) {
+          set.call(this, guardImageAttribute(name, String(value)));
+        },
+      });
+    }
   }
 }
 
