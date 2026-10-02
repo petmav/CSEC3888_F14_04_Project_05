@@ -76,9 +76,23 @@ jobs:
     env:
       MANIFEST_TYPE: chrome-mv3
       # Hosted runners have ~7 GB of RAM; Rabby's build script asks for a
-      # 12 GB heap, so webpack is run directly with a heap that fits.
+      # 12 GB heap, so webpack is run directly with a heap that fits, plus
+      # swap (below) for the minifier workers.
       NODE_OPTIONS: --max-old-space-size=6144
+      # The check job already lints; ESLint inside webpack only costs memory.
+      SKIP_WEBPACK_ESLINT: 'true'
     steps:
+      # Without this the runner runs out of memory mid-build and is shut down.
+      - name: Add swap
+        run: |
+          sudo swapoff -a
+          sudo rm -f /mnt/swapfile
+          sudo fallocate -l 12G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          free -h
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
