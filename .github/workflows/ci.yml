@@ -1,0 +1,137 @@
+# CI for the Redbelly Wallet fork.
+#
+# Replaces Rabby's own workflows, which depended on Rabby's private npm token,
+# self-hosted runners, Lark bot and branch names, and could not run here.
+#
+# - check: lint, typecheck, the Redbelly test suites (required) and the full
+#   Jest suite (informational - Rabby ships suites that already fail upstream).
+# - build: the installable production build, uploaded as an artifact so a
+#   reviewer can load a PR without building it.
+# - release: on a version tag, attaches the build to a GitHub Release.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [rabby-fork]
+    tags: ['v*']
+  workflow_dispatch:
+
+# A new push to a PR supersedes the run for the previous one.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, typecheck and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # ESLint and tsc over Rabby's whole source tree outgrow Node's default
+      # ~2 GB heap on a fresh runner.
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Redbelly tests
+        run: yarn jest __tests__/redbelly --ci
+
+      # Rabby's own suites include ones that fail on untouched upstream, so
+      # this is reported but does not fail the build.
+      - name: Full test suite (informational)
+        continue-on-error: true
+        run: yarn jest --ci
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MANIFEST_TYPE: chrome-mv3
+      # Hosted runners have ~7 GB of RAM; Rabby's build script asks for a
+      # 12 GB heap, so webpack is run directly with a heap that fits.
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      # Same steps as `yarn build:pro`, without its hardcoded 12 GB heap.
+      - name: Build
+        run: |
+          yarn clean
+          yarn make-theme
+          yarn webpack --env config=pro
+
+      - name: Upload extension
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: redbelly-wallet-${{ github.sha }}
+          path: dist
+          retention-days: 14
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download extension
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: redbelly-wallet-${{ github.sha }}
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd dist && zip -qr "../redbelly-wallet-${GITHUB_REF_NAME}.zip" .)
+          gh release create "$GITHUB_REF_NAME" \
+            "redbelly-wallet-${GITHUB_REF_NAME}.zip" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Redbelly Wallet ${GITHUB_REF_NAME}" \
+            --generate-notes
