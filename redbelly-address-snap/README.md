@@ -116,9 +116,11 @@ This cost us an afternoon. It is not in MetaMask's documentation.
    MetaMask's docs claim raises a modal. Tested against a permissioned, funded
    account with the flag verified present in the running bundle: no modal
    appears. A hard block requires forking the extension.
-2. **Only `transaction.to` is checked.** On an ERC-20 transfer that is the
-   token contract, not the person being paid, so it shows the neutral contract
-   panel. Decoding `transfer(address,uint256)` is the obvious next step.
+2. **Only what the calldata shows is checked.** Token transfers (ERC-20,
+   ERC-721, ERC-1155) check the payee decoded from the calldata, and approvals
+   check the spender. Any other contract call checks only the contract: if it
+   passes funds on to another address, such as a swap router's `to`, that
+   address is not checked. The panel says so.
 3. **"Registered" does not mean "intended."** It proves some verified person
    controls the address, not that it is the right one. A typo landing on
    another registered address still loses funds.

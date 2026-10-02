@@ -86,6 +86,54 @@ describe('paymentTarget', () => {
     }
   });
 
+  it('decodes the payee of ERC-677 and ERC-777 sends', () => {
+    const cases = [
+      // transferAndCall(address,uint256,bytes)
+      `0x4000aea0${word(ALICE)}${amount(5)}${amount(96)}${amount(0)}`,
+      // send(address,uint256,bytes)
+      `0x9bd9bbc6${word(ALICE)}${amount(5)}${amount(96)}${amount(0)}`,
+    ];
+    for (const data of cases) {
+      expect(paymentTarget({ to: TOKEN, data })).toStrictEqual({
+        kind: 'token',
+        recipient: ALICE,
+        token: TOKEN,
+      });
+    }
+  });
+
+  it('checks the spender of a permit, not the owner', () => {
+    // permit(owner, spender, value, deadline, v, r, s)
+    const data = `0xd505accf${word(BOB)}${word(ALICE)}${amount(5)}${amount(
+      9,
+    )}${amount(27)}${amount(1)}${amount(2)}`;
+    expect(paymentTarget({ to: TOKEN, data })).toStrictEqual({
+      kind: 'approval',
+      recipient: ALICE,
+      token: TOKEN,
+    });
+  });
+
+  it('treats revoking an approval as a call, not a grant', () => {
+    const cases = [
+      SELECTOR_APPROVE + word(ALICE) + amount(0),
+      // setApprovalForAll(operator, false)
+      `0xa22cb465${word(ALICE)}${amount(0)}`,
+      // increaseAllowance(spender, 0)
+      `0x39509351${word(ALICE)}${amount(0)}`,
+      // permit with a zero value
+      `0xd505accf${word(BOB)}${word(ALICE)}${amount(0)}${amount(9)}${amount(
+        27,
+      )}${amount(1)}${amount(2)}`,
+    ];
+    for (const data of cases) {
+      expect(paymentTarget({ to: TOKEN, data })).toStrictEqual({
+        kind: 'call',
+        recipient: TOKEN,
+      });
+    }
+  });
+
   it('checks the spender of an approval', () => {
     const cases = [
       SELECTOR_APPROVE + word(ALICE) + amount(5),
@@ -118,6 +166,13 @@ describe('paymentTarget', () => {
     ).toStrictEqual({ kind: 'call', recipient: TOKEN });
     expect(
       paymentTarget({ to: TOKEN, data: SELECTOR_APPROVE + dirty + amount(1) }),
+    ).toStrictEqual({ kind: 'call', recipient: TOKEN });
+    // ERC-721 safeTransferFrom with a dirty payee word
+    expect(
+      paymentTarget({
+        to: TOKEN,
+        data: `0x42842e0e${word(BOB)}${dirty}${amount(7)}`,
+      }),
     ).toStrictEqual({ kind: 'call', recipient: TOKEN });
   });
 

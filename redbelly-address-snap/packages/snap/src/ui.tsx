@@ -68,7 +68,7 @@ function targetNote(target: CheckedTarget, verdict: Verdict): string | null {
     return `Token transfer: this is the account being paid, read from the transfer data. The token contract is ${target.token}.`;
   }
   if (target.kind === 'approval') {
-    return `Approval: if you confirm, this address can spend your tokens from contract ${target.token}.`;
+    return `Approval: if you confirm, this address can spend your tokens from contract ${target.token} - for an NFT collection, all of them.`;
   }
   // A contract can pass funds on to anyone; say what the check could not see
   // rather than let "Contract address" read as "checked, all fine".
