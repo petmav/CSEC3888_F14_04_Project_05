@@ -1,4 +1,6 @@
 import { ConnectedSite } from '@/background/service/permission';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
+import { DEFAULT_SITE_CHAIN_ENUM } from '@/utils/redbelly/allowlist';
 import i18n from '@/i18n';
 import { ReactComponent as ArrowDownSVG } from '@/ui/assets/approval/arrow-down-blue.svg';
 import { findChain } from '@/utils/chain';
@@ -71,8 +73,8 @@ const ConnectWrapper = styled.div`
         }
       }
       &.hover {
-        border: 1px solid var(--r-blue-default, #7084ff);
-        background: var(--r-blue-light1, #eef1ff);
+        border: 1px solid var(--r-blue-default, #ff4646);
+        background: var(--r-blue-light1, #fff0f0);
       }
     }
     .connect-card {
@@ -225,13 +227,20 @@ export const ConnectContent = (
   const [, resolveApproval, rejectApproval] = useApproval();
   const { t } = useTranslation();
   const wallet = useWallet();
-  const [defaultChain, setDefaultChain] = useState(CHAINS_ENUM.ETH);
+  const [defaultChain, setDefaultChain] = useState<CHAINS_ENUM>(
+    REDBELLY_ONLY ? (DEFAULT_SITE_CHAIN_ENUM as CHAINS_ENUM) : CHAINS_ENUM.ETH
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [listDrawerVisible, setListDrawerVisible] = useState(false);
   const [processedRules, setProcessedRules] = useState<string[]>([]);
   const [nonce, setNonce] = useState(0);
   const { rules, userData, executeEngine } = useSecurityEngine(nonce);
   const [engineResults, setEngineResults] = useState<Result[]>([]);
+  // Redbelly-only skips DeBank's site lookups, so the community-list and
+  // popularity rules would judge every site on empty data ("Low", "Listed by
+  // None") and demand an override on every connect. Only the user's own
+  // mark/blocklist rule has real input.
+  const isRuleShown = (id: string) => !REDBELLY_ONLY || id === '1006';
   const [collectList, setCollectList] = useState<
     { name: string; logo_url: string }[]
   >([]);
@@ -480,7 +489,9 @@ export const ConnectContent = (
         popularLevel: originPopularLevel!,
       },
     };
-    const results = await executeEngine(ctx);
+    const results = (await executeEngine(ctx)).filter((item) =>
+      isRuleShown(item.id)
+    );
     setIsLoading(false);
     setEngineResults(results);
   };
@@ -496,7 +507,9 @@ export const ConnectContent = (
     }
     let level: 'very_low' | 'low' | 'medium' | 'high' = 'low';
     let collectList: { name: string; logo_url: string }[] = [];
-    let defaultChain = CHAINS_ENUM.ETH;
+    let defaultChain = REDBELLY_ONLY
+      ? (DEFAULT_SITE_CHAIN_ENUM as CHAINS_ENUM)
+      : CHAINS_ENUM.ETH;
     let isShowTestnet = false;
     const queue = new PQueue();
     const waitQueueFinished = (q: PQueue) => {
@@ -506,7 +519,14 @@ export const ConnectContent = (
         });
       });
     };
+    // The three lookups below send the site, and the third the user's
+    // address, to DeBank. A Redbelly-only build has no use for their
+    // answers - the recommended chain can only be Redbelly - so it does not
+    // ask.
     queue.add(async () => {
+      if (REDBELLY_ONLY) {
+        return;
+      }
       try {
         const result = await wallet.openapi.getOriginPopularityLevel(origin);
         level = result.level;
@@ -515,6 +535,9 @@ export const ConnectContent = (
       }
     });
     queue.add(async () => {
+      if (REDBELLY_ONLY) {
+        return;
+      }
       try {
         const {
           collect_list,
@@ -525,6 +548,9 @@ export const ConnectContent = (
       }
     });
     queue.add(async () => {
+      if (REDBELLY_ONLY) {
+        return;
+      }
       try {
         if (selectedAccount) {
           const recommendChains = await wallet.openapi.getRecommendChains(
@@ -565,7 +591,9 @@ export const ConnectContent = (
         popularLevel: level,
       },
     };
-    const results = await executeEngine(ctx);
+    const results = (await executeEngine(ctx)).filter((item) =>
+      isRuleShown(item.id)
+    );
 
     setEngineResults(results);
     if (site) {
@@ -702,10 +730,11 @@ export const ConnectContent = (
               <p className="connect-origin">{origin}</p>
             </div>
             <div className="rule-list">
-              {RuleDesc.map((rule) => {
+              {RuleDesc.filter((rule) => isRuleShown(rule.id)).map((rule) => {
                 if (rule.id === '1006') {
                   return (
                     <RuleResult
+                      key="1006"
                       rule={{
                         id: '1006',
                         desc: t('page.connect.markRuleText'),

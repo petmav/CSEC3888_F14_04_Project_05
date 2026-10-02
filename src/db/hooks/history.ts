@@ -1,4 +1,5 @@
 import type { Account } from '@/background/service/preference';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { UI_TYPE } from '@/constant/ui';
 import { useWallet } from '@/ui/utils';
 import { isSupportDBAccount } from '@/utils/account';
@@ -95,7 +96,8 @@ export const useQueryDbHistory = (options: {
   } = useInfiniteScroll(
     async (currentData) => {
       const address = account?.address;
-      if (!address || isSupportAccount) {
+      // Redbelly-only: DeBank's history is not Redbelly's.
+      if (!address || isSupportAccount || REDBELLY_ONLY) {
         return {
           queryKey: apiQueryKey,
           last: undefined,

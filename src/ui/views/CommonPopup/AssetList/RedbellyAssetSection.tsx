@@ -13,19 +13,13 @@ import IconUnknown from '@/ui/assets/token-default.svg';
 import { TBody, TCell, TRow, Table } from './components/Table';
 
 /**
- * RBNT balances and KYC status for the active account (FR2/FR5, US8/US9).
+ * RBNT balances and KYC status for the active account, per network (FR2/FR5,
+ * US8/US9).
  *
- * Why this exists as its own section rather than a row in the normal token
- * list: Rabby's mainnet asset list is a USD portfolio backed by DeBank, and
- * DeBank does not index Redbelly, so RBNT has no price and would render as a
- * $0 holding - exactly the "is my money gone?" confusion this is meant to
- * dispel. The presentation instead follows Rabby's own convention for chains
- * without a price feed (`CustomTestnetAssetList`): amount and symbol, no USD
- * column.
- *
- * Both networks are always listed. The Snap did this because `onHomePage`
- * received no chain context; here it is kept because it is simply more useful,
- * and because one network being unreachable must not blank out the other.
+ * Read straight from each Redbelly node. Both networks are always listed, and
+ * one being unreachable must not blank out the other: a node that does not
+ * answer is reported as unavailable, never as a zero balance - a failed read
+ * that looks like an empty account is the bug this project started from.
  */
 
 export const RedbellyAssetSection = ({

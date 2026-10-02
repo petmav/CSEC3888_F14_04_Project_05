@@ -59,6 +59,12 @@ import BigNumber from 'bignumber.js';
 import { AddEthereumChainParams } from '@/ui/views/Approval/components/AddChain/type';
 import { formatTxMetaForRpcResult } from 'background/utils/tx';
 import { findChain, findChainByEnum, isTestnet } from '@/utils/chain';
+import {
+  allowedSiteChain,
+  DEFAULT_SITE_CHAIN_ENUM,
+  isChainAllowed,
+} from '@/utils/redbelly/allowlist';
+import { isRedbellyChainId } from '@/constant/redbelly';
 import eventBus from '@/eventBus';
 import { StatsData } from '../../service/notification';
 import {
@@ -416,6 +422,26 @@ const v1SignTypedDataVlidation = ({
     throw ethErrors.rpc.invalidParams('from should be same as current address');
 };
 
+/**
+ * Refuse a chain the wallet does not serve (FR4).
+ *
+ * Returned as EIP-1193's 4901, "not connected to the requested chain". 4902
+ * would read more naturally, but the page provider serialises errors with
+ * eth-rpc-errors, which only passes through codes it knows and turns 4902
+ * into -32603; 4901 reaches the dApp intact.
+ *
+ * @param chainId - The requested chain id.
+ */
+const assertChainAllowed = (chainId: unknown) => {
+  const id =
+    typeof chainId === 'number' ? chainId : Number(new BigNumber(`${chainId}`));
+  if (!isChainAllowed(id)) {
+    throw ethErrors.provider.chainDisconnected({
+      message: `Chain ${chainId} is not supported. This wallet only connects to Redbelly Network (151 Mainnet, 153 Testnet).`,
+    });
+  }
+};
+
 const signTypedDataVlidation = ({
   data: {
     params: [from, data],
@@ -433,6 +459,9 @@ const signTypedDataVlidation = ({
     const currentChain = permissionService.getConnectedSite(session!.origin)
       ?.chain;
     if (jsonData.domain.chainId) {
+      // A permit signed here for another chain could move the same key's
+      // assets there; the wallet only signs for Redbelly (FR4).
+      assertChainAllowed(jsonData.domain.chainId);
       const chainItem = findChainByEnum(currentChain);
       if (
         !currentChain ||
@@ -476,12 +505,15 @@ class ProviderController extends BaseController {
       origin = INTERNAL_REQUEST_ORIGIN;
     }
 
-    let chainServerId = CHAINS[CHAINS_ENUM.ETH].serverId;
+    const defaultServerId =
+      findChain({ enum: DEFAULT_SITE_CHAIN_ENUM })?.serverId ||
+      CHAINS[CHAINS_ENUM.ETH].serverId;
+    let chainServerId = defaultServerId;
     if (site) {
       chainServerId =
         findChain({
-          enum: site.chain,
-        })?.serverId || CHAINS[CHAINS_ENUM.ETH].serverId;
+          enum: allowedSiteChain(site.chain),
+        })?.serverId || defaultServerId;
     }
     if (forceChainServerId) {
       chainServerId = forceChainServerId;
@@ -607,7 +639,7 @@ class ProviderController extends BaseController {
     const origin = session.origin;
     const site = permissionService.getWithoutUpdate(origin);
 
-    return findChainByEnum(site?.chain, { fallback: CHAINS_ENUM.ETH })!.hex;
+    return findChain({ enum: allowedSiteChain(site?.chain) })!.hex;
   };
 
   @Reflect.metadata('APPROVAL', [
@@ -635,6 +667,11 @@ class ProviderController extends BaseController {
           'from should be same as current address'
         );
       }
+      assertChainAllowed(
+        'chainId' in tx
+          ? tx.chainId
+          : currentChain && findChain({ enum: currentChain })?.id
+      );
       if (
         'chainId' in tx &&
         (!currentChain ||
@@ -1440,6 +1477,14 @@ class ProviderController extends BaseController {
   };
   @Reflect.metadata('SAFE', true)
   netVersion = (req) => {
+    // Redbelly nodes do not implement net_version, and older web3 libraries
+    // call it on connect. On Redbelly the network id is the chain id, so
+    // answer locally instead of forwarding a call that can only fail.
+    const site = permissionService.getConnectedSite(req.session.origin);
+    const chain = findChain({ enum: allowedSiteChain(site?.chain) });
+    if (chain && isRedbellyChainId(chain.id)) {
+      return String(chain.id);
+    }
     return this.ethRpc({
       ...req,
       data: { method: 'net_version', params: [] },
@@ -1759,6 +1804,7 @@ class ProviderController extends BaseController {
       if (!chainParams.chainId) {
         throw ethErrors.rpc.invalidParams('chainId is required');
       }
+      assertChainAllowed(chainParams.chainId);
       const connected = permissionService.getConnectedSite(session.origin);
 
       if (connected) {
@@ -1802,6 +1848,7 @@ class ProviderController extends BaseController {
     if (!chain) {
       throw new Error('This chain is not supported by Rabby yet.');
     }
+    assertChainAllowed(chain.id);
 
     if (approvalRes) {
       RPCService.setRPC(approvalRes.chain, approvalRes.rpcUrl);
@@ -1831,6 +1878,7 @@ class ProviderController extends BaseController {
       if (!data.params[0]?.chainId) {
         throw ethErrors.rpc.invalidParams('chainId is required');
       }
+      assertChainAllowed(data.params[0].chainId);
       const connected = permissionService.getConnectedSite(session.origin);
       if (connected) {
         const { chainId } = data.params[0];
@@ -1871,6 +1919,7 @@ class ProviderController extends BaseController {
         message: `Unrecognized chain ID "${chainId}". Try adding the chain using wallet_switchEthereumChain first.`,
       });
     }
+    assertChainAllowed(chain.id);
 
     permissionService.updateConnectSite(
       origin,

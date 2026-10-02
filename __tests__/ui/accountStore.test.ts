@@ -87,11 +87,9 @@ describe('account store', () => {
       })
     );
 
-    const request = useAccountStore
-      .getState()
-      .getMatteredChainBalance({
-        currentAccountAddress: currentAccount.address,
-      });
+    const request = useAccountStore.getState().getMatteredChainBalance({
+      currentAccountAddress: currentAccount.address,
+    });
 
     expect(
       selectIsLoadingMatteredChainBalances(useAccountStore.getState())

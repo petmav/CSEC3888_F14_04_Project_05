@@ -242,14 +242,14 @@ const getThemeColors = (isDark: boolean) =>
         crosshairVertLineColor: 'rgba(186, 190, 197, 1)',
         bgColor: 'transparent',
         redLineColor: 'rgba(227, 73, 53, 1)',
-        timeLabelBackgroundColor: 'rgba(12, 15, 31, 1)',
+        timeLabelBackgroundColor: 'rgba(11, 11, 13, 1)',
         greenLineColor: 'rgba(42, 187, 127, 1)',
       }
     : {
         vertLineColor: 'rgba(46, 46, 46, 0.1)',
         horzLineColor: 'rgba(46, 46, 46, 0.1)',
         textColor: 'rgba(25, 41, 69, 1)',
-        priceLineColor: 'rgba(12, 15, 31, 1)',
+        priceLineColor: 'rgba(11, 11, 13, 1)',
         crosshairVertLineColor: 'rgba(106, 117, 135, 1)',
         redLineColor: 'rgba(227, 73, 53, 1)',
         greenLineColor: 'rgba(42, 187, 127, 1)',

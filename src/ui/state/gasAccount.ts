@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import type { GasAccountServiceStore } from '@/background/service/gasAccount';
 import { EVENTS } from '@/constant';
 import eventBus from '@/eventBus';
@@ -62,6 +63,10 @@ export const useGasAccountStore = create<GasAccountStore>()((set, get) => ({
       void get().syncState();
     });
 
+    if (REDBELLY_ONLY) {
+      // Rabby's gas account does not serve Redbelly; nothing to sync.
+      return;
+    }
     void prefetchGasAccountBridgeSupportTokenList({ wallet }).catch((error) => {
       console.error('prefetchBridgeSupportTokenList on gasAccount init error');
       console.error(error);

@@ -1,6 +1,14 @@
 /**
  * @jest-environment jsdom
  */
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import browser from 'webextension-polyfill';
 import eventBus from '@/eventBus';
 import { BROADCAST_TO_UI_EVENTS } from '@/utils/broadcastToUI';

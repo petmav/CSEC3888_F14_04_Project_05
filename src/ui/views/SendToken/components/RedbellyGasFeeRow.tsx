@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { RBNT_SYMBOL } from '@/constant/redbelly';
 import { useWallet } from '@/ui/utils';
 import { estimateFee } from '@/utils/redbelly/fees';
-import { formatRbnt, formatUsd } from '@/utils/redbelly/format';
+import { formatRbnt } from '@/utils/redbelly/format';
+import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 
 /**
  * The Send page's fee row on Redbelly (FR3 / US6 / US7).
@@ -26,6 +27,7 @@ export const RedbellyGasFeeRow = ({
 }) => {
   const { t } = useTranslation();
   const wallet = useWallet();
+  const { format } = useRedbellyCurrency();
 
   const { value, loading } = useAsync(async () => {
     const [gasPriceWei, usdPerGas] = await Promise.all([
@@ -58,7 +60,7 @@ export const RedbellyGasFeeRow = ({
       <span className="text-r-neutral-title-1 font-medium">
         {value.feeUsd !== null ? (
           <>
-            {formatUsd(value.feeUsd)}{' '}
+            {format(value.feeUsd)}{' '}
             <span className="text-r-neutral-foot font-normal">
               ~{formatRbnt(value.feeWei)} {RBNT_SYMBOL}
             </span>

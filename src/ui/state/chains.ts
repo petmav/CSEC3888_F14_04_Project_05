@@ -8,6 +8,7 @@ import type { AccountState } from '@/ui/state/account';
 import { useAccountStore } from '@/ui/state/account';
 import { useSwapStore } from '@/ui/state/swap';
 import { wallet } from '@/ui/wallet';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import {
   getChainList,
   getMainnetListFromLocal,
@@ -36,10 +37,18 @@ export type ChainsActions = {
 
 export type ChainsStore = ChainsState & ChainsActions;
 
+/**
+ * The integrated (DeBank) chains the UI may offer. In a Redbelly-only build
+ * that is none: the chains stay in the shared store, where Rabby's internals
+ * look Ethereum up by enum, but no picker ever lists them (FR4).
+ */
+const visibleMainnetList = (): Chain[] =>
+  REDBELLY_ONLY ? [] : getChainList('mainnet');
+
 export const getDefaultChainsState = (): ChainsState => ({
   currentConnection: null,
   gnosisPendingCount: 0,
-  mainnetList: getChainList('mainnet'),
+  mainnetList: visibleMainnetList(),
   testnetList: getChainList('testnet') as TestnetChain[],
 });
 
@@ -47,7 +56,13 @@ export const useChainsStore = create<ChainsStore>()((set) => ({
   ...getDefaultChainsState(),
 
   setField(payload) {
-    set(payload);
+    // The background broadcasts its whole chain store on every sync; keep the
+    // DeBank list out of the UI whichever way it arrives.
+    set(
+      payload.mainnetList
+        ? { ...payload, mainnetList: REDBELLY_ONLY ? [] : payload.mainnetList }
+        : payload
+    );
   },
   async init() {
     void wallet.getCustomTestnetLogos();
@@ -59,7 +74,7 @@ export const useChainsStore = create<ChainsStore>()((set) => ({
       getMainnetListFromLocal().then((mainnetList) => {
         if (mainnetList.length) {
           updateChainStore({ mainnetList });
-          set({ mainnetList });
+          set({ mainnetList: REDBELLY_ONLY ? [] : mainnetList });
         }
       }),
     ]);

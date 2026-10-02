@@ -145,9 +145,9 @@ describe('contact book store', () => {
       })
     );
 
-    expect(Object.prototype.hasOwnProperty.call(store.getState(), '0xabc')).toBe(
-      true
-    );
+    expect(
+      Object.prototype.hasOwnProperty.call(store.getState(), '0xabc')
+    ).toBe(true);
     expect(store.getState()['0xabc']).toBeUndefined();
     store.persist.destroy();
   });

@@ -291,6 +291,7 @@ const ManageAddress = () => {
                     }
                     return (
                       <GroupItem
+                        key={id}
                         item={list?.[0]}
                         active={i === currentIndex}
                         count={list?.length || 0}

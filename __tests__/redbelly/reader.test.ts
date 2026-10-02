@@ -134,12 +134,13 @@ describe('isRedbellyChainId', () => {
 
 describe('isRedbellyServerId', () => {
   it('accepts both Redbelly server ids', () => {
-    expect(isRedbellyServerId('redbelly')).toBe(true);
-    expect(isRedbellyServerId('redbelly-testnet')).toBe(true);
+    expect(isRedbellyServerId('custom_151')).toBe(true);
+    expect(isRedbellyServerId('custom_153')).toBe(true);
   });
 
-  it('rejects DeBank chain ids', () => {
+  it('rejects DeBank chain ids and other custom networks', () => {
     expect(isRedbellyServerId('eth')).toBe(false);
+    expect(isRedbellyServerId('custom_1')).toBe(false);
     expect(isRedbellyServerId(undefined)).toBe(false);
   });
 });

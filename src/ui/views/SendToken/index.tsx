@@ -1,5 +1,13 @@
 /* eslint "react-hooks/exhaustive-deps": ["error"] */
 /* eslint-enable react-hooks/exhaustive-deps */
+import {
+  isRedbellyServerId,
+  RBNT_SYMBOL,
+  REDBELLY_MAINNET_ENUM,
+  REDBELLY_MAINNET_SERVER_ID,
+  REDBELLY_ONLY,
+} from '@/constant/redbelly';
+import { REDBELLY_MAINNET } from '@/constant/redbelly-chains';
 import React, {
   useState,
   useCallback,
@@ -168,7 +176,29 @@ function findInstanceLevel(gasList: GasLevel[]) {
 
 const DEFAULT_GAS_USED = 21000;
 
-const DEFAULT_TOKEN: TokenItem = {
+/**
+ * Redbelly-only: the send page opens on RBNT on Redbelly Mainnet rather than
+ * on ETH, which this wallet cannot send.
+ */
+const REDBELLY_DEFAULT_TOKEN: TokenItem = {
+  id: REDBELLY_MAINNET_SERVER_ID,
+  chain: REDBELLY_MAINNET_SERVER_ID,
+  name: RBNT_SYMBOL,
+  symbol: RBNT_SYMBOL,
+  display_symbol: null,
+  optimized_symbol: RBNT_SYMBOL,
+  decimals: 18,
+  logo_url: REDBELLY_MAINNET.logo,
+  price: 0,
+  is_verified: true,
+  is_core: true,
+  is_wallet: true,
+  time_at: 0,
+  amount: 0,
+  cex_ids: [],
+};
+
+const ETH_DEFAULT_TOKEN: TokenItem = {
   id: 'eth',
   chain: 'eth',
   name: 'ETH',
@@ -186,6 +216,10 @@ const DEFAULT_TOKEN: TokenItem = {
   amount: 0,
   cex_ids: [],
 };
+
+const DEFAULT_TOKEN = REDBELLY_ONLY
+  ? REDBELLY_DEFAULT_TOKEN
+  : ETH_DEFAULT_TOKEN;
 
 type FormSendToken = {
   to: string;
@@ -333,8 +367,8 @@ const ChainSelectWrapper = styled.div`
   border: 1px solid transparent;
   border-bottom: 0.5px solid var(--r-neutral-line, rgba(255, 255, 255, 0.1));
   &:hover {
-    border: 1px solid var(--r-blue-default, #7084ff);
-    background-color: var(--r-blue-light-1, #eef1ff);
+    border: 1px solid var(--r-blue-default, #ff4646);
+    background-color: var(--r-blue-light-1, #fff0f0);
     border-radius: 8px;
   }
 `;
@@ -375,7 +409,9 @@ const SendToken = () => {
   }, [search]);
   const currentAccount = useCurrentAccount();
   const currentAccountAddress = currentAccount?.address;
-  const [chain, setChain] = useState(CHAINS_ENUM.ETH);
+  const [chain, setChain] = useState<CHAINS_ENUM>(
+    REDBELLY_ONLY ? (REDBELLY_MAINNET_ENUM as CHAINS_ENUM) : CHAINS_ENUM.ETH
+  );
   const chainItem = useMemo(() => findChain({ enum: chain }), [chain]);
   const [currentToken, setCurrentToken] = useState<TokenItem | null>(
     DEFAULT_TOKEN
@@ -2999,6 +3035,10 @@ const SendToken = () => {
       } else {
         const lastTimeSentToken = await wallet.getLastTimeSendToken();
         let needLoadToken: TokenItem | null = lastTimeSentToken || currentToken;
+        // A token remembered from a chain this wallet no longer serves.
+        if (REDBELLY_ONLY && !isRedbellyServerId(needLoadToken?.chain)) {
+          needLoadToken = DEFAULT_TOKEN;
+        }
 
         if (sendTokenCache) {
           if (

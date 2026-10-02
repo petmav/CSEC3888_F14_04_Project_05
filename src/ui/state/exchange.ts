@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import type { WalletControllerType } from '@/ui/utils';
 import { wallet } from '@/ui/wallet';
 
@@ -88,6 +89,11 @@ export const useExchangeStore = create<ExchangeStore>()((set) => ({
   ...getDefaultExchangeState(),
 
   async init() {
+    // Redbelly-only: exchange labels come from Rabby's API and list no
+    // Redbelly exchanges.
+    if (REDBELLY_ONLY) {
+      return;
+    }
     try {
       const cexLists = await wallet.openapi.getCexSupportList();
       if (cexLists.length) {

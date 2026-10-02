@@ -4,6 +4,11 @@ import { createPersistStore } from 'background/utils';
 import { CHAINS_ENUM, INTERNAL_REQUEST_ORIGIN } from 'consts';
 import { max } from 'lodash';
 import { findChain, findChainByEnum } from '@/utils/chain';
+import {
+  allowedSiteChain,
+  DEFAULT_SITE_CHAIN_ENUM,
+  isChainAllowed,
+} from '@/utils/redbelly/allowlist';
 import { BasicDappInfo } from './openapi';
 import { Account } from './preference';
 
@@ -87,12 +92,21 @@ class PermissionService {
 
     const chainItem = findChain({ enum: siteItem.chain });
 
-    return chainItem
+    if (!chainItem) {
+      return {
+        ...siteItem,
+        chain: DEFAULT_SITE_CHAIN_ENUM as CHAINS_ENUM,
+        isConnected: false,
+      };
+    }
+
+    // A site stored on a chain the wallet no longer serves is moved to the
+    // default rather than disconnected (FR4).
+    return isChainAllowed(chainItem.id)
       ? siteItem
       : {
           ...siteItem,
-          chain: CHAINS_ENUM.ETH,
-          isConnected: false,
+          chain: DEFAULT_SITE_CHAIN_ENUM as CHAINS_ENUM,
         };
   };
 
@@ -130,7 +144,7 @@ class PermissionService {
       origin,
       name,
       icon,
-      chain: defaultChain,
+      chain: allowedSiteChain(defaultChain) as CHAINS_ENUM,
       isSigned,
       isTop: false,
       isConnected: true,
@@ -164,7 +178,7 @@ class PermissionService {
       icon,
       isSigned,
       isTop: false,
-      chain: defaultChain,
+      chain: allowedSiteChain(defaultChain) as CHAINS_ENUM,
       account: defaultAccount,
       isConnected: true,
     });
@@ -186,8 +200,11 @@ class PermissionService {
     if (!this.lruCache || !this.lruCache.has(origin)) return;
     if (origin === INTERNAL_REQUEST_ORIGIN) return;
 
-    if (value.chain && !findChain({ enum: value.chain })) {
-      return;
+    if (value.chain) {
+      const chain = findChain({ enum: value.chain });
+      if (!chain || !isChainAllowed(chain.id)) {
+        return;
+      }
     }
 
     if (partialUpdate) {

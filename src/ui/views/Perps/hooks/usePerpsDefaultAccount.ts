@@ -1,4 +1,5 @@
 import { KEYRING_TYPE } from '@/constant';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { useRabbyDispatch, useRabbySelector } from '@/ui/store';
 import { isSameAddress, useWallet } from '@/ui/utils';
 import { useRequest } from 'ahooks';
@@ -17,13 +18,14 @@ export const usePerpsDefaultAccount = ({
     (state) => state.accountToDisplay.accountsList
   );
   const isInitialized = useRabbySelector((state) => state.perps.isInitialized);
-  const sdk = getPerpsSDK();
-
   return useRequest(
     async () => {
-      if (isInitialized) {
+      // Redbelly-only: perps trade on Hyperliquid. Creating the SDK alone
+      // opens a connection, so it is not even created.
+      if (isInitialized || REDBELLY_ONLY) {
         return;
       }
+      const sdk = getPerpsSDK();
       try {
         const currentAccount = await wallet.getPerpsCurrentAccount();
         const lastUsedAccount = await wallet.getPerpsLastUsedAccount();

@@ -1,8 +1,13 @@
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import type { Account } from '@/background/service/preference';
-import {
-  getDefaultGiftState,
-  useGiftStore,
-} from '@/ui/state/gift';
+import { getDefaultGiftState, useGiftStore } from '@/ui/state/gift';
 import { wallet } from '@/ui/wallet';
 import { isFullVersionAccountType } from '@/utils/account';
 
@@ -83,9 +88,10 @@ describe('gift store', () => {
     }>((resolve) => {
       resolveEligibility = resolve;
     });
-    (
-      wallet.openapi.checkGasAccountGiftEligibility as jest.Mock
-    ).mockReturnValue(eligibilityRequest);
+    (wallet.openapi
+      .checkGasAccountGiftEligibility as jest.Mock).mockReturnValue(
+      eligibilityRequest
+    );
 
     const firstRequest = useGiftStore
       .getState()
@@ -96,9 +102,9 @@ describe('gift store', () => {
 
     await Promise.resolve();
     await Promise.resolve();
-    expect(
-      wallet.openapi.checkGasAccountGiftEligibility
-    ).toHaveBeenCalledTimes(1);
+    expect(wallet.openapi.checkGasAccountGiftEligibility).toHaveBeenCalledTimes(
+      1
+    );
 
     resolveEligibility({
       has_eligibility: true,

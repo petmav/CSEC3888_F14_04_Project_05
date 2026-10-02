@@ -1,8 +1,5 @@
 import type { TokenItem } from '@/background/service/openapi';
-import {
-  getDefaultTokenDetailState,
-  useSignStore,
-} from '@/ui/state/sign';
+import { getDefaultTokenDetailState, useSignStore } from '@/ui/state/sign';
 
 describe('sign store', () => {
   beforeEach(() => {

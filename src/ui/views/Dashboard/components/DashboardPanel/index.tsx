@@ -63,6 +63,7 @@ import {
   openInTab,
   openInternalPageInTab,
   splitNumberByStep,
+  useCommonPopupView,
   useWallet,
 } from 'ui/utils';
 import { ClaimRabbyFreeGasBadgeModal } from '../ClaimRabbyBadgeModal/freeGasBadgeModal';
@@ -70,6 +71,7 @@ import { EcologyPopup } from '../EcologyPopup';
 import { RabbyPointsPopup } from '../RabbyPointsPopup';
 import { RecentConnectionsPopup } from '../RecentConnections';
 import BigNumber from 'bignumber.js';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 export const DragOverlayContext = createContext(false);
 
@@ -103,7 +105,7 @@ const GlobalStyle = createGlobalStyle`
       align-items: center;
 
       &:hover {
-        background: var(--r-blue-light1, #edf0ff);
+        background: var(--r-blue-light1, #ffeded);
       }
 
       &:has(.panel-item-jump-button:hover) {
@@ -128,8 +130,8 @@ const GlobalStyle = createGlobalStyle`
         cursor: pointer;
 
         &:hover {
-          color: var(--r-blue-default, #4c65ff);
-          background: var(--r-blue-light1, #edf0ff);
+          color: var(--r-blue-default, #ff4646);
+          background: var(--r-blue-light1, #ffeded);
         }
       }
 
@@ -184,7 +186,7 @@ const GlobalStyle = createGlobalStyle`
 
     .ant-badge {
       .ant-badge-count {
-        background-color: var(--r-blue-default, #7084ff);
+        background-color: var(--r-blue-default, #ff4646);
         padding: 2px 6px;
         font-size: 13px;
         line-height: 1;
@@ -355,6 +357,7 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
   // useCheckBridgePendingItem();
 
   const wallet = useWallet();
+  const { activePopup } = useCommonPopupView();
 
   const openPanelInDesktop = useMemoizedFn((path: string) => {
     wallet.openInDesktop(path);
@@ -380,6 +383,7 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
 
   const { value: approvalState } = useAsync(async () => {
     if (
+      !REDBELLY_ONLY &&
       account?.address &&
       (account.type !== KEYRING_TYPE.WatchAddressKeyring || appIsDev)
     ) {
@@ -663,12 +667,31 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
       eventKey: 'Staking',
       content: t('page.dashboard.home.panel.staking'),
       onClick: () => {
+        // Rabby's staking page is DeBank's; on Redbelly the positions live
+        // in the asset list, read from the pools themselves.
+        if (REDBELLY_ONLY) {
+          activePopup('AssetList');
+          return;
+        }
         history.push('/staking');
       },
     } as IPanelItem,
   };
 
   const defaultPanelKeys = useMemo<(keyof typeof panelItems)[]>(() => {
+    // Redbelly-only: the tiles that work on Redbelly. Swap, bridge,
+    // approvals, perps, dust, points and mobile sync are DeBank or Rabby
+    // services with nothing behind them on this chain.
+    if (REDBELLY_ONLY) {
+      return [
+        'send',
+        'receive',
+        'transactions',
+        'staking',
+        'manageAddress',
+        'more',
+      ];
+    }
     return [
       'swap',
       'send',

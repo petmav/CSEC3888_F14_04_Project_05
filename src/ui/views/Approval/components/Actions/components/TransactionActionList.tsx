@@ -53,7 +53,6 @@ const SingleAction: React.FC<{
   chain: Chain;
   raw: Record<string, string | number>;
   isTypedData?: boolean;
-  senderAddress?: string;
   onChange(tx: Record<string, any>): void;
 }> = ({
   data,
@@ -63,7 +62,6 @@ const SingleAction: React.FC<{
   onChange,
   raw,
   isTypedData,
-  senderAddress,
 }) => {
   return (
     <>
@@ -112,7 +110,6 @@ const SingleAction: React.FC<{
           data={data.send}
           requireData={requireData as SendRequireData}
           chain={chain}
-          senderAddress={senderAddress}
           engineResults={engineResults}
         />
       )}
@@ -289,8 +286,6 @@ export const TransactionActionList: React.FC<{
   chain: Chain;
   raw: Record<string, string | number>;
   isTypedData?: boolean;
-  /** Account that the parent approval will actually sign with. */
-  senderAddress?: string;
   onChange(tx: Record<string, any>): void;
 }> = ({
   data,
@@ -300,7 +295,6 @@ export const TransactionActionList: React.FC<{
   onChange,
   raw,
   isTypedData = false,
-  senderAddress,
 }) => {
   return (
     <SingleAction
@@ -311,7 +305,6 @@ export const TransactionActionList: React.FC<{
       onChange={onChange}
       raw={raw}
       isTypedData={isTypedData}
-      senderAddress={senderAddress}
     />
   );
 };

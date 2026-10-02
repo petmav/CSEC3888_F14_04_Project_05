@@ -1,5 +1,5 @@
 import {
-  blocksSigning,
+  requiresAcknowledgement,
   isCritical,
   verdictFor,
 } from '@/utils/redbelly/verdict';
@@ -51,31 +51,32 @@ describe('isCritical', () => {
   });
 });
 
-describe('blocksSigning', () => {
+describe('requiresAcknowledgement', () => {
   // US12 / FR7: the capability the Snap did not have. A Snap can annotate a
-  // confirmation but never veto it; the fork disables the sign button.
-  it('refuses to sign to a confirmed unregistered recipient', () => {
-    expect(blocksSigning('NOT_REGISTERED')).toBe(true);
+  // confirmation but never hold it; the fork waits for "I understand the
+  // risks" before signing.
+  it('holds signing to a confirmed unregistered recipient', () => {
+    expect(requiresAcknowledgement('NOT_REGISTERED')).toBe(true);
   });
 
   it('allows signing when the check could not run', () => {
-    // Redbelly exposes a single public RPC endpoint with no failover. Blocking
+    // Redbelly exposes a single public RPC endpoint with no failover. Holding
     // here would make a node outage indistinguishable from a bricked wallet,
     // so UNKNOWN warns loudly (NFR2) and lets the user proceed.
-    expect(blocksSigning('UNKNOWN')).toBe(false);
+    expect(requiresAcknowledgement('UNKNOWN')).toBe(false);
   });
 
   it('allows signing to a contract', () => {
-    expect(blocksSigning('CONTRACT')).toBe(false);
+    expect(requiresAcknowledgement('CONTRACT')).toBe(false);
   });
 
   it('allows signing to a registered recipient', () => {
-    expect(blocksSigning('REGISTERED')).toBe(false);
+    expect(requiresAcknowledgement('REGISTERED')).toBe(false);
   });
 
-  it('blocks exactly the verdicts it escalates, and no others', () => {
-    // If these two ever diverge, the UI would either block without explaining
-    // why, or shout without stopping anything.
+  it('holds exactly the verdicts it escalates, and no others', () => {
+    // If these two ever diverge, the UI would either hold signing without
+    // explaining why, or shout without asking for acknowledgement.
     const verdicts = [
       'REGISTERED',
       'NOT_REGISTERED',
@@ -83,7 +84,7 @@ describe('blocksSigning', () => {
       'UNKNOWN',
     ] as const;
     verdicts.forEach((verdict) => {
-      expect(blocksSigning(verdict)).toBe(isCritical(verdict));
+      expect(requiresAcknowledgement(verdict)).toBe(isCritical(verdict));
     });
   });
 });

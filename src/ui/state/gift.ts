@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import type { Account } from '@/background/service/preference';
 import { wallet } from '@/ui/wallet';
 import { isFullVersionAccountType } from '@/utils/account';
@@ -162,6 +163,10 @@ export const useGiftStore = create<GiftStore>()((set, get) => ({
     }));
   },
   async checkGiftEligibilityAsync({ address, currentAccount }) {
+    // Redbelly-only: the gift is free gas on Rabby's gas account.
+    if (REDBELLY_ONLY) {
+      return false;
+    }
     try {
       const targetAddress = address || currentAccount?.address;
       if (!targetAddress) {

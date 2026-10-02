@@ -9,7 +9,9 @@ import { ReactComponent as AssetEmptySVG } from '@/ui/assets/dashboard/asset-emp
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 import { CustomTestnetAssetList } from './CustomTestnetAssetList';
+import { RedbellyAssetList } from './RedbellyAssetList';
 import { RedbellyAssetSection } from './RedbellyAssetSection';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { AddCustomTokenPopup } from './CustomAssetList/AddCustomTokenPopup';
 import { Button } from 'antd';
 import { SpecialTokenListPopup } from './components/TokenButton';
@@ -71,6 +73,10 @@ export const AssetList = ({
     wallet.openInDesktop('/desktop/profile');
     window.close();
   };
+
+  if (REDBELLY_ONLY) {
+    return <RedbellyAssetList visible={visible} onClose={onClose} />;
+  }
 
   return (
     <div ref={containerRef} className="pt-[12px] h-full overflow-auto">

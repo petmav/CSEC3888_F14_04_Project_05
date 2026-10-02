@@ -1,4 +1,5 @@
 import { useRabbySelector } from '@/ui/store';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { isSameAddress, useWallet } from '@/ui/utils';
 import { useRequest } from 'ahooks';
 import { InputRef } from 'antd';
@@ -114,34 +115,38 @@ export const CustomTestnetAssetListContainer: React.FC<Props> = ({
         />
         {isFocus || search ? null : (
           <div className="flex items-center gap-x-[12px]">
-            <div
-              className={clsx(
-                'rounded-[6px] bg-r-neutral-card1 px-[9px] py-[7px] cursor-pointer',
-                'border-[1px] border-transparent min-w-[82px] text-center',
-                'hover:border-rabby-blue-default hover:bg-r-blue-light1'
-              )}
-            >
+            {/* Redbelly-only: Redbelly's networks are built in, and the
+                provider refuses any other chain. */}
+            {REDBELLY_ONLY ? null : (
               <div
                 className={clsx(
-                  'text-r-neutral-body text-[13px] leading-[16px] cursor-pointer',
-                  'flex items-center gap-x-[4px] justify-center'
+                  'rounded-[6px] bg-r-neutral-card1 px-[9px] py-[7px] cursor-pointer',
+                  'border-[1px] border-transparent min-w-[82px] text-center',
+                  'hover:border-rabby-blue-default hover:bg-r-blue-light1'
                 )}
-                onClick={() => {
-                  matomoRequestEvent({
-                    category: 'Custom Network',
-                    action: 'TokenList Add Network',
-                  });
-                  setIsShowAddTestnetModal(true);
-                }}
               >
-                <span className="text-r-neutral-body">
-                  <RcIconAdd />
-                </span>
-                {t(
-                  'page.dashboard.assets.TestnetAssetListContainer.addTestnet'
-                )}
+                <div
+                  className={clsx(
+                    'text-r-neutral-body text-[13px] leading-[16px] cursor-pointer',
+                    'flex items-center gap-x-[4px] justify-center'
+                  )}
+                  onClick={() => {
+                    matomoRequestEvent({
+                      category: 'Custom Network',
+                      action: 'TokenList Add Network',
+                    });
+                    setIsShowAddTestnetModal(true);
+                  }}
+                >
+                  <span className="text-r-neutral-body">
+                    <RcIconAdd />
+                  </span>
+                  {t(
+                    'page.dashboard.assets.TestnetAssetListContainer.addTestnet'
+                  )}
+                </div>
               </div>
-            </div>
+            )}
             <div
               className={clsx(
                 'rounded-[6px] bg-r-neutral-card1 px-[9px] py-[7px] cursor-pointer',

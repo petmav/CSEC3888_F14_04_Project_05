@@ -1,6 +1,21 @@
 {
   "page": {
     "transactions": {
+      "redbelly": {
+        "mainnetTitle": "Redbelly Mainnet",
+        "mainnetSubtitle": "Incoming and outgoing, from Redbelly's block explorer (Routescan)",
+        "localTitle": "Sent from this wallet",
+        "localSubtitle": "Including Redbelly Testnet",
+        "loading": "Loading",
+        "unavailable": "The block explorer did not answer, so activity could not be loaded. This is not a statement about your account.",
+        "empty": "No activity yet",
+        "sent": "Sent",
+        "received": "Received",
+        "contractCall": "Contract call",
+        "failed": "Failed",
+        "to": "To {{address}}",
+        "from": "From {{address}}"
+      },
       "title": "Transactions",
       "empty": {
         "title": "No transactions",
@@ -244,7 +259,7 @@
       "gasPriceTitle": "Gas Price (Gwei)",
       "maxPriorityFee": "Max Priority Fee (Gwei)",
       "eip1559Desc1": "On chains that support EIP-1559, the Priority Fee is the tip for miners to process your transaction. You can save your final gas cost by lowering the Priority Fee, which may cost more time for the transaction to be processed.",
-      "eip1559Desc2": "Here in Rabby, Priority Fee (Tip) = Max Fee - Base Fee. After you set up the Max Priority Fee, the Base Fee will be deducted from it and the rest will be tipped to miners.",
+      "eip1559Desc2": "Here in Redbelly Wallet, Priority Fee (Tip) = Max Fee - Base Fee. After you set up the Max Priority Fee, the Base Fee will be deducted from it and the rest will be tipped to miners.",
       "hardwareSupport1559Alert": "Make sure your hardware wallet firmware has been upgraded to the version that supports EIP 1559",
       "gasLimitTitle": "Gas limit",
       "recommendGasLimitTip": "Est. {{est}}. Current {{current}}x, recommend ",
@@ -280,7 +295,7 @@
       "safeAdminSigned": "Signed",
       "customRPCErrorModal": {
         "title": "Custom RPC Error",
-        "content": "Your custom RPC is unavailable now. You can disable it and continue signing using Rabby's official RPC",
+        "content": "Your custom RPC is unavailable now. You can disable it and continue signing using Redbelly Wallet's official RPC",
         "button": "Disable Custom RPC"
       },
       "swap": {
@@ -343,9 +358,6 @@
         "fromMyPrivateKey": "From my private key"
       },
       "redbelly": {
-        "recipientTitle": "Redbelly KYC",
-        "senderTitle": "Your Redbelly KYC",
-        "recipientTip": "Redbelly records identity-verified accounts in an on-chain permission list. This row reports whether the recipient is on that list for this network.",
         "checking": "Checking",
         "registered": "Registered",
         "registeredTip": "This address completed Redbelly identity verification. That confirms someone verified controls it, not that it is the recipient you intended.",
@@ -355,11 +367,19 @@
         "contractTip": "The permission list covers user accounts, so no identity check applies to a smart contract.",
         "unknown": "Could not verify if address is on the Redbelly Network",
         "unknownTip": "The Redbelly node did not answer, so this address was not checked. This is not a confirmation that the address is valid.",
-        "blockedReason": "Recipient is not registered on Redbelly. Funds sent there cannot be spent.",
-        "bannerVerified": "This address is verified on the Redbelly Network",
-        "bannerNotVerified": "This address is not verified in the Redbelly Network",
-        "bannerContract": "This address is a smart contract",
-        "bannerUnknown": "Could not verify if address is on the Redbelly Network"
+        "panelTitle": "Redbelly checks",
+        "senderTitle": "Your Redbelly KYC",
+        "paying": "Paying",
+        "payingToken": "Paying (token transfer)",
+        "contractCreation": "Contract creation - no recipient to check",
+        "tokenContract": "Read from the transfer data. Token contract: {{address}}",
+        "yourAccount": "Your account",
+        "senderNotRegistered": "NOT registered",
+        "networkFee": "Network fee",
+        "feeNote": "Redbelly prices gas in US dollars and converts it to RBNT, so fees look large next to Ethereum. This is expected.",
+        "checkingReason": "Checking the recipient against the Redbelly permission list.",
+        "senderNotRegisteredWarning": "Your account is not registered on Redbelly, so the network will reject this transaction. Complete identity verification at access.redbelly.network first.",
+        "acknowledgeReason": "This address is not registered on Redbelly. Tick \"I understand the risks\" to sign anyway."
       },
       "tokenApprove": {
         "title": "Token Approval",
@@ -370,7 +390,7 @@
         "trustValueLessThan": "≤ {{value}}",
         "deployTimeLessThan": "< {{value}} days",
         "amountPopupTitle": "Approve amount",
-        "flagByRabby": "Flagged by Rabby",
+        "flagByRabby": "Flagged by Redbelly Wallet",
         "contractTrustValueTip": "Trust value refers to the total asset value spent by this contract. A low trust value indicates either risk or inactivity for 180 days.",
         "amount": "Approve Amount:",
         "exceed": "Exceeds your current balance"
@@ -448,19 +468,19 @@
       "transacted": "Transacted before",
       "neverTransacted": "Never transacted before",
       "importedAddress": "Imported address",
-      "fakeTokenAlert": "This is a scam token marked by Rabby",
-      "scamTokenAlert": "This is potentially a low-quality and scam token based on Rabby's detection",
+      "fakeTokenAlert": "This is a scam token marked by Redbelly Wallet",
+      "scamTokenAlert": "This is potentially a low-quality and scam token based on Redbelly Wallet's detection",
       "trusted": "Trusted",
       "blocked": "Blocked",
       "noMark": "No mark",
       "markRemoved": "Mark removed",
       "speedUpTooltip": "This accelerated transaction and the original transaction, only one of which will eventually be completed",
-      "decodedTooltip": "This signature is decoded by Rabby Wallet",
+      "decodedTooltip": "This signature is decoded by Redbelly Wallet",
       "signTransactionOnChain": "Sign {{chain}} Transaction",
       "viewRaw": "View Raw",
       "chain": "Chain",
       "unknownActionType": "Unknown Action Type",
-      "sigCantDecode": "This signature can't be decoded by Rabby Wallet",
+      "sigCantDecode": "This signature can't be decoded by Redbelly Wallet",
       "nftCollection": "NFT Collection",
       "floorPrice": "Floor price",
       "contractAddress": "Contract address",
@@ -508,8 +528,8 @@
       },
       "safeTx": {
         "selfHostConfirm": {
-          "title": "Switch to Rabby's Safe Service",
-          "content": "Safe API is unavailable. Switch to the Safe service deployed by Rabby to keep your Safe functional. <strong>All Safe signers must use Rabby Wallet to authorize transactions.</strong>",
+          "title": "Switch to Redbelly Wallet's Safe Service",
+          "content": "Safe API is unavailable. Switch to the Safe service deployed by Redbelly Wallet to keep your Safe functional. <strong>All Safe signers must use Redbelly Wallet to authorize transactions.</strong>",
           "button": "OK"
         }
       },
@@ -605,7 +625,7 @@
         "unavailable": "Your Gas Balance is not enough",
         "notEnough": "Gas balance is not enough",
         "GetFreeGasToSign": "Get Free Gas",
-        "rabbyPayGas": "Rabby'll pay for the gas needed – just sign on",
+        "rabbyPayGas": "Redbelly Wallet'll pay for the gas needed – just sign on",
         "customRpcUnavailableTip": "Custom RPCs are not supported for Free Gas",
         "walletConnectUnavailableTip": "Mobile wallet connected via WalletConnect is not supported for Free Gas",
         "watchUnavailableTip": "Watch-only address is not supported for Free Gas"
@@ -632,7 +652,7 @@
         "connected": "Connected and ready to sign",
         "howToSwitch": "How to switch",
         "wrongAddressAlert": "You've switched to a different address on mobile wallet. Please switch to the correct address in mobile wallet",
-        "connectBeforeSign": "{{0}} is not connected to Rabby, please connect before signing",
+        "connectBeforeSign": "{{0}} is not connected to Redbelly Wallet, please connect before signing",
         "chainSwitched": "You've switched to a different chain on mobile wallet. Please switch to {{0}} in mobile wallet",
         "latency": "Latency",
         "requestSuccessToast": "Request successfully sent",
@@ -761,7 +781,7 @@
         "label": "Transactions",
         "empty": {
           "title": "No signed transactions yet",
-          "desc": "All transactions signed via Rabby will be listed here."
+          "desc": "All transactions signed via Redbelly Wallet will be listed here."
         },
         "common": {
           "unlimited": "unlimited",
@@ -859,7 +879,7 @@
         "label": "Text",
         "empty": {
           "title": "No signed texts yet",
-          "desc": "All texts signed via Rabby will be listed here."
+          "desc": "All texts signed via Redbelly Wallet will be listed here."
         }
       }
     },
@@ -1282,8 +1302,8 @@
       "openPositionTips": "Trading perpetual contracts involves significant risk, including the potential for sudden and total loss of your investment and collateral due to high leverage and market volatility, and may not be suitable for all users. Prices may be influenced by funding rates and liquidity and you may be subject to automatic liquidations without notice. Market data provided by Hyperliquid.",
       "liquidationPriceTips": "The price at which your position is automatically closed by the exchange to prevent further losses when your margin falls below the maintenance margin level.",
       "sizeTips": "The total value or quantity of your trade, set by margin and leverage.",
-      "rabbyFeeTipsV2": "Rabby fee: 0.02%",
-      "rabbyFeeTipsZero": "Rabby fee: 0%",
+      "rabbyFeeTipsV2": "Redbelly Wallet fee: 0.02%",
+      "rabbyFeeTipsZero": "Redbelly Wallet fee: 0%",
       "providerFeeTips": "Hyperliquid fee: {{fee}}",
       "timeAgo": "{{time}} ago",
       "takeProfitTipsLong": "Take profit price must be higher than current price",
@@ -1381,7 +1401,7 @@
         "title": "Save on Hyperliquid Fees",
         "activatedSuccess": "4% Hyperliquid fee savings activated",
         "activateFailed": "Failed",
-        "description": "Use Rabby’s code to enable",
+        "description": "Use Redbelly Wallet’s code to enable",
         "hyperliquidFee": "Hyperliquid trading fees.",
         "activateNow": "Activate Now"
       }
@@ -1918,7 +1938,7 @@
         "invalidNumber": "Invalid number",
         "insufficientBalance": "Insufficient balance",
         "free": "Free",
-        "rabbyFee": "Rabby Fee",
+        "rabbyFee": "Redbelly Wallet Fee",
         "providerFee": "Hyperliquid Fee",
         "minimumOrderSize": "The minimum order size is $10",
         "maximumOrderSize": "The maximum order size is {{amount}}",
@@ -2042,7 +2062,7 @@
           "risks": {
             "dexNoDeposite": "Not a CEX deposit address, funds may be lost",
             "contractAddress": "Contract address detected, funds may be lost",
-            "scamAddress": "Scam address flagged by Rabby",
+            "scamAddress": "Scam address flagged by Redbelly Wallet",
             "noSend": "You haven’t sent to this address in 180 days"
           }
         }
@@ -2243,14 +2263,14 @@
       "topUpChain": "Top Up Chain",
       "Amount": "Amount",
       "Continue": "Continue",
-      "InsufficientBalance": "There is not enough balance in Rabby's contract address for the current chain. Please try again later.",
+      "InsufficientBalance": "There is not enough balance in Redbelly Wallet's contract address for the current chain. Please try again later.",
       "hightGasFees": "This top up amount is too small because the target network requires high gas fees.",
       "No_Tokens": "No Tokens",
       "InsufficientBalanceTips": "Insufficient balance",
       "payment": "Gas Top Up Payment",
       "Loading_Tokens": "Loading Tokens...",
       "Including-service-fee": "Including {{fee}} service fee",
-      "service-fee-tip": "By providing the service for Gas Top Up, Rabby has to bear the loss of token fluctuation and the gas fee for the top up. Therefore a 20% service fee is charged.",
+      "service-fee-tip": "By providing the service for Gas Top Up, Redbelly Wallet has to bear the loss of token fluctuation and the gas fee for the top up. Therefore a 20% service fee is charged.",
       "Confirm": "Confirm",
       "Deposit-tip": "Deposit with USDC/USDT",
       "Value": "Value",
@@ -2289,11 +2309,11 @@
       "amount-in": "Amount in {{symbol}}",
       "unlimited-allowance": "Unlimited allowance",
       "insufficient-balance": "Insufficient balance",
-      "no-fee-for-wrap": "No Rabby fee for Wrap",
+      "no-fee-for-wrap": "No Redbelly Wallet fee for Wrap",
       "hidden-no-quote-rates_one": "{{count}} rate unavailable",
       "hidden-no-quote-rates_other": "{{count}} rates unavailable",
       "Gas-fee-too-high": "Gas fee too high",
-      "rabby-fee": "Rabby fee",
+      "rabby-fee": "Redbelly Wallet fee",
       "preferMEV": "MEV Protection",
       "preferMEVTip": "Enable \"MEV Protection\" for Ethereum and BNB Chain swaps to reduce sandwich attack risks. Note: this feature is not supported if you use a custom RPC or wallet connect address",
       "minimum-received": "Minimum received",
@@ -2308,7 +2328,7 @@
       "this-exchange-is-not-enabled-to-trade-by-you": "This exchange is not enabled to trade by you.",
       "enable-it": "Enable it",
       "this-token-pair-is-not-supported": "Token pair is not supported",
-      "QuoteLessWarning": "The receiving amount is estimated from Rabby transaction simulation. The offer provided by dex is {{receive}}. You'll receive {{diff}}  less than the expected offer.",
+      "QuoteLessWarning": "The receiving amount is estimated from Redbelly Wallet transaction simulation. The offer provided by dex is {{receive}}. You'll receive {{diff}}  less than the expected offer.",
       "by-transaction-simulation-the-quote-is-valid": "By transaction simulation, the quote is valid",
       "wrap-contract": "Wrap Contract",
       "directlySwap": "Wrapping {{symbol}} tokens directly with the smart contract",
@@ -2339,7 +2359,7 @@
       "i-understand-and-accept-it": "I understand and accept it",
       "confirm": "Confirm",
       "tradingSettingTip1": "1. Once enabled, you will interact with the contract from the exchange directly",
-      "tradingSettingTip2": "2. Rabby is not liable for any risks arising from the contract of the exchanges",
+      "tradingSettingTip2": "2. Redbelly Wallet is not liable for any risks arising from the contract of the exchanges",
       "gas-fee": "GasFee: {{gasUsed}}",
       "estimate": "Estimate:",
       "actual": "Actual:",
@@ -2349,7 +2369,7 @@
       "process-with-two-step-approve": "Proceed with two step approve",
       "fetch-best-quote": "Fetching the Best quote",
       "usd-after-fees": "≈ {{usd}} ",
-      "no-fees-for-wrap": "No Rabby fee for Wrap",
+      "no-fees-for-wrap": "No Redbelly Wallet fee for Wrap",
       "No-available-quote": "No available quote",
       "price-impact": "Price Impact",
       "loss-tips": "You're losing {{usd}}. Try a smaller amount in a small market.",
@@ -2357,7 +2377,7 @@
       "no-quote-found": "No quote found",
       "source": "Source",
       "rabbyFee": {
-        "discountTitle": "Rabby Fee Discount",
+        "discountTitle": "Redbelly Wallet Fee Discount",
         "free": "Free",
         "cases": {
           "wrap": "Wrap/Unwrap Native Token",
@@ -2366,9 +2386,9 @@
           "million": "Vol $1M+",
           "hundredThousand": "Vol $100k - $1M"
         },
-        "title": "Rabby fee",
-        "swapDesc": "Rabby Wallet will always find the best possible rate from top aggregators and verify the reliability of their offers. Rabby charges a 0.25% fee (0% for wrapping), which is automatically included in the quote.",
-        "bridgeDesc": "Rabby Wallet will always find the best possible rate from top aggregators and verify the reliability of their offers. Rabby charges a 0.25% fee, which is automatically included in the quote.",
+        "title": "Redbelly Wallet fee",
+        "swapDesc": "Redbelly Wallet will always find the best possible rate from top aggregators and verify the reliability of their offers. Redbelly Wallet charges a 0.25% fee (0% for wrapping), which is automatically included in the quote.",
+        "bridgeDesc": "Redbelly Wallet will always find the best possible rate from top aggregators and verify the reliability of their offers. Redbelly Wallet charges a 0.25% fee, which is automatically included in the quote.",
         "wallet": "Wallet",
         "rate": "Fee rate",
         "button": "Got it"
@@ -2419,7 +2439,7 @@
       "best": "Best",
       "best-subtitle": "The best quote is determined by a combination of estimated total cost (including gas fees) and delivery speed.",
       "bridge-cost": "Bridge cost",
-      "rabby-fee": "Rabby fee",
+      "rabby-fee": "Redbelly Wallet fee",
       "bridge-via-x": "Bridge on {{name}}",
       "no-route-found": "No route found",
       "aggregator-not-enabled": "This aggregator is not enabled to trade by you.",
@@ -2442,7 +2462,7 @@
         "confirmModal": {
           "title": "Enable Trading with this Aggregator",
           "tip1": "1. Once enabled, you will interact directly with the contract from this aggregator.",
-          "tip2": "2. Rabby is not liable for any risks arising from the contract of this aggregator",
+          "tip2": "2. Redbelly Wallet is not liable for any risks arising from the contract of this aggregator",
           "i-understand-and-accept-it": "I understand and accept it"
         }
       },
@@ -2486,7 +2506,7 @@
       "whitelisted-address": "Whitelisted address",
       "addressTypeTip": "Imported by {{type}}",
       "delete-desc": "Before you delete, keep the following points in mind to understand how to protect your assets.",
-      "delete-checklist-1": "I understand that if I delete this address, the corresponding Private Key & Seed Phrase of this address will be deleted and Rabby will NOT be able to recover it.",
+      "delete-checklist-1": "I understand that if I delete this address, the corresponding Private Key & Seed Phrase of this address will be deleted and Redbelly Wallet will NOT be able to recover it.",
       "delete-checklist-2": "I confirm that I have backed up the private key or Seed Phrase and I'm ready to delete it now.",
       "confirm": "Confirm",
       "seedPhraseNotBackedUp": "Wallet not backed up",
@@ -2525,6 +2545,27 @@
       }
     },
     "dashboard": {
+      "redbelly": {
+        "portfolio": "Redbelly portfolio",
+        "unavailable": "Unavailable",
+        "available": "Available",
+        "staked": "Staked",
+        "stakedWithRewards": "Staked + rewards",
+        "rotateCurrency": "Change display currency",
+        "rewards": "Rewards",
+        "withdrawable": "Withdrawable",
+        "locked": "Locked",
+        "nextUnlock": "Next unlock",
+        "nextUnlockValue": "{{amount}} on {{date}}",
+        "stakingTitle": "Staking",
+        "stakingSubtitle": "Read from the RBNT staking pools",
+        "manageStake": "Manage on Reddex",
+        "stakingUnavailable": "A staking pool did not answer, so this may not be your whole stake.",
+        "apr": "{{apr}}% APR",
+        "tokensTitle": "Tokens",
+        "tokensSubtitle": "Read from a Redbelly node",
+        "transferFee": "Fee {{amount}} RBNT{{usd}}"
+      },
       "home": {
         "offline": "The network is disconnected and no data is obtained",
         "panel": {
@@ -2536,7 +2577,7 @@
           "transactions": "Transactions",
           "approvals": "Approvals",
           "feedback": "Feedback",
-          "rabbyPoints": "Rabby Points",
+          "rabbyPoints": "Redbelly Wallet Points",
           "more": "More",
           "manageAddress": "Manage Address",
           "nft": "NFT",
@@ -2558,9 +2599,9 @@
         "comingSoon": "Coming soon",
         "soon": "Soon",
         "refreshTheWebPageToTakeEffect": "Refresh the web page to take effect",
-        "rabbyIsInUseAndMetamaskIsBanned": "Rabby is in use and Metamask is banned",
+        "rabbyIsInUseAndMetamaskIsBanned": "Redbelly Wallet is in use and Metamask is banned",
         "flip": "Flip",
-        "metamaskIsInUseAndRabbyIsBanned": "MetaMask is in use and Rabby is banned",
+        "metamaskIsInUseAndRabbyIsBanned": "MetaMask is in use and Redbelly Wallet is banned",
         "transactionNeedsToSign": "transaction needs to sign",
         "transactionsNeedToSign": "transactions need to sign",
         "view": "View",
@@ -2594,7 +2635,7 @@
         "metamaskTooltip": "You prefer to use MetaMask with this dapp. Update this settings anytime in Settings > MetaMask Preferred Dapps",
         "connected": "Connected",
         "notConnected": "Not connected",
-        "connectedDapp": "Rabby is not connected to the current Dapp.To connect, find and click the connect button on the Dapp’s webpage.",
+        "connectedDapp": "Redbelly Wallet is not connected to the current Dapp.To connect, find and click the connect button on the Dapp’s webpage.",
         "noDappFound": "No Dapp found",
         "disconnectAll": "Disconnect All",
         "disconnectRecentlyUsed": {
@@ -2611,17 +2652,17 @@
         "noRecentlyConnectedDapps": "No recently connected Dapps",
         "noConnectedDapps": "No connected Dapps",
         "dapps": "Dapps",
-        "metamaskModeTooltip": "Can’t connect Rabby on this Dapp? Try enabling <1>MetaMask Mode</1>",
-        "metamaskModeTooltipNew": "Rabby Wallet will connect when you select \"MetaMask\" on the Dapp. You can manage this in More > Connect Rabby by Disguising as MetaMask"
+        "metamaskModeTooltip": "Can’t connect Redbelly Wallet on this Dapp? Try enabling <1>MetaMask Mode</1>",
+        "metamaskModeTooltipNew": "Redbelly Wallet will connect when you select \"MetaMask\" on the Dapp. You can manage this in More > Connect Redbelly Wallet by Disguising as MetaMask"
       },
       "feedback": {
         "directMessage": {
           "content": "Direct Message",
-          "description": "Chat with Rabby Wallet Official on DeBank"
+          "description": "Chat with Redbelly Wallet Official on DeBank"
         },
         "proposal": {
           "content": "Proposal",
-          "description": "Submit a proposal for Rabby Wallet on DeBank"
+          "description": "Submit a proposal for Redbelly Wallet on DeBank"
         },
         "title": "Feedback"
       },
@@ -2647,10 +2688,10 @@
       },
       "rabbyBadge": {
         "imageLabel": "rabby badge",
-        "title": "Claim Rabby Badge for",
+        "title": "Claim Redbelly Wallet Badge for",
         "freeGasTitle": "Claim Free Gas Badge for",
         "enterClaimCode": "Enter claim code",
-        "swapTip": "You need to complete a swap with notable dex within Rabby Wallet first.",
+        "swapTip": "You need to complete a swap with notable dex within Redbelly Wallet first.",
         "freeGasTip": "Please sign a transaction using Free Gas. The 'Free Gas' button will appear automatically when your gas is not enough.",
         "learnMore": "Learn More",
         "goToSwap": "Go to Swap",
@@ -2659,8 +2700,8 @@
         "noCode": "You haven’t activated claim code for this address",
         "freeGasNoCode": "Please click the button below to visit DeBank and get the claim code using your current address first.",
         "learnMoreOnDebank": "Learn more on DeBank",
-        "rabbyValuedUserNo": "Rabby Valued User No.{{num}}",
-        "rabbyFreeGasUserNo": "Rabby Free Gas User No.{{num}}",
+        "rabbyValuedUserNo": "Redbelly Wallet Valued User No.{{num}}",
+        "rabbyFreeGasUserNo": "Redbelly Wallet Free Gas User No.{{num}}",
         "claimSuccess": "Claim Success",
         "viewOnDebank": "View on DeBank"
       },
@@ -2696,16 +2737,16 @@
         "clearPendingTip1": "This action removes the pending transaction from your interface, helping resolve issues caused by long pending durations on the network.",
         "clearPendingTip2": "It does not affect your account balances or require re-entering your seed phrase. All assets and account details remain secure.",
         "autoLockTime": "Auto lock time",
-        "claimRabbyBadge": "Claim Rabby Badge!",
+        "claimRabbyBadge": "Claim Redbelly Wallet Badge!",
         "cancel": "Cancel",
         "enableWhitelist": "Enable Whitelist",
         "disableWhitelist": "Disable Whitelist",
-        "enableWhitelistTip": "Once enabled, you can only send assets to the addresses in the whitelist using Rabby.",
+        "enableWhitelistTip": "Once enabled, you can only send assets to the addresses in the whitelist using Redbelly Wallet.",
         "disableWhitelistTip": "You can send assets to any address once disabled",
         "warning": "Warning",
         "clearWatchAddressContent": "Do you make sure to delete all Watch Mode address?",
         "updateVersion": {
-          "content": "A new update for Rabby Wallet is available. Click to check how to update manually.",
+          "content": "A new update for Redbelly Wallet is available. Click to check how to update manually.",
           "okText": "See Tutorial",
           "successTip": "You are using the latest version",
           "title": "Update Available"
@@ -2718,7 +2759,7 @@
           "connectedDapp": "Connected Dapps",
           "searchDapps": "Search Dapps",
           "gasTopUp": "Gas Top Up",
-          "rabbyPoints": "Rabby Points",
+          "rabbyPoints": "Redbelly Wallet Points",
           "ecosystem": "Ecosystem"
         },
         "settings": {
@@ -2733,7 +2774,7 @@
           "toggleThemeMode": "Theme Mode",
           "themeMode": "Theme Mode",
           "customTestnet": "Add Custom Network",
-          "metamaskMode": "Connect Rabby by Disguising as MetaMask",
+          "metamaskMode": "Connect Redbelly Wallet by Disguising as MetaMask",
           "enableDappAccount": "Switch Dapp Address Independently",
           "switchPasswordForNonWhitelistedTx": "Password for non-whitelisted transfers",
           "biometricUnlock": "Unlock with Biometrics",
@@ -2757,15 +2798,15 @@
           "button": "Enable"
         },
         "rateModalTriggerOnHome": {
-          "description": "How do you rate Rabby Wallet ?"
+          "description": "How do you rate Redbelly Wallet ?"
         },
         "rateModal": {
-          "thxDesc": "If you like Rabby, a quick rating on the Chrome Store would mean a lot.",
+          "thxDesc": "If you like Redbelly Wallet, a quick rating on the Chrome Store would mean a lot.",
           "thxTitle": "Thank you!",
           "rateOnChromeStoreButton": "Rate on Chrome Web Store",
           "feedbackDesc": "Have feedback? We’re listening.",
           "submitFeedbackButton": "Submit",
-          "feedbackPlaceholder": "Rabby values your feedback!",
+          "feedbackPlaceholder": "Redbelly Wallet values your feedback!",
           "feedbackSuccess": "Thank you for your feedback!"
         },
         "PwdForNonWhitelistedTx": {
@@ -2790,14 +2831,14 @@
         "noIssuer": "No issuer information available",
         "NoListedBy": "No listing information available",
         "NoSupportedExchanges": "No supported exchanges available",
-        "customizedHasAddedTips": "The token is not listed by Rabby. You've added it to the token list manually.",
+        "customizedHasAddedTips": "The token is not listed by Redbelly Wallet. You've added it to the token list manually.",
         "AddToMyTokenList": "Add to my token list",
         "maybeScamTips": "This is a low-quality token and may be a scam",
         "verifyScamTips": "This is a scam token",
         "blockedTip": "Blocked token will not be shown in token list",
         "blocked": "Blocked",
-        "selectedCustom": "The token is not listed by Rabby. You've added it to the token list manually.",
-        "notSelectedCustom": "Token is not listed by Rabby. It will be added to the token list if you switch on.",
+        "selectedCustom": "The token is not listed by Redbelly Wallet. You've added it to the token list manually.",
+        "notSelectedCustom": "Token is not listed by Redbelly Wallet. It will be added to the token list if you switch on.",
         "customized": "Customized",
         "scamTx": "Scam tx",
         "txFailed": "Failed",
@@ -2922,7 +2963,7 @@
         },
         "noTestnetAssets": "No Custom Network Assets",
         "addTokenEntryText": "Token",
-        "openInTab": "Open in Rabby Tab",
+        "openInTab": "Open in Redbelly Wallet Tab",
         "openInTabV2": "Open in Tab",
         "openProMode": "Open Pro Mode",
         "searchTokenPlaceholder": "Search Token",
@@ -2972,7 +3013,7 @@
       },
       "MetamaskModePopup": {
         "title": "MetaMask Mode",
-        "desc": "If you can’t connect Rabby on a Dapp, enable MetaMask Mode and connect by selecting the MetaMask option.",
+        "desc": "If you can’t connect Redbelly Wallet on a Dapp, enable MetaMask Mode and connect by selecting the MetaMask option.",
         "footerText": "Add more Dapps to MetaMask Mode in More > MetaMask Mode",
         "enableDesc": "Enable if Dapp only works with MetaMask",
         "toastSuccess": "Enabled. Refresh the page to reconnect."
@@ -2986,8 +3027,8 @@
         "button": "Got it"
       },
       "rabbyPointsPopup": {
-        "title": "Rabby Points",
-        "desc": "Check your points in Rabby Mobile.",
+        "title": "Redbelly Wallet Points",
+        "desc": "Check your points in Redbelly Wallet Mobile.",
         "downloadIntro": "Don’t have the app yet? Download now."
       },
       "noData": "No matched currency",
@@ -3030,7 +3071,7 @@
       "duplicateAddressesSkippedTitle": "Some addresses are already imported",
       "duplicateAddressesSkippedDesc_one": "{{count}} address was skipped because it already exists.",
       "duplicateAddressesSkippedDesc_other": "{{count}} addresses were skipped because they already exist.",
-      "openExtensionToGetStarted": "Open the Rabby extension to get started",
+      "openExtensionToGetStarted": "Open the Redbelly Wallet extension to get started",
       "newAddressCreated": "New Address Created",
       "addressImported": "Address Imported",
       "addressAdded": "Address Added",
@@ -3071,14 +3112,14 @@
           "answer": "A 12, 18, or 24-word phrase used to control your assets."
         },
         "isItSafeToImportItInRabby": {
-          "question": "Is it safe to import it in Rabby?",
+          "question": "Is it safe to import it in Redbelly Wallet?",
           "answer": "Yes, it will be stored locally on your browser and only accessible to you."
         },
         "importError": "[CreateMnemonics] unexpected step {{0}}",
         "importQuestion1": "If I lose or share my seed phrase, I’ll lose access to my assets permanently",
-        "importQuestion2": "My seed phrase is only stored on my device. Rabby can’t access it",
-        "importQuestion3": "If I uninstall Rabby without backing up my seed phrase, it cannot be recovered by Rabby",
-        "importQuestion4": "If I uninstall Rabby without backing up the seed phrase, Rabby cannot retrieve it for me.",
+        "importQuestion2": "My seed phrase is only stored on my device. Redbelly Wallet can’t access it",
+        "importQuestion3": "If I uninstall Redbelly Wallet without backing up my seed phrase, it cannot be recovered by Redbelly Wallet",
+        "importQuestion4": "If I uninstall Redbelly Wallet without backing up the seed phrase, Redbelly Wallet cannot retrieve it for me.",
         "riskTips": "Before you start, please read and keep the following security tips in mind.",
         "showSeedPhrase": "Show Seed Phrase",
         "backup": "Backup Seed Phrase",
@@ -3111,12 +3152,12 @@
       },
       "metamask": {
         "step1": " Export seed phrase or private key from MetaMask <br /> <1>Click to view tutorial <1/></1>",
-        "step2": "Import the seed phrase or private key in Rabby",
+        "step2": "Import the seed phrase or private key in Redbelly Wallet",
         "step3": "Import is completed and all your assets will <br /> appear automatically",
         "how": "How to import my MetaMask Account?",
         "step": "Step",
         "importSeedPhrase": "Import the seed phrase or private key",
-        "importSeedPhraseTips": "It will only be stored locally on the browser. Rabby will never have access to your private information.",
+        "importSeedPhraseTips": "It will only be stored locally on the browser. Redbelly Wallet will never have access to your private information.",
         "tips": "Tips:",
         "tipsDesc": "Your seed phrase/private key does not belong to MetaMask or any specific wallet; it only belongs to you."
       },
@@ -3132,7 +3173,7 @@
           "question": "Do you want to switch to this address?"
         },
         "isItSafeToImportItInRabby": {
-          "question": "Is it safe to import it in Rabby?",
+          "question": "Is it safe to import it in Redbelly Wallet?",
           "answer": "Yes, it will be stored locally on your browser and only accessible to you."
         },
         "isItPossibleToImportKeystore": {
@@ -3144,9 +3185,9 @@
       "importedSuccessfully": "Imported Successfully",
       "ledger": {
         "title": "Connect Ledger",
-        "cameraPermissionTitle": "Allow Rabby to access the camera",
-        "cameraPermission1": "Allow Rabby to access the camera in the browser pop-up",
-        "allowRabbyPermissionsTitle": "Allow Rabby permissions to:",
+        "cameraPermissionTitle": "Allow Redbelly Wallet to access the camera",
+        "cameraPermission1": "Allow Redbelly Wallet to access the camera in the browser pop-up",
+        "allowRabbyPermissionsTitle": "Allow Redbelly Wallet permissions to:",
         "ledgerPermission1": "Connect to an HID device",
         "ledgerPermissionTip": "Please click \"Allow\" below and authorize access to your Ledger in the following pop-up window.",
         "permissionsAuthorized": "Permissions Authorized",
@@ -3165,19 +3206,19 @@
       },
       "keystone": {
         "title": "Connect Keystone",
-        "allowRabbyPermissionsTitle": "Allow Rabby permissions to:",
+        "allowRabbyPermissionsTitle": "Allow Redbelly Wallet permissions to:",
         "keystonePermission1": "Connect to an USB device",
         "keystonePermissionTip": "Please click \"Allow\" below to authorize access to your Keystone in the following pop-up window, and ensure your Keystone 3 Pro is on the homepage.",
         "noDeviceFoundError": "Plug in a single Keystone",
         "deviceIsLockedError": "Enter password to unlock",
-        "deviceRejectedExportAddress": "Approve connection to Rabby",
+        "deviceRejectedExportAddress": "Approve connection to Redbelly Wallet",
         "deviceIsBusy": "Device is busy",
         "exportAddressJustAllowedOnHomePage": "Export address just allowed on home page",
         "unknowError": "Unknown error, please try again"
       },
       "onekey": {
         "onekeyPermission1": "Connect to an USB device",
-        "allowRabbyPermissionsTitle": "Allow Rabby permissions to:",
+        "allowRabbyPermissionsTitle": "Allow Redbelly Wallet permissions to:",
         "onekeyPermissionTip": "Please click \"Allow\" below to authorize access to your OneKey in the following pop-up window. If OneKey doesn't appear in the popup, please check if your device is properly connected to the computer.",
         "whyOneKey": "Why OneKey?",
         "buyOneKey": "Buy OneKey",
@@ -3225,15 +3266,15 @@
       },
       "hd": {
         "tooltip": {
-          "removed": "The address is removed from Rabby",
-          "added": "The address is added to Rabby",
+          "removed": "The address is removed from Redbelly Wallet",
+          "added": "The address is added to Redbelly Wallet",
           "connectError": "Connect has stopped. Please refresh the page to connect again.",
           "disconnected": "Unable to connect to Hardware wallet. Please try to re-connect."
         },
-        "nonAddr": "No addresses have been added for this seed phrase. You can delete this phrase in Rabby Extension > Manage Address.",
+        "nonAddr": "No addresses have been added for this seed phrase. You can delete this phrase in Redbelly Wallet Extension > Manage Address.",
         "waiting": "Waiting",
         "clickToGetInfo": "Click to get the information on-chain",
-        "addToRabby": "Add to Rabby",
+        "addToRabby": "Add to Redbelly Wallet",
         "basicInformation": "Basic information",
         "addresses": "Addresses",
         "loadingAddress": "Loading {{0}}/{{1}} addresses",
@@ -3345,7 +3386,7 @@
         "manageNgraveZero": "Manage NGRAVE ZERO",
         "done": "Done",
         "addressesIn": "Addresses in {{0}}",
-        "addressesInRabby": "Addresses in Rabby{{0}}",
+        "addressesInRabby": "Addresses in Redbelly Wallet{{0}}",
         "qrCode": {
           "switch": {
             "title": "Switch to a new {{0}} device",
@@ -3389,35 +3430,35 @@
         "placeholder": "Enter the Password to Unlock",
         "error": "incorrect password"
       },
-      "title": "Rabby Wallet",
-      "description": "Your go-to wallet for Ethereum and EVM",
+      "title": "Redbelly Wallet",
+      "description": "The wallet for Redbelly Network, with KYC-checked recipients",
       "btnForgotPassword": "Forgot Password?",
       "biometricFailed": "Biometric unlock failed"
     },
     "addToken": {
       "noTokenFound": "No token found",
-      "tokenSupported": "Token has been supported on Rabby",
+      "tokenSupported": "Token has been supported on Redbelly Wallet",
       "tokenCustomized": "Current token has already been added to customized",
       "tokenNotFound": "Token not found from this contract address",
-      "title": "Add custom token to Rabby",
+      "title": "Add custom token to Redbelly Wallet",
       "balance": "Balance",
       "tokenOnMultiChains": "Token address on multiple chains. Please choose one",
       "noTokenFoundOnThisChain": "No token found on this chain",
       "hasAdded": "You have been added this token."
     },
     "switchChain": {
-      "title": "Add Custom Network to Rabby",
-      "chainNotSupport": "The requested chain is not supported by Rabby yet",
+      "title": "Add Custom Network to Redbelly Wallet",
+      "chainNotSupport": "The requested chain is not supported by Redbelly Wallet yet",
       "testnetTip": "Please turn on \"Enable Testnets\" under \"More\" before connecting to testnets",
-      "chainNotSupportYet": "The requested chain is not supported by Rabby yet",
+      "chainNotSupportYet": "The requested chain is not supported by Redbelly Wallet yet",
       "chainId": "Chain ID:",
       "unknownChain": "Unknown chain",
       "requestsReceived": "1 request received",
       "requestsReceivedPlural": "{{count}} requests received",
-      "requestRabbyToSupport": "Request Rabby to Support",
-      "chainNotSupportAddChain": "The requested chain is not Integrated by Rabby yet You can add it as a Custom Testnet",
+      "requestRabbyToSupport": "Request Redbelly Wallet to Support",
+      "chainNotSupportAddChain": "The requested chain is not Integrated by Redbelly Wallet yet You can add it as a Custom Testnet",
       "addChain": "Add Testnet",
-      "desc": "The requested network is not Integrated by Rabby yet You can add it as a custom network manually"
+      "desc": "The requested network is not Integrated by Redbelly Wallet yet You can add it as a custom network manually"
     },
     "signText": {
       "title": "Sign Text",
@@ -3450,10 +3491,10 @@
       "listedBy": "Listed by",
       "sitePopularity": "Site popularity",
       "myMark": "My Mark",
-      "flagByRabby": "Flagged by Rabby",
+      "flagByRabby": "Flagged by Redbelly Wallet",
       "flagByMM": "Flagged by MetaMask",
       "flagByScamSniffer": "Flagged by ScamSniffer",
-      "verifiedByRabby": "Verified by Rabby",
+      "verifiedByRabby": "Verified by Redbelly Wallet",
       "foundForbiddenRisk": "Found forbidden risks. Connection is blocked.",
       "markAsTrustToast": "Mark as \"Trusted\"",
       "markAsBlockToast": "Mark as \"Blocked\"",
@@ -3497,7 +3538,7 @@
       "backup-seed-phrase": "Backup Seed Phrase",
       "delete-address": "Delete address",
       "delete-desc": "Before you delete, keep the following points in mind to understand how to protect your assets.",
-      "direct-delete-desc": "This address is a {{renderBrand}} address, Rabby does not store the private key or seed phrase for this address, you can just delete it",
+      "direct-delete-desc": "This address is a {{renderBrand}} address, Redbelly Wallet does not store the private key or seed phrase for this address, you can just delete it",
       "admins": "Admins",
       "tx-requires": "Any transaction requires <2>{{num}}</2> confirmations",
       "edit-memo-title": "Edit address note",
@@ -3518,7 +3559,7 @@
         "title": "Delete Address and Seed Phrase?",
         "title2": "Delete Address?",
         "sub-title": "This action is permanent. Please review the following to protect your assets:",
-        "check1": "I understand that deleting this address also removes its Private Key and Seed Phrase. Rabby cannot recover them for me.",
+        "check1": "I understand that deleting this address also removes its Private Key and Seed Phrase. Redbelly Wallet cannot recover them for me.",
         "check2": "I confirm that I have backed up my Private Key or Seed Phrase and I am ready to delete it.",
         "keepSeedPhrase": "This is the only address linked to this seed phrase. Would you like to keep the seed phrase?",
         "onlyDeleteAddr": "Only this address will be removed. Your seed phrase is unaffected, as your other addresses still use it.",
@@ -3529,7 +3570,7 @@
       "deletePrivateKey": {
         "title": "Delete Address and Private key?",
         "sub-title": "This action is permanent. Please review the following to protect your assets:",
-        "check1": "I understand that deleting this address also removes its Private Key. Rabby cannot recover them for me.",
+        "check1": "I understand that deleting this address also removes its Private Key. Redbelly Wallet cannot recover them for me.",
         "check2": "I confirm that I have backed up my Private Key or Seed Phrase and I am ready to delete it."
       },
       "notBackup": "Not Backup"
@@ -3546,7 +3587,7 @@
       "closed": "Closed",
       "empty": "No custom RPC URL",
       "title": "Modify RPC URL",
-      "desc": "Once modified, the custom RPC will replace Rabby's node. To continue using Rabby's node, delete the custom RPC.",
+      "desc": "Once modified, the custom RPC will replace Redbelly Wallet's node. To continue using Redbelly Wallet's node, delete the custom RPC.",
       "add": "Modify RPC URL",
       "EditRPCModal": {
         "invalidRPCUrl": "Invalid RPC URL",
@@ -3563,9 +3604,9 @@
     },
     "requestDebankTestnetGasToken": {
       "title": "Request DeBank Testnet Gas Token",
-      "mintedTip": "Rabby Badge holders can request once a day",
-      "notMintedTip": "Request available for Rabby Badge holders only",
-      "claimBadgeBtn": "Claim Rabby Badge",
+      "mintedTip": "Redbelly Wallet Badge holders can request once a day",
+      "notMintedTip": "Request available for Redbelly Wallet Badge holders only",
+      "claimBadgeBtn": "Claim Redbelly Wallet Badge",
       "time": "Per day",
       "requested": "You have requested today",
       "requestBtn": "Request"
@@ -3621,7 +3662,7 @@
       "clickToShowQr": "Click to show private key QR Code"
     },
     "ethSign": {
-      "alert": "Signing with 'eth_sign' can lead to asset loss. For your safety,             Rabby does not support this method."
+      "alert": "Signing with 'eth_sign' can lead to asset loss. For your safety,             Redbelly Wallet does not support this method."
     },
     "createPassword": {
       "title": "Set Password",
@@ -3636,7 +3677,7 @@
     "welcome": {
       "step1": {
         "title": "Access All Dapps",
-        "desc": "Rabby connects to all Dapps that MetaMask supports"
+        "desc": "Redbelly Wallet connects to all Dapps that MetaMask supports"
       },
       "step2": {
         "title": "Self-custodial",
@@ -3752,7 +3793,7 @@
       "searchButton": "Search"
     },
     "rabbyPoints": {
-      "title": "Rabby Points",
+      "title": "Redbelly Wallet Points",
       "out-of-x-current-total-points": "Out of {{total}} Total Distributed Points",
       "share-on": "Share on",
       "referral-code-copied": "Referral code copied",
@@ -3772,9 +3813,9 @@
         "claim": "Claim",
         "addressBalance": "Wallet balance",
         "MetaMaskSwap": "MetaMask Swap",
-        "rabbyUser": "Rabby Active User",
-        "rabbyValuedUserBadge": "Rabby Valued User Badge",
-        "rabbyDesktopGenesisNft": "Rabby Desktop Genesis NFT",
+        "rabbyUser": "Redbelly Wallet Active User",
+        "rabbyValuedUserBadge": "Redbelly Wallet Valued User Badge",
+        "rabbyDesktopGenesisNft": "Redbelly Wallet Desktop Genesis NFT",
         "walletBalance": "Wallet Balance",
         "activeStats": "Active Status",
         "referral-code": "Referral Code",
@@ -3803,12 +3844,12 @@
       },
       "code-set-successfully": "Referral code set successfully",
       "initialPointsClaimEnded": "Initial Points claim ended",
-      "firstRoundEnded": "🎉 The first round of Rabby Points has ended",
-      "secondRoundEnded": "🎉 The second round of Rabby Points has ended"
+      "firstRoundEnded": "🎉 The first round of Redbelly Wallet Points has ended",
+      "secondRoundEnded": "🎉 The second round of Redbelly Wallet Points has ended"
     },
     "customTestnet": {
       "title": "Custom Network",
-      "desc": "Rabby cannot verify the security of custom networks. Please add trusted networks only.",
+      "desc": "Redbelly Wallet cannot verify the security of custom networks. Please add trusted networks only.",
       "add": "Add Custom Network",
       "empty": "No Custom Network",
       "currency": "Currency",
@@ -3830,19 +3871,19 @@
         "empty": "No chains found",
         "tips": {
           "added": "You've already added this chain",
-          "supported": "Chain already integrated by Rabby Wallet"
+          "supported": "Chain already integrated by Redbelly Wallet"
         }
       },
       "signTx": {
         "title": "Transaction Data"
       },
       "ConfirmModifyRpcModal": {
-        "desc": "The chain is already integrated by Rabby. Do you need to modify its RPC URL?"
+        "desc": "The chain is already integrated by Redbelly Wallet. Do you need to modify its RPC URL?"
       }
     },
     "addChain": {
-      "title": "Add Custom Network to Rabby",
-      "desc": "Rabby cannot verify the security of custom networks. Please add trusted networks only."
+      "title": "Add Custom Network to Redbelly Wallet",
+      "desc": "Redbelly Wallet cannot verify the security of custom networks. Please add trusted networks only."
     },
     "sign": {
       "transactionSpeed": "Transaction Speed"
@@ -3982,7 +4023,7 @@
       "benefitCard": {
         "title": "Pay Gas Fees on All chains",
         "subtitle": "when you're out of gas",
-        "item1": "No Rabby Fee",
+        "item1": "No Redbelly Wallet Fee",
         "desc1": "No extra fees to pay gas",
         "item2": "Supports all networks",
         "desc2": "Automatic gas payments on 80+ networks",
@@ -4010,9 +4051,9 @@
         "title2": "How to use Gas Account",
         "desc2": "Add funds to your GasAccount and use it for any transaction. When signing, choose to pay gas with native tokens or GasAccount, switch anytime.",
         "title3": "Does GasAccount have extra fees",
-        "desc3": "Rabby Wallet charges no extra fees. You only pay the gas for your transaction and a small amount of gas for sending that gas from GasAccount to your address.",
+        "desc3": "Redbelly Wallet charges no extra fees. You only pay the gas for your transaction and a small amount of gas for sending that gas from GasAccount to your address.",
         "title4": "Is GasAccount safe",
-        "desc4": "GasAccount requires no contract approvals or permissions. You deposit to Rabby’s GasAccount address, and Rabby sends gas to your address when needed. Fully secure by design."
+        "desc4": "GasAccount requires no contract approvals or permissions. You deposit to Redbelly Wallet’s GasAccount address, and Redbelly Wallet sends gas to your address when needed. Fully secure by design."
       },
       "loginConfirmModal": {
         "title": "Select an address to log in",
@@ -4030,7 +4071,7 @@
       "depositPopup": {
         "title": "Deposit",
         "gasDepositTitle": "Gas Deposit",
-        "desc": "Make a deposit to Rabby's DeBank L2 Account with no extra fees—withdraw anytime.",
+        "desc": "Make a deposit to Redbelly Wallet's DeBank L2 Account with no extra fees—withdraw anytime.",
         "zeroInvalidAmount": "The amount cannot be zero",
         "invalidAmount": "Must be under 500",
         "minAmountRequired": "Minimum deposit amount is ${{value}}",
@@ -4101,8 +4142,8 @@
     },
     "newUserImport": {
       "guide": {
-        "title": "Welcome to Rabby Wallet",
-        "desc": "Your go-to wallet for Ethereum and EVM",
+        "title": "Welcome to Redbelly Wallet",
+        "desc": "The wallet for Redbelly Network, with KYC-checked recipients",
         "createNewAddress": "Create a new address",
         "importAddress": "I already have an address"
       },
@@ -4110,8 +4151,8 @@
         "title": "Before You Start",
         "desc": "Please read and keep the following security tips in mind",
         "tip1": "If I lose or share my seed phrase, I’ll lose access to my assets permanently",
-        "tip2": "My seed phrase is only stored on my device. Rabby can’t access it",
-        "tip3": "If I uninstall Rabby without backing up my seed phrase, it cannot be recovered by Rabby",
+        "tip2": "My seed phrase is only stored on my device. Redbelly Wallet can’t access it",
+        "tip3": "If I uninstall Redbelly Wallet without backing up my seed phrase, it cannot be recovered by Redbelly Wallet",
         "showSeedPhrase": "Show Seed Phrase"
       },
       "importList": {
@@ -4150,19 +4191,19 @@
         "start": "Get Started",
         "addMoreAddr": "Add more addresses from this Seed Phrase",
         "addMoreFrom": "Add more addresses from {{name}}",
-        "desc": "Rabby Wallet is Ready to Use!",
+        "desc": "Redbelly Wallet is Ready to Use!",
         "openWallet": "Open Wallet",
         "backupSeedPhraseNow": "Backup Seed phrase Now",
         "backupSeedPhrase": "Backup Seed Phrase"
       },
       "readyToUse": {
-        "title": "Your Rabby Wallet is Ready !",
-        "desc": "Find Rabby Wallet and Pin it",
-        "pin": "Pin Rabby Wallet",
+        "title": "Your Redbelly Wallet is Ready !",
+        "desc": "Find Redbelly Wallet and Pin it",
+        "pin": "Pin Redbelly Wallet",
         "extensionTip": "Click <1/> and then <3/>",
         "guides": {
           "step1": "Click the browser extension icon",
-          "step2": "Pin Rabby Wallet"
+          "step2": "Pin Redbelly Wallet"
         }
       },
       "importSeedPhrase": {
@@ -4242,18 +4283,18 @@
     },
     "metamaskModeDapps": {
       "title": "Manage Allowed Dapps",
-      "desc": "MetaMask Mode enabled for the following Dapps. You can connect Rabby by selecting the MetaMask option."
+      "desc": "MetaMask Mode enabled for the following Dapps. You can connect Redbelly Wallet by selecting the MetaMask option."
     },
     "forgotPassword": {
       "home": {
         "title": "Forgot Password",
-        "description": "Rabby Wallet doesn't store your password and can't help you retrieve it. Reset your wallet to set up a new one.",
+        "description": "Redbelly Wallet doesn't store your password and can't help you retrieve it. Reset your wallet to set up a new one.",
         "button": "Begin Reset Process",
-        "descriptionNoData": "Rabby Wallet doesn't store your password and can't help you retrieve it. Set a new password if you forgot",
+        "descriptionNoData": "Redbelly Wallet doesn't store your password and can't help you retrieve it. Set a new password if you forgot",
         "buttonNoData": "Set Password"
       },
       "reset": {
-        "title": "Reset Rabby Wallet",
+        "title": "Reset Redbelly Wallet",
         "button": "Confirm Reset",
         "alert": {
           "title": "Data will be deleted and unrecoverable:",
@@ -4271,7 +4312,7 @@
         "confirm": "Type <1>RESET</1> in the box to confirm and proceed"
       },
       "tip": {
-        "title": "Rabby Wallet Reset Completed",
+        "title": "Redbelly Wallet Reset Completed",
         "description": "Create a new password to continue",
         "button": "Set Password",
         "descriptionNoData": "Add your address to get started",
@@ -4279,7 +4320,7 @@
       },
       "success": {
         "title": "Password Successfully Set",
-        "description": "You're all set to use Rabby Wallet",
+        "description": "You're all set to use Redbelly Wallet",
         "button": "Done"
       }
     },
@@ -4287,10 +4328,10 @@
       "alert": "EIP-7702 is not supported yet"
     },
     "metamaskModeDappsGuide": {
-      "title": "Connect Rabby by Disguising as MetaMask",
-      "alert": "Can't connect to a Dapp because it doesn't show Rabby Wallet as an option?",
+      "title": "Connect Redbelly Wallet by Disguising as MetaMask",
+      "alert": "Can't connect to a Dapp because it doesn't show Redbelly Wallet as an option?",
       "step1": "Step 1",
-      "step1Desc": "Allow Rabby to disguise as MetaMask on the current Dapp",
+      "step1Desc": "Allow Redbelly Wallet to disguise as MetaMask on the current Dapp",
       "step2": "Step 2",
       "step2Desc": "Refresh and connect via MetaMask",
       "manage": "Manage Allowed Dapps",
@@ -4301,10 +4342,10 @@
       }
     },
     "syncToMobile": {
-      "title": "Sync Wallet Address from Rabby Extension to Mobile",
+      "title": "Sync Wallet Address from Redbelly Wallet Extension to Mobile",
       "description": "Your address data stays fully offline, encrypted, and securely           transferred via a QR code.",
-      "steps1": "1. Download Rabby Mobile",
-      "steps2": "2. Scan with Rabby Mobile",
+      "steps1": "1. Download Redbelly Wallet Mobile",
+      "steps2": "2. Scan with Redbelly Wallet Mobile",
       "steps2Description": " *Your QR code contains sensitive data. Keep it private and never             share it with anyone.",
       "downloadGooglePlay": "Google Play",
       "downloadAppleStore": "App Store",
@@ -4471,7 +4512,7 @@
           "platformFeeTips": "This fee is OpenSea's service charge",
           "creatorFeeTips1": "Creator earnings will be paid by the seller. Creator earnings are enforced",
           "creatorFeeTips": "Creator earnings will be paid by the seller.",
-          "rabbyFee": "Rabby fee (0%)",
+          "rabbyFee": "Redbelly Wallet fee (0%)",
           "totalEst": "Total est. proceeds",
           "listOn": "List on OpenSea",
           "approveAndList": "Approve and List"
@@ -4488,7 +4529,7 @@
           "platformFeeTips": "This fee is OpenSea's service charge",
           "creatorFeeTips1": "Creator earnings will be paid by the seller. Creator earnings are enforced",
           "creatorFeeTips": "Creator earnings will be paid by the seller.",
-          "rabbyFee": "Rabby fee (0%)",
+          "rabbyFee": "Redbelly Wallet fee (0%)",
           "totalEst": "Total est. proceeds",
           "acceptOffer": "Accept Offer"
         }
@@ -4790,7 +4831,7 @@
     },
     "EcologyNoticeModal": {
       "title": "Notice",
-      "desc": "The following services will be provided directly by third party Ecosystem Partner. Rabby Wallet does not assume responsibility for the security of these services.",
+      "desc": "The following services will be provided directly by third party Ecosystem Partner. Redbelly Wallet does not assume responsibility for the security of these services.",
       "notRemind": "Don't remind me again"
     },
     "ReserveGasPopup": {
@@ -4801,8 +4842,8 @@
       "doNotReserve": "Don't reserve Gas"
     },
     "OpenExternalWebsiteModal": {
-      "title": "You're Leaving Rabby Wallet",
-      "content": "You're about to visit an external website. Rabby Wallet is not responsible for the content or security of this site.",
+      "title": "You're Leaving Redbelly Wallet",
+      "content": "You're about to visit an external website. Redbelly Wallet is not responsible for the content or security of this site.",
       "button": "Continue"
     },
     "AccountSelectorModal": {
@@ -4814,7 +4855,7 @@
     },
     "ChainItem": {
       "appChain": "On {{chain}} Account",
-      "hyperliquidCode": "Save on Hyperliquid fees with Rabby’s referral code."
+      "hyperliquidCode": "Save on Hyperliquid fees with Redbelly Wallet’s referral code."
     },
     "RiskTip": {
       "title": "Risk Detected"
@@ -4859,14 +4900,14 @@
       "placeholderRequired": "Describe the issue (required)"
     },
     "feedbackPopup": {
-      "title": "Response from Rabby Support",
+      "title": "Response from Redbelly Wallet Support",
       "issueReported": "Here’s the issue you reported:",
-      "issueReplied": "Rabby Support has replied:"
+      "issueReplied": "Redbelly Wallet Support has replied:"
     }
   },
   "global": {
-    "appName": "Rabby Wallet",
-    "appDescription": "Your go-to wallet for Ethereum and EVM",
+    "appName": "Redbelly Wallet",
+    "appDescription": "The wallet for Redbelly Network, with KYC-checked recipients",
     "copied": "Copied",
     "confirm": "Confirm",
     "next": "Next",

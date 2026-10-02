@@ -6,6 +6,7 @@ import {
   ContextActionData,
   ContractAddress,
 } from '@rabby-wallet/rabby-security-engine/dist/rules';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import Engine from '@rabby-wallet/rabby-security-engine';
 import { createPersistStore, isSameAddress } from 'background/utils';
 import openapiService from './openapi';
@@ -20,6 +21,9 @@ interface UserRuleConfig {
   enable: boolean;
   customThreshold: Threshold;
 }
+
+/** Connect rules whose inputs come from Rabby's servers. */
+const REMOTE_ORIGIN_RULES = new Set(['1001', '1002', '1003', '1070']);
 
 function mergeRules(rules: RuleConfig[], userConfig: UserRuleConfig[]) {
   // Merge default rules with user local config
@@ -77,7 +81,10 @@ class SecurityEngineService {
       },
     });
     // this.rules = mergeRules(defaultRules, storage.rules);
-    this.rules = defaultRules;
+    // Redbelly-only: these rules send the site's origin to Rabby's API.
+    this.rules = REDBELLY_ONLY
+      ? defaultRules.filter((rule) => !REMOTE_ORIGIN_RULES.has(rule.id))
+      : defaultRules;
     this.store = storage || this.store;
     this.store.rules = this.rules;
     if (!this.store.userData.contractBlacklist) {

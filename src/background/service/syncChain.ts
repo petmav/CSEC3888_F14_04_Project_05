@@ -8,6 +8,7 @@ import { SupportedChain } from './openapi';
 import { openapiService } from '.';
 import { createPersistStore } from '../utils';
 import dayjs from 'dayjs';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 interface SyncChainServiceStore {
   updatedAt: number;
@@ -31,6 +32,12 @@ class SyncChainService {
   };
 
   syncMainnetChainList = async (options?: { force?: boolean }) => {
+    // Redbelly-only: the DeBank chain list feeds pickers that are hidden and
+    // a provider that refuses those chains. The bundled list is enough for
+    // Rabby's internal lookups.
+    if (REDBELLY_ONLY) {
+      return;
+    }
     const { force = false } = options || {};
     if (
       dayjs().isBefore(dayjs(this.store.updatedAt).add(55, 'minute')) &&

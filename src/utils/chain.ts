@@ -4,8 +4,8 @@ import {
   TestnetChain,
 } from '@/background/service/customTestnet';
 import defaultSuppordChain from '@/constant/default-support-chains.json';
-import { withRedbellyChains } from '@/constant/redbelly-chains';
 import eventBus from '@/eventBus';
+import { isRedbellyChainId } from '@/constant/redbelly';
 import { Chain } from '@debank/common';
 import {
   ChainWithBalance,
@@ -30,8 +30,18 @@ getMainnetListFromLocal().then((list) => {
   }
 });
 
+/**
+ * Redbelly runs only as a built-in custom network (see
+ * `constant/redbelly-chains.ts`). An integrated-list entry for the same chain
+ * id would win in `findChain` and send it down DeBank's path, where it cannot
+ * sign. Earlier builds of this fork persisted exactly such entries, and
+ * DeBank could list Redbelly one day, so they are dropped on every write.
+ */
+const withoutRedbelly = (list: Chain[]) =>
+  (list || []).filter((item) => !isRedbellyChainId(item.id));
+
 const store = {
-  mainnetList: withRedbellyChains(
+  mainnetList: withoutRedbelly(
     defaultSuppordChain
       .filter((item) => !item.is_disabled)
       .map((item) => {
@@ -41,18 +51,9 @@ const store = {
   testnetList: [] as TestnetChain[],
 };
 
-/**
- * Single choke point for mainnet chain list writes.
- *
- * Redbelly is re-applied on every write rather than only at startup. The
- * mainnet list is replaced wholesale once an hour from
- * `static.debank.com/supported_chains.json` (see `syncChain.ts`) and again
- * from `browser.storage.local` on boot; without this, Redbelly would silently
- * disappear within the hour. Enforcing it here means no caller can forget.
- */
 export const updateChainStore = (params: Partial<typeof store>) => {
   const next = params.mainnetList
-    ? { ...params, mainnetList: withRedbellyChains(params.mainnetList) }
+    ? { ...params, mainnetList: withoutRedbelly(params.mainnetList) }
     : params;
   Object.assign(store, next);
   eventBus.emit(EVENTS.broadcastToUI, {

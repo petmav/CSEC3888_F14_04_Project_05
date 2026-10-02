@@ -36,12 +36,12 @@ const Container = styled.div`
   &.site-group:hover {
     .site-icon-container.is-support {
       cursor: pointer;
-      border: 1px solid var(--r-blue-default, #7084ff);
-      background: var(--r-blue-light1, #eef1ff);
+      border: 1px solid var(--r-blue-default, #ff4646);
+      background: var(--r-blue-light1, #fff0f0);
     }
     .global-account-selector:not(.is-disabled) {
-      border: 1px solid var(--r-blue-default, #7084ff);
-      background: var(--r-blue-light1, #eef1ff);
+      border: 1px solid var(--r-blue-default, #ff4646);
+      background: var(--r-blue-light1, #fff0f0);
     }
     .site-status-icon {
       color: var(--r-red-default, #e34935) !important;
@@ -88,8 +88,8 @@ const Container = styled.div`
 
       &.is-support:hover {
         cursor: pointer;
-        border: 1px solid var(--r-blue-default, #7084ff);
-        background: var(--r-blue-light1, #eef1ff);
+        border: 1px solid var(--r-blue-default, #ff4646);
+        background: var(--r-blue-light1, #fff0f0);
       }
     }
 
@@ -145,7 +145,7 @@ const Container = styled.div`
       pointer-events: none;
     }
     &:hover {
-      background-color: rgba(134, 151, 255, 0.2);
+      background-color: rgba(255, 115, 115, 0.2);
     }
   }
 `;

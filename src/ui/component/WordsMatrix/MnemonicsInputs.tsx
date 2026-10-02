@@ -75,7 +75,7 @@ const MatrixWrapper = styled.div.withConfig<{
         font-size: 22px;
         color: var(--r-neutral-title-1, #192945);
         &:hover {
-          border-color: var(--r-blue-default, #7084ff);
+          border-color: var(--r-blue-default, #ff4646);
         }
         &:focus,
         &.ant-input-focused {
@@ -85,7 +85,7 @@ const MatrixWrapper = styled.div.withConfig<{
 
       &:not(.invalid) {
         .mnemonics-input:hover {
-          border-color: var(--r-blue-default, #7084ff);
+          border-color: var(--r-blue-default, #ff4646);
         }
       }
 
@@ -134,7 +134,7 @@ const MatrixWrapper = styled.div.withConfig<{
 
         &:focus,
         &.ant-input-focused {
-          border-color: var(--r-blue-default, #4c65ff);
+          border-color: var(--r-blue-default, #ff4646);
           background: var(--r-neutral-card-1, #fff);
           box-shadow: none;
         }
@@ -153,7 +153,7 @@ const MatrixWrapper = styled.div.withConfig<{
 
     .matrix-word-item.compact-focused {
       ${styid(NumberFlag)} {
-        color: var(--r-blue-default, #4c65ff);
+        color: var(--r-blue-default, #ff4646);
       }
     }
 
@@ -248,7 +248,7 @@ const MatrixWrapper = styled.div.withConfig<{
 
     &:focus,
     &.ant-input-focused {
-      border-color: var(--r-blue-default, #7084ff);
+      border-color: var(--r-blue-default, #ff4646);
       background-color: var(--r-neutral-bg-1, #fff);
       box-shadow: 0px 4px 8px 0px rgba(0, 0, 0, 0.24);
     }
@@ -600,7 +600,7 @@ function MnemonicsInputs({
                         My seed phrase has
                         <b
                           style={{
-                            color: 'var(--r-blue-default, #7084ff)',
+                            color: 'var(--r-blue-default, #ff4646)',
                           }}
                         >
                           {{ count } as any}
@@ -635,7 +635,7 @@ function MnemonicsInputs({
                             My seed phrase has
                             <b
                               style={{
-                                color: 'var(--r-blue-default, #7084ff)',
+                                color: 'var(--r-blue-default, #ff4646)',
                               }}
                             >
                               {{ count } as any}
@@ -670,7 +670,7 @@ function MnemonicsInputs({
                               My seed phrase is
                               <b
                                 style={{
-                                  color: 'var(--r-blue-default, #7084ff)',
+                                  color: 'var(--r-blue-default, #ff4646)',
                                 }}
                               ></b>
                               with password
@@ -684,7 +684,7 @@ function MnemonicsInputs({
                               My seed phrase is
                               <b
                                 style={{
-                                  color: 'var(--r-blue-default, #7084ff)',
+                                  color: 'var(--r-blue-default, #ff4646)',
                                 }}
                               ></b>
                             </Trans>
@@ -737,7 +737,7 @@ function MnemonicsInputs({
                   I have a
                   <b
                     style={{
-                      color: 'var(--r-blue-default, #7084ff)',
+                      color: 'var(--r-blue-default, #ff4646)',
                     }}
                   >
                     {{ mnemonicsCount } as any}
@@ -757,7 +757,7 @@ function MnemonicsInputs({
                   My seed phrase is
                   <b
                     style={{
-                      color: 'var(--r-blue-default, #7084ff)',
+                      color: 'var(--r-blue-default, #ff4646)',
                     }}
                   />
                 </Trans>

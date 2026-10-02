@@ -9,6 +9,7 @@ import { http } from '../utils/http';
 import openapiService, { DefaultRPCRes } from './openapi';
 import { CUSTOM_RPC_ENABLED, INTERNAL_REQUEST_ORIGIN } from '@/constant';
 import { z } from 'zod';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 export interface RPCItem {
   url: string;
@@ -185,6 +186,11 @@ class RPCService {
   };
 
   syncDefaultRPC = async () => {
+    // Redbelly-only: Redbelly's endpoints are built in; the list is DeBank's
+    // RPCs for its own chains.
+    if (REDBELLY_ONLY) {
+      return;
+    }
     try {
       // TODO: remove  after test
       const data = process.env.DEBUG

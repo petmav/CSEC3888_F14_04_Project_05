@@ -21,19 +21,19 @@ export const GasCardBody = styled.div<{
             cursor: pointer;
 
             &:hover {
-              border: 1px solid var(--r-blue-default, #7084ff);
+              border: 1px solid var(--r-blue-default, #ff4646);
             }
 
             &.active {
-              background: var(--r-blue-light-1, #eef1ff);
-              border: 1px solid var(--r-blue-default, #7084ff);
+              background: var(--r-blue-light-1, #fff0f0);
+              border: 1px solid var(--r-blue-default, #ff4646);
               box-shadow: none;
             }
           }
 
           .cardTitle {
             &.active {
-              color: var(--r-blue-default, #7084ff) !important;
+              color: var(--r-blue-default, #ff4646) !important;
             }
           }
         `}
@@ -95,7 +95,7 @@ export const GasCardBody = styled.div<{
       transition: none;
 
       &.active {
-        color: var(--r-blue-default, #7084ff) !important;
+        color: var(--r-blue-default, #ff4646) !important;
       }
     }
 

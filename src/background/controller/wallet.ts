@@ -1,3 +1,4 @@
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import {
   stripHexPrefix,
   isValidPrivate,
@@ -2406,10 +2407,17 @@ export class WalletController extends BaseController {
       ) {
         core = true;
       }
-      const data = await openapiService.getTotalBalance(address, core);
+      // Redbelly-only: the account's worth on Redbelly, not DeBank's total
+      // across chains this wallet cannot use.
+      const data = REDBELLY_ONLY
+        ? await redbellyService.getTotalBalance(address)
+        : await openapiService.getTotalBalance(address, core);
       let appChainTotalNetWorth = 0;
       const appChainIds: string[] = [];
       try {
+        if (REDBELLY_ONLY) {
+          throw new Error('No app chains on Redbelly');
+        }
         const { apps } = await openapiService.getAppChainList(address);
         apps?.forEach((app) => {
           app?.portfolio_item_list?.forEach((item) => {
@@ -2869,7 +2877,11 @@ export class WalletController extends BaseController {
       accounts.push(currentGasAccountInVisibleAccounts);
     }
 
-    return discoverGasAccountRuntimeState(accounts, options);
+    // Redbelly-only: Rabby's gas account does not serve Redbelly.
+    return discoverGasAccountRuntimeState(
+      REDBELLY_ONLY ? [] : accounts,
+      options
+    );
   };
   setGasAccountBalanceState = (accountId?: string, hasBalance?: boolean) => {
     gasAccountService.setCurrentBalanceState(accountId, hasBalance);
@@ -6704,6 +6716,9 @@ export class WalletController extends BaseController {
   getRedbellyBalance = redbellyService.getBalance;
   getRedbellyGasPrice = redbellyService.getGasPrice;
   getRedbellyAccountSummaries = redbellyService.getAccountSummaries;
+  getRedbellyRbntUsdPrice = redbellyService.getRbntUsdPrice;
+  getRedbellyStakingPositions = redbellyService.getStakingPositions;
+  getRedbellyActivity = redbellyService.getActivity;
   clearRedbellyCaches = redbellyService.clearCaches;
 
   hasPrivateKeyInWallet = async (address: string) => {

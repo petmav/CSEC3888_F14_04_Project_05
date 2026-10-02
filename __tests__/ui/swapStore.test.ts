@@ -1,3 +1,11 @@
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import { SwapServiceStore } from '@/background/service/swap';
 import { DEX } from '@/constant';
 import { useSwapStore } from '@/ui/state/swap';

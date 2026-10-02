@@ -76,9 +76,7 @@ describe('permission store', () => {
       connectedSite.origin
     );
     expect(wallet.favoriteWebsite).toHaveBeenCalledWith(connectedSite.origin);
-    expect(wallet.unFavoriteWebsite).toHaveBeenCalledWith(
-      connectedSite.origin
-    );
+    expect(wallet.unFavoriteWebsite).toHaveBeenCalledWith(connectedSite.origin);
     expect(wallet.topConnectedSite).toHaveBeenCalledWith(connectedSite.origin);
     expect(wallet.unpinConnectedSite).toHaveBeenCalledWith(
       connectedSite.origin
@@ -100,9 +98,7 @@ describe('permission store', () => {
     ]);
     const reordered = [pinnedSite, connectedSite];
 
-    const update = usePermissionStore
-      .getState()
-      .reorderWebsites(reordered);
+    const update = usePermissionStore.getState().reorderWebsites(reordered);
 
     expect(usePermissionStore.getState().websites).toEqual(reordered);
     expect(wallet.setRecentConnectedSites).toHaveBeenCalledWith(reordered);

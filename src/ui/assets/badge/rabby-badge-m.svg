@@ -69,7 +69,7 @@
         </filter>
         <linearGradient id="paint0_linear_65793_43600" x1="31.6436" y1="17.768" x2="91.3411"
             y2="115.523" gradientUnits="userSpaceOnUse">
-            <stop stop-color="#8697FF" />
+            <stop stop-color="#FF7373" />
             <stop offset="1" stop-color="#495DCE" />
         </linearGradient>
         <linearGradient id="paint1_linear_65793_43600" x1="37.059" y1="29.2947" x2="87.3219"

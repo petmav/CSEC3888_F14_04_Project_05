@@ -1,4 +1,5 @@
 import { getUpdateContent } from 'changeLogs/index';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { create } from 'zustand';
 
 import { wallet } from '@/ui/wallet';
@@ -36,6 +37,12 @@ export const useAppVersionStore = create<AppVersionStore>()((set) => ({
     const versionMd = `${version.replace(/\./g, '')}.md`;
     const path = locale !== 'en' ? `${locale}/${versionMd}` : versionMd;
 
+    // Redbelly-only: the bundled changelogs are Rabby's release notes.
+    // (Rabby also ships none for 0.94.8, hence "Cannot find module".)
+    if (REDBELLY_ONLY) {
+      set({ isNewUser, version, updateContent: '' });
+      return;
+    }
     try {
       // https://webpack.js.org/api/module-methods/#magic-comments
       const data = await import(

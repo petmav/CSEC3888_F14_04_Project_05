@@ -1,3 +1,4 @@
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { GasAccountBridgeSupportTokenList } from '@rabby-wallet/rabby-api/dist/types';
 
 export const EMPTY_GAS_ACCOUNT_BRIDGE_SUPPORT_TOKEN_LIST: GasAccountBridgeSupportTokenList = {
@@ -49,6 +50,10 @@ export const ensureGasAccountBridgeSupportTokenList = async ({
   wallet: GasAccountBridgeSupportTokenWallet;
   force?: boolean;
 }) => {
+  // Redbelly-only: Rabby's gas account does not serve Redbelly.
+  if (REDBELLY_ONLY) {
+    return EMPTY_GAS_ACCOUNT_BRIDGE_SUPPORT_TOKEN_LIST;
+  }
   if (
     !force &&
     bridgeSupportTokenListCache.status === 'success' &&

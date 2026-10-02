@@ -31,7 +31,7 @@ const Warper = styled.div`
 
     &:focus,
     &:hover {
-      border-color: var(--r-blue-default, #7084ff);
+      border-color: var(--r-blue-default, #ff4646);
     }
   }
   .ant-input[disabled] {

@@ -95,7 +95,7 @@ const Container = styled.div`
     50% {
       width: 8px;
       height: 8px;
-      background: #4c65ff;
+      background: #ff4646;
       transform: translateX(0);
     }
 

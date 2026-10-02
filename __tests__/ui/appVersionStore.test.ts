@@ -1,3 +1,11 @@
+// These tests cover Rabby's own behaviour, which the Redbelly-only build
+// switches off (see REDBELLY_ONLY in src/constant/redbelly.ts). Run them with
+// the flag off so that code path stays tested for when it is turned back on.
+jest.mock('@/constant/redbelly', () => ({
+  ...jest.requireActual('@/constant/redbelly'),
+  REDBELLY_ONLY: false,
+}));
+
 import { getUpdateContent } from 'changeLogs/index';
 
 import { useAppVersionStore } from '@/ui/state/appVersion';
@@ -24,9 +32,13 @@ jest.mock('@/ui/wallet', () => ({
   },
 }));
 
-jest.mock('changeLogs/index', () => ({
-  getUpdateContent: jest.fn(),
-}), { virtual: true });
+jest.mock(
+  'changeLogs/index',
+  () => ({
+    getUpdateContent: jest.fn(),
+  }),
+  { virtual: true }
+);
 
 const mockedGetUpdateContent = getUpdateContent as jest.Mock;
 const mockedGetIsFirstOpen = wallet.getIsFirstOpen as jest.Mock;

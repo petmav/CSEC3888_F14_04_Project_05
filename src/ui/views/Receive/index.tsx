@@ -1,4 +1,5 @@
 import { CHAINS_ENUM } from '@/types/chain';
+import { isRedbellyChainId, REDBELLY_ONLY } from '@/constant/redbelly';
 import { ReactComponent as RcIconArrowRightCC } from '@/ui/assets/receive/right-cc.svg';
 import { Modal } from '@/ui/component';
 import ChainSelectorModal from '@/ui/component/ChainSelector/Modal';
@@ -8,6 +9,8 @@ import { copyAddress } from '@/ui/utils/clipboard';
 import { filterRbiSource, useRbiSource } from '@/ui/utils/ga-event';
 import { OfflineChainNotify } from '@/ui/views/Dashboard/components/OfflineChainNotify';
 import { findChain, findChainByEnum, getChainList } from '@/utils/chain';
+import type { Chain } from '@debank/common';
+import { useRabbySelector } from '@/ui/store';
 import { matomoRequestEvent } from '@/utils/matomo-request';
 import { getKRCategoryByType } from '@/utils/transaction';
 import { useRequest } from 'ahooks';
@@ -120,12 +123,17 @@ const Receive = () => {
     (account.type !== KEYRING_CLASS.GNOSIS ||
       (!safeSupportChainsLoading && safeSupportChains !== undefined));
 
+  const testnetList = useRabbySelector((state) => state.chains.testnetList);
   const displayChains = useMemo(() => {
     if (!isSafeSupportChainsReady) {
       return [];
     }
 
-    let list = getChainList('mainnet');
+    // Redbelly-only: the address receives on the two Redbelly networks and
+    // nowhere this wallet can show.
+    let list: Chain[] = REDBELLY_ONLY
+      ? testnetList.filter((item) => isRedbellyChainId(item.id))
+      : getChainList('mainnet');
     if (safeSupportChains) {
       list = list.filter((item) => safeSupportChains.includes(item.enum));
     }
@@ -142,7 +150,7 @@ const Receive = () => {
       return idx === -1 ? pinedList.length + 1 : idx;
     });
     return list;
-  }, [isSafeSupportChainsReady, safeSupportChains]);
+  }, [isSafeSupportChainsReady, safeSupportChains, testnetList]);
 
   const shownChains = useMemo(() => {
     return displayChains.slice(0, 5);
@@ -262,14 +270,18 @@ const Receive = () => {
                     <div className="account-name" title={account.name}>
                       {account.name}
                     </div>
-                    <div
-                      className="account-balance truncate"
-                      title={splitNumberByStep(
-                        (account.balance || 0).toFixed(2)
-                      )}
-                    >
-                      ${splitNumberByStep((account.balance || 0).toFixed(2))}
-                    </div>
+                    {/* A DeBank total across other chains; meaningless in a
+                        Redbelly-only wallet. */}
+                    {REDBELLY_ONLY ? null : (
+                      <div
+                        className="account-balance truncate"
+                        title={splitNumberByStep(
+                          (account.balance || 0).toFixed(2)
+                        )}
+                      >
+                        ${splitNumberByStep((account.balance || 0).toFixed(2))}
+                      </div>
+                    )}
                   </div>
                   {account.type === KEYRING_CLASS.WATCH && (
                     <div className="account-type">

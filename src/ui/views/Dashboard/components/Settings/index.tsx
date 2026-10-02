@@ -1,5 +1,6 @@
 /* eslint "react-hooks/exhaustive-deps": ["error"] */
 /* eslint-enable react-hooks/exhaustive-deps */
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { matomoRequestEvent } from '@/utils/matomo-request';
 import { Button, DrawerProps, Form, Input, message, Modal, Switch } from 'antd';
 import clsx from 'clsx';
@@ -400,8 +401,8 @@ const ResetAccountModal = ({
                     <path
                       d="M7.97578 13.7748C11.179 13.7748 13.7758 11.1781 13.7758 7.9748C13.7758 4.77155 11.179 2.1748 7.97578 2.1748C4.77253 2.1748 2.17578 4.77155 2.17578 7.9748C2.17578 11.1781 4.77253 13.7748 7.97578 13.7748Z"
                       stroke="var(--r-neutral-body)"
-                      stroke-width="0.90625"
-                      stroke-miterlimit="10"
+                      strokeWidth="0.90625"
+                      strokeMiterlimit="10"
                     />
                   </svg>
                 )
@@ -807,6 +808,10 @@ const SettingsInner = ({
   };
 
   const { value: hasNewVersion = false } = useAsync(async () => {
+    // Redbelly-only: this is Rabby's latest version, not this wallet's.
+    if (REDBELLY_ONLY) {
+      return false;
+    }
     const data = await wallet.openapi.getLatestVersion();
 
     return semver(process.env.release || '0.0.0', data.version_tag) === -1;
@@ -1644,6 +1649,33 @@ const SettingsInner = ({
 
   const [isShowEcology, setIsShowEcologyModal] = React.useState(false);
 
+  /**
+   * Redbelly-only: entries for Rabby's own services and for chains the
+   * wallet does not serve. Matched by icon because items carry no key.
+   * Analytics is listed because it is now always off (see
+   * utils/user-data-tracking.ts), so the switch would mislead.
+   */
+  const REDBELLY_HIDDEN_ITEMS = new Set<unknown>([
+    RcIconEcosystemCC,
+    RcIconRabbyMobileCC,
+    RcIconSettingsSearchDapps,
+    RcIconPerps,
+    RcIconDataAnalysisCC,
+    RcIconCustomTestnet,
+    RcIconCustomRPC,
+    RcIconFeedback,
+    RcIconSettingsAboutSupporetedChains,
+    RcIconSettingsAboutFollowUs,
+  ]);
+  const visibleGroups = Object.values(renderData)
+    .map((group) => ({
+      ...group,
+      items: (group.items as SettingItem[]).filter(
+        (item) => !REDBELLY_ONLY || !REDBELLY_HIDDEN_ITEMS.has(item.leftIcon)
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
+
   return (
     <div className="popup-settings">
       <div
@@ -1654,9 +1686,11 @@ const SettingsInner = ({
         <div className={clsx('content')}>
           {/* <ClaimRabbyBadge onClick={onOpenBadgeModal} /> */}
 
-          <RateModalTriggerOnSettings className="mb-[16px]" />
+          {REDBELLY_ONLY ? null : (
+            <RateModalTriggerOnSettings className="mb-[16px]" />
+          )}
 
-          {Object.values(renderData).map((group, idxl1) => {
+          {visibleGroups.map((group, idxl1) => {
             return (
               <div key={`g-${idxl1}`} className="setting-block">
                 <div className="setting-title">{group.label}</div>

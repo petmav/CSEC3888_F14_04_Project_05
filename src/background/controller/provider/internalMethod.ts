@@ -1,5 +1,5 @@
 import { setPopupIcon } from './../../utils/index';
-import { CHAINS_ENUM, CHAINS } from 'consts';
+import { CHAINS } from 'consts';
 import {
   permissionService,
   keyringService,
@@ -14,6 +14,7 @@ import { ProviderRequest } from './type';
 import { ga4 } from '@/utils/ga4';
 import { ethErrors } from 'eth-rpc-errors';
 import { getOpenInDesktopPolicy } from './openInDesktopPolicy';
+import { allowedSiteChain } from '@/utils/redbelly/allowlist';
 
 const TAB_CHECKIN_DEDUPE_MS = 100;
 const TAB_CHECKIN_TTL_MS = 2 * 1000;
@@ -65,8 +66,9 @@ const getProviderState = async (req) => {
   const {
     session: { origin },
   } = req;
-  const chainEnum =
-    permissionService.getWithoutUpdate(origin)?.chain || CHAINS_ENUM.ETH;
+  const chainEnum = allowedSiteChain(
+    permissionService.getWithoutUpdate(origin)?.chain
+  );
   const isUnlocked = keyringService.memStore.getState().isUnlocked;
   let networkVersion = '1';
   if (networkIdMap[chainEnum]) {

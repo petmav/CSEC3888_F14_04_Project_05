@@ -1,3 +1,6 @@
+// Must stay the first import: installs the Redbelly-only network guard
+// before any other module can open a connection.
+import '@/utils/redbelly/networkGuard';
 import eventBus from '@/eventBus';
 import migrateData from '@/migrations';
 import { getOriginFromUrl, transformFunctionsToZero } from '@/utils';
@@ -99,6 +102,7 @@ import { metamaskModeService } from './service/metamaskModeService';
 import { ga4 } from '@/utils/ga4';
 import { ALARMS_SYNC_DEFAULT_RPC, ALARMS_USER_ENABLE } from './utils/alarms';
 import { subscribeTxCompleted } from './subscriptions/rateGuidance';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 
 BigNumber.config({ EXPONENTIAL_AT: [-20, 100] });
 
@@ -192,7 +196,10 @@ async function restoreAppState() {
   await feedbackService.init();
 
   // WS is lazy — subscribes only after the first content-script port attaches
-  perpsLive.boot();
+  // Redbelly-only: perps trade on Hyperliquid, not Redbelly.
+  if (!REDBELLY_ONLY) {
+    perpsLive.boot();
+  }
 
   await walletController.tryUnlock();
 

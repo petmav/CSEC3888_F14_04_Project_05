@@ -1,4 +1,5 @@
 import cloneDeep from 'lodash/cloneDeep';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import * as Sentry from '@sentry/browser';
 import type { BalanceCacheData } from '@/db/schema/balance';
 import eventBus from '@/eventBus';
@@ -238,7 +239,9 @@ class PreferenceService {
         collectionStarred: [],
         hiddenBalance: false,
         isShowTestnet: false,
-        themeMode: DARK_MODE_TYPE.light,
+        // Redbelly Wallet is white-on-black by default, like Redbelly's own
+        // apps; the toggle in Settings still works.
+        themeMode: REDBELLY_ONLY ? DARK_MODE_TYPE.dark : DARK_MODE_TYPE.light,
         addressSortStore: {
           ...defaultAddressSortStore,
         },

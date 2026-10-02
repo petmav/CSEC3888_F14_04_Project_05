@@ -50,6 +50,9 @@ import {
 import * as Sentry from '@sentry/browser';
 import { getCexInfo } from '@/ui/state/exchange';
 import { useSetReportGasLevel } from '@/ui/hooks/useSetReportGasLevel';
+import { gasUnitsToUsd } from '@/utils/redbelly/fees';
+import { RedbellyTxPanel } from './RedbellyTxPanel';
+import { useRedbellyTxGate } from './useRedbellyTxGate';
 
 const checkGasAndNonce = ({
   recommendGasLimitRatio,
@@ -284,6 +287,28 @@ export const SignTestnetTx = ({
     to: to ? toChecksumAddress(to) : to,
     value,
   });
+
+  const redbellyGate = useRedbellyTxGate({
+    chainId,
+    to: tx.to,
+    data: tx.data,
+    from: currentAccount.address,
+  });
+
+  /**
+   * Gas in dollars on Redbelly is gas units times the on-chain USD peg (FR3),
+   * not RBNT times a market price. NaN when the peg cannot be read, which the
+   * gas formatters render as no figure at all (US7).
+   */
+  const gasUnitsUsd = (units?: string | number | null) => {
+    if (!redbellyGate.isRedbelly) {
+      return new BigNumber(0);
+    }
+    const usd = units
+      ? gasUnitsToUsd(Number(units), redbellyGate.usdPerGas)
+      : null;
+    return new BigNumber(usd === null ? NaN : usd);
+  };
 
   const { data: recommendNonce, runAsync: runGetNonce } = useRequest(
     async () => {
@@ -749,6 +774,11 @@ export const SignTestnetTx = ({
     if (!selectedGas) {
       return;
     }
+    // The button is disabled while this is set; checked again here so no
+    // other route to a signature can skip the Redbelly gate (FR7).
+    if (redbellyGate.blockReason) {
+      return;
+    }
 
     if (activeApprovalPopup()) {
       return;
@@ -874,6 +904,12 @@ export const SignTestnetTx = ({
   return (
     <>
       <div className="approval-tx overflow-x-hidden">
+        <RedbellyTxPanel
+          gate={redbellyGate}
+          chain={chain}
+          gasUsed={gasLimit && gasUsed ? gasUsed : null}
+          gasPrice={selectedGas?.price ?? null}
+        />
         <TestnetActions
           account={currentAccount}
           data={explainResult?.actionData || {}}
@@ -916,7 +952,7 @@ export const SignTestnetTx = ({
               'absolute bottom-[210px] right-[16px] pointer-events-none'
             )}
           >
-            Custom Network
+            {redbellyGate.isRedbelly ? chain.name : 'Custom Network'}
           </div>
         )}
       </div>
@@ -934,7 +970,7 @@ export const SignTestnetTx = ({
             gas={{
               error: null,
               success: true,
-              gasCostUsd: 0,
+              gasCostUsd: gasUnitsUsd(gasUsed),
               gasCostAmount: new BigNumber(selectedGas?.price || 0)
                 .multipliedBy(gasUsed || 0)
                 .div(1e18),
@@ -944,7 +980,7 @@ export const SignTestnetTx = ({
                 gasCostAmount: new BigNumber(price || 0)
                   .multipliedBy(gasUsed || 0)
                   .div(1e18),
-                gasCostUsd: new BigNumber(0),
+                gasCostUsd: gasUnitsUsd(gasUsed),
               };
             }}
             recommendGasLimit={gasUsed || ''}
@@ -976,15 +1012,21 @@ export const SignTestnetTx = ({
         onSubmit={handleAllow}
         onIgnoreAllRules={() => {}}
         enableTooltip={
+          !!redbellyGate.blockReason ||
           !canProcess ||
           !!checkErrors.find((item) => item.level === 'forbidden')
         }
         tooltipContent={
-          checkErrors.find((item) => item.level === 'forbidden')
-            ? checkErrors.find((item) => item.level === 'forbidden')!.msg
-            : cantProcessReason
+          redbellyGate.blockReason ? (
+            <div>{redbellyGate.blockReason}</div>
+          ) : checkErrors.find((item) => item.level === 'forbidden') ? (
+            checkErrors.find((item) => item.level === 'forbidden')!.msg
+          ) : (
+            cantProcessReason
+          )
         }
         disabledProcess={
+          !!redbellyGate.blockReason ||
           !isReady ||
           (selectedGas ? selectedGas.price < 0 : true) ||
           isGnosisAccount ||
