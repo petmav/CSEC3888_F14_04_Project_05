@@ -3,6 +3,7 @@ import { SeverityLevel } from '@metamask/snaps-sdk';
 
 import { estimateFee } from './fees';
 import { formatRbnt, formatUsd } from './format';
+import { paymentTarget } from './recipient';
 import {
   fetchTransport,
   isRedbellyChain,
@@ -67,6 +68,9 @@ function feeNotesFor(
  * the check applies but fails, we say so explicitly rather than staying
  * silent.
  *
+ * For an ERC-20 transfer the address checked is the payee decoded from the
+ * calldata, not the token contract in `to` (US11).
+ *
  * @param args - The handler arguments.
  * @param args.transaction - The unsigned transaction.
  * @param args.chainId - CAIP-2 chain ID of the target network.
@@ -80,10 +84,11 @@ export const onTransaction: OnTransactionHandler = async ({
     return null;
   }
 
-  const recipient = transaction.to;
-  if (!recipient) {
+  const target = paymentTarget(transaction);
+  if (target.kind === 'none') {
     return null;
   }
+  const { recipient } = target;
 
   const request = fetchTransport(chainId);
 
@@ -102,6 +107,7 @@ export const onTransaction: OnTransactionHandler = async ({
     recipient,
     networkName(chainId),
     feeNotesFor(transaction, usdPerGas),
+    target.kind === 'token' ? target.token : null,
   );
 
   // `critical` asks MetaMask to raise a modal before the user can confirm,

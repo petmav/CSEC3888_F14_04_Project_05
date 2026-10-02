@@ -56,6 +56,9 @@ const COPY: Record<Verdict, PanelCopy> = {
  * compare it against their intended destination.
  * @param network - Display name of the network that was checked.
  * @param feeNotes - Extra fee lines to append below the verdict.
+ * @param token - For a token transfer, the token contract. The address
+ * checked is then the payee read from the transfer data (US11), and the
+ * panel says so, since it is not the `to` MetaMask shows.
  * @returns The panel to render on the confirmation screen.
  */
 export function insightPanel(
@@ -63,6 +66,7 @@ export function insightPanel(
   address: string,
   network: string,
   feeNotes: string[] = [],
+  token: string | null = null,
 ) {
   const copy = COPY[verdict];
 
@@ -72,6 +76,12 @@ export function insightPanel(
       <Text>{copy.body}</Text>
       <Copyable value={address} />
       <Text>{copy.footer}</Text>
+      {token ? (
+        <Text>
+          Token transfer: this is the account being paid, read from the transfer
+          data. The token contract is {token}.
+        </Text>
+      ) : null}
       <Divider />
       <Text>
         Checked against the Redbelly permission contract on{' '}
