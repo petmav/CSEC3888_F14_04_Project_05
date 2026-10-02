@@ -22,7 +22,19 @@ import { usePopupContainer } from '@/ui/hooks/usePopupContainer';
 
 const Wrapper = styled.div`
   height: 100%;
-  padding: 20px 0 76px 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 20px 0 0;
+`;
+
+const ScrollArea = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 20px;
+  -webkit-overflow-scrolling: touch;
 `;
 
 const Footer = styled.div`
@@ -34,10 +46,7 @@ const Footer = styled.div`
   justify-content: space-between;
   gap: 16px;
   width: 100%;
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  flex-shrink: 0;
 `;
 
 export const EditCustomTestnetModal = ({
@@ -153,7 +162,7 @@ export const EditCustomTestnetModal = ({
         <PageHeader className="pt-0" forceShowBack={false} canBack={false}>
           {t('page.customRpc.EditCustomTestnetModal.title')}
         </PageHeader>
-        <div className="h-[calc(100%-40px)] overflow-auto px-[20px]">
+        <ScrollArea>
           {isEdit ? null : (
             <div
               className={clsx(
@@ -188,7 +197,7 @@ export const EditCustomTestnetModal = ({
               onChange?.(values);
             }}
           />
-        </div>
+        </ScrollArea>
         <Footer>
           <Button
             type="primary"

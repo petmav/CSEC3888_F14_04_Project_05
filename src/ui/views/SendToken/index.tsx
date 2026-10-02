@@ -61,6 +61,9 @@ import './style.less';
 import { getKRCategoryByType } from '@/utils/transaction';
 import { filterRbiSource, useRbiSource } from '@/ui/utils/ga-event';
 import { findChain, findChainByEnum, findChainByID } from '@/utils/chain';
+import { isRedbellyChainId } from '@/constant/redbelly';
+import { useRedbellyStore } from '@/ui/state/redbelly';
+import { buildRedbellyNativeToken } from '@/utils/redbelly/token';
 import { Chain } from '@debank/common';
 import {
   checkIfTokenBalanceEnough,
@@ -98,6 +101,8 @@ import { TDisableCheckChainFn } from '@/ui/component/ChainSelector/components/Se
 import { AddressInfoFrom } from '@/ui/component/SendLike/AddressInfoFrom';
 import { AddressInfoTo } from '@/ui/component/SendLike/AddressInfoTo';
 import BottomArea from './components/BottomArea';
+import { RedbellyGasFeeRow } from './components/RedbellyGasFeeRow';
+import { RedbellySenderStatusRow } from './components/RedbellySenderStatusRow';
 import {
   RiskType,
   sortRisksDesc,
@@ -719,7 +724,36 @@ const SendToken = () => {
     forToAddress: false,
     forToken: false,
   });
+  // Redbelly KYC verdict for the typed recipient. Drives the verified /
+  // not-verified messages, and replaces the DeBank "not sent in 180 days"
+  // check, which has no data for Redbelly.
+  const isRedbelly = isRedbellyChainId(chainItem?.id);
+  const redbellyRecipient = useRedbellyStore(
+    (state) => state.currentTx.recipient
+  );
+  const redbellyCheckRecipient = useRedbellyStore(
+    (state) => state.checkRecipient
+  );
+  const redbellyResetCurrentTx = useRedbellyStore(
+    (state) => state.resetCurrentTx
+  );
+  const redbellyRecipientAddress =
+    isRedbelly && toAddress && isValidAddress(toAddress) ? toAddress : null;
+  useEffect(() => {
+    redbellyCheckRecipient(chainItem?.id, redbellyRecipientAddress);
+  }, [redbellyCheckRecipient, chainItem?.id, redbellyRecipientAddress]);
+  useEffect(() => redbellyResetCurrentTx, [redbellyResetCurrentTx]);
+  const redbellyVerdict =
+    redbellyRecipientAddress &&
+    redbellyRecipient.chainId === Number(chainItem?.id) &&
+    redbellyRecipient.address?.toLowerCase() ===
+      redbellyRecipientAddress.toLowerCase()
+      ? redbellyRecipient.verdict
+      : null;
+
   const { loading: loadingRisks, risks } = useAddressRisks({
+    isRedbelly,
+    redbellyVerdict,
     toAddress: toAddress || '',
     fromAddress: currentAccount?.address,
     forbiddenCheck: useMemo(() => {
@@ -744,6 +778,7 @@ const SendToken = () => {
   const toAddressPositiveTips = useToAddressPositiveTips({
     toAddress,
     isMyImported,
+    redbellyVerified: isRedbelly && redbellyVerdict === 'REGISTERED',
   });
 
   const {
@@ -1054,9 +1089,19 @@ const SendToken = () => {
       canSubmitBasic &&
       supportedDirectSign(currentAccount?.type || '') &&
       !chainItem?.isTestnet &&
+      // Redbelly goes through the full signing screen: that is where the KYC
+      // sign-block and the Redbelly fee panel live, and the mini-sign
+      // pipeline depends on DeBank services that do not cover Redbelly.
+      !isRedbelly &&
       !sendToOtherChainContract
     );
-  }, [canSubmitBasic, chainItem, currentAccount?.type, addressDesc]);
+  }, [
+    canSubmitBasic,
+    chainItem,
+    currentAccount?.type,
+    addressDesc,
+    isRedbelly,
+  ]);
 
   const { runAsync: handleSubmit, loading: isSubmitLoading } = useRequest(
     async ({
@@ -2168,6 +2213,14 @@ const SendToken = () => {
         });
         if (res) {
           result = customTestnetTokenToTokenItem(res);
+        }
+      } else if (chain && isRedbellyChainId(chain.id)) {
+        // DeBank does not index Redbelly: read the balance from a node.
+        if (tokenId === chain.nativeTokenAddress) {
+          result = buildRedbellyNativeToken(
+            chain,
+            await wallet.getRedbellyBalance(chain.id, currentAddress)
+          );
         }
       } else {
         result = await wallet.openapi.getToken(
@@ -3382,6 +3435,18 @@ const SendToken = () => {
                 open
                 signatureInstance={instance}
                 // setOpen={setGasFeeOpen}
+              />
+            ) : null}
+            {isRedbelly && chainItem ? (
+              <RedbellyGasFeeRow
+                chainId={chainItem.id}
+                gasLimit={chainTokenGasFees.gasLimit || DEFAULT_GAS_USED}
+              />
+            ) : null}
+            {isRedbelly && chainItem ? (
+              <RedbellySenderStatusRow
+                chainId={chainItem.id}
+                address={currentAccount?.address}
               />
             ) : null}
             {!canSubmitBasic && (

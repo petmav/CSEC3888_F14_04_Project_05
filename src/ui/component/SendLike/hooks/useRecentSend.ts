@@ -244,13 +244,17 @@ export type ToAddressPositiveTips = {
   inWhitelist: boolean;
   toAddressIsRecentlySend: boolean;
   isMyImported?: boolean;
+  /** Redbelly confirms the recipient is KYC registered. */
+  redbellyVerified?: boolean;
 };
 export function useToAddressPositiveTips({
   toAddress,
   isMyImported,
+  redbellyVerified,
 }: {
   toAddress?: string;
   isMyImported?: boolean;
+  redbellyVerified?: boolean;
 }): ToAddressPositiveTips {
   const whitelist = useWhitelistStore((state) => state.whitelists);
   const inWhitelist = useMemo(() => {
@@ -263,7 +267,10 @@ export function useToAddressPositiveTips({
   } = useRecentSendToHistoryFor(toAddress);
   const toAddressIsRecentlySend = recentSendToHistory.length > 0;
   const hasPositiveTips =
-    toAddressIsRecentlySend || inWhitelist || !!isMyImported;
+    toAddressIsRecentlySend ||
+    inWhitelist ||
+    !!isMyImported ||
+    !!redbellyVerified;
 
   useEffect(() => {
     const handler = (txDetail) => {
@@ -283,5 +290,6 @@ export function useToAddressPositiveTips({
     inWhitelist,
     toAddressIsRecentlySend,
     isMyImported,
+    redbellyVerified: !!redbellyVerified,
   };
 }

@@ -49,6 +49,7 @@ import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useRedbellyStore } from '@/ui/state/redbelly';
 import { blocksSigning } from '@/utils/redbelly/verdict';
+import { isRedbellyChainId } from '@/constant/redbelly';
 import { matomoRequestEvent } from '@/utils/matomo-request';
 import { useTranslation, Trans } from 'react-i18next';
 import { useScroll } from 'react-use';
@@ -2779,12 +2780,19 @@ const SignTx = ({
     Promise.all(
       preparedActions.actions.map((action) => executeEngine(action.ctx))
     )
-      .then((results) => {
+      .then((rawResults) => {
         if (cancelled || evaluationSequence.current !== version) return;
-        if (hasActionSecurityError(results)) {
+        if (hasActionSecurityError(rawResults)) {
           setSecurityError(true);
           return;
         }
+        // Rule 1018 ("you haven't sent to this address in 180 days") is fed by
+        // DeBank transfer history, which does not exist for Redbelly, so it
+        // would fire on every send. Dropped here so it also stays out of the
+        // risk level and the unprocessed-warning gate.
+        const results = isRedbellyChainId(chain?.id)
+          ? rawResults.map((group) => group.filter((r) => r.id !== '1018'))
+          : rawResults;
         setSecurityEvaluation({
           prepared: preparedActions,
           rules,

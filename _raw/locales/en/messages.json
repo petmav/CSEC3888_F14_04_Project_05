@@ -344,6 +344,7 @@
       },
       "redbelly": {
         "recipientTitle": "Redbelly KYC",
+        "senderTitle": "Your Redbelly KYC",
         "recipientTip": "Redbelly records identity-verified accounts in an on-chain permission list. This row reports whether the recipient is on that list for this network.",
         "checking": "Checking",
         "registered": "Registered",
@@ -352,9 +353,13 @@
         "notRegisteredTip": "This address is not on the Redbelly permission list. Nobody can spend funds sent here, and the transfer cannot be reversed.",
         "contract": "Contract address",
         "contractTip": "The permission list covers user accounts, so no identity check applies to a smart contract.",
-        "unknown": "Could not verify",
+        "unknown": "Could not verify if address is on the Redbelly Network",
         "unknownTip": "The Redbelly node did not answer, so this address was not checked. This is not a confirmation that the address is valid.",
-        "blockedReason": "Recipient is not registered on Redbelly. Funds sent there cannot be spent."
+        "blockedReason": "Recipient is not registered on Redbelly. Funds sent there cannot be spent.",
+        "bannerVerified": "This address is verified on the Redbelly Network",
+        "bannerNotVerified": "This address is not verified in the Redbelly Network",
+        "bannerContract": "This address is a smart contract",
+        "bannerUnknown": "Could not verify if address is on the Redbelly Network"
       },
       "tokenApprove": {
         "title": "Token Approval",
@@ -967,6 +972,13 @@
       "selectToken": "Select Token",
       "accountSelectorModal": {
         "title": "Select Address"
+      },
+      "redbelly": {
+        "verified": "This address is verified on the Redbelly Network",
+        "notVerified": "This address is not verified in the Redbelly Network",
+        "unknown": "Could not verify if address is on the Redbelly Network",
+        "gasFee": "Gas fee",
+        "gasFeeUnavailable": "Unavailable"
       },
       "riskAlert": {
         "checkboxText": "I understand the risks and want to continue"

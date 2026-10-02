@@ -110,3 +110,138 @@ export const RedbellyRecipientCheck = ({
     </SubCol>
   );
 };
+
+/**
+ * The KYC status of the account that is about to sign this Redbelly send.
+ *
+ * Redbelly nodes reject unregistered senders with JSON-RPC error -32603. This
+ * row exposes that cause before the user attempts to sign. It deliberately
+ * remains informational: the network is the final authority on whether the
+ * account may submit, while the recipient gate prevents an irreversible send
+ * to an address nobody can spend from.
+ */
+export const RedbellySenderCheck = ({
+  chainId,
+  address,
+}: {
+  chainId?: number | null;
+  address?: string | null;
+}) => {
+  const { t } = useTranslation();
+  const sender = useRedbellyStore(
+    useShallow((state) => state.currentTx.sender)
+  );
+  const checkSender = useRedbellyStore((state) => state.checkSender);
+
+  React.useEffect(() => {
+    checkSender(chainId, address);
+  }, [checkSender, chainId, address]);
+
+  if (!isRedbellyChainId(chainId) || !address) {
+    return null;
+  }
+
+  const isCurrent =
+    sender.address?.toLowerCase() === address.toLowerCase() &&
+    sender.chainId === Number(chainId);
+  const isChecking = !isCurrent || sender.loading || !sender.completed;
+  const isUnknown = !isChecking && sender.isRegistered === null;
+  const isRegistered = !isChecking && sender.isRegistered === true;
+
+  const label = isChecking
+    ? t('page.signTx.redbelly.checking')
+    : isUnknown
+    ? t('page.dashboard.assets.redbelly.kycUnknown')
+    : isRegistered
+    ? t('page.dashboard.assets.redbelly.kycRegistered')
+    : t('page.dashboard.assets.redbelly.kycNotRegistered');
+  const tip = isChecking
+    ? t('page.signTx.redbelly.recipientTip')
+    : isUnknown
+    ? t('page.signTx.redbelly.unknownTip')
+    : isRegistered
+    ? t('page.signTx.redbelly.registeredTip')
+    : t('page.dashboard.assets.redbelly.kycNotRegisteredTip');
+  const tone: Tone = isChecking
+    ? 'neutral'
+    : isUnknown
+    ? 'warning'
+    : isRegistered
+    ? 'safe'
+    : 'danger';
+
+  return (
+    <SubCol>
+      <SubRow isTitle tip={tip}>
+        {t('page.signTx.redbelly.senderTitle')}
+      </SubRow>
+      <SubRow>
+        <span className={clsx(TONE_CLASS[tone])}>{label}</span>
+      </SubRow>
+    </SubCol>
+  );
+};
+
+/**
+ * A visible verdict banner for the recipient, shown outside the collapsible
+ * address `SubTable`, which only expands on hover or click.
+ */
+export const RedbellyRecipientBanner = ({
+  chainId,
+  address,
+}: {
+  chainId?: number | null;
+  address?: string | null;
+}) => {
+  const { t } = useTranslation();
+  const recipient = useRedbellyStore(
+    useShallow((state) => state.currentTx.recipient)
+  );
+  const checkRecipient = useRedbellyStore((state) => state.checkRecipient);
+
+  React.useEffect(() => {
+    checkRecipient(chainId, address);
+  }, [checkRecipient, chainId, address]);
+
+  if (!isRedbellyChainId(chainId) || !address) {
+    return null;
+  }
+
+  const isCurrent =
+    recipient.address?.toLowerCase() === address.toLowerCase() &&
+    recipient.chainId === Number(chainId);
+  const verdict = isCurrent ? recipient.verdict : null;
+  if (!verdict) {
+    return null;
+  }
+
+  const config: Record<Verdict, { key: string; className: string }> = {
+    REGISTERED: {
+      key: 'page.signTx.redbelly.bannerVerified',
+      className: 'bg-r-green-light text-r-green-default',
+    },
+    NOT_REGISTERED: {
+      key: 'page.signTx.redbelly.bannerNotVerified',
+      className: 'bg-r-red-light text-r-red-default',
+    },
+    CONTRACT: {
+      key: 'page.signTx.redbelly.bannerContract',
+      className: 'bg-r-neutral-card-2 text-r-neutral-body',
+    },
+    UNKNOWN: {
+      key: 'page.signTx.redbelly.bannerUnknown',
+      className: 'bg-r-orange-light text-r-orange-default',
+    },
+  };
+
+  return (
+    <div
+      className={clsx(
+        'mt-[8px] rounded-[6px] px-[12px] py-[10px] text-[13px] leading-[16px] font-medium',
+        config[verdict].className
+      )}
+    >
+      {t(config[verdict].key)}
+    </div>
+  );
+};

@@ -25,14 +25,27 @@ export type RedbellyRecipientCheck = {
   loading: boolean;
 };
 
+/** The active sender's KYC status for the current signing request. */
+export type RedbellySenderCheck = {
+  chainId: number | null;
+  address: string | null;
+  /** `null` means the node could not verify the account. */
+  isRegistered: boolean | null;
+  /** Prevents an unverified result from being retried on every render. */
+  completed: boolean;
+  loading: boolean;
+};
+
 export type RedbellyState = {
   currentTx: {
     recipient: RedbellyRecipientCheck;
+    sender: RedbellySenderCheck;
   };
 };
 
 type RedbellyActions = {
   checkRecipient: (chainId?: number | null, address?: string | null) => void;
+  checkSender: (chainId?: number | null, address?: string | null) => void;
   resetCurrentTx: () => void;
 };
 
@@ -47,6 +60,13 @@ export function getDefaultRedbellyState(): RedbellyState {
         verdict: null,
         loading: false,
       },
+      sender: {
+        chainId: null,
+        address: null,
+        isRegistered: null,
+        completed: false,
+        loading: false,
+      },
     },
   };
 }
@@ -56,6 +76,9 @@ export function getDefaultRedbellyState(): RedbellyState {
  * reply for the current one. Incremented on every check.
  */
 let requestToken = 0;
+
+/** Same stale-response protection as the recipient check, but independently. */
+let senderRequestToken = 0;
 
 export const useRedbellyStore = create<RedbellyStore>((set, get) => ({
   ...getDefaultRedbellyState(),
@@ -67,7 +90,12 @@ export const useRedbellyStore = create<RedbellyStore>((set, get) => ({
     // no recipient (contract creation).
     if (!isRedbellyChainId(chainId) || !address) {
       if (recipient.verdict !== null || recipient.loading) {
-        set({ ...getDefaultRedbellyState() });
+        set((state) => ({
+          currentTx: {
+            ...state.currentTx,
+            recipient: getDefaultRedbellyState().currentTx.recipient,
+          },
+        }));
       }
       return;
     }
@@ -85,8 +113,9 @@ export const useRedbellyStore = create<RedbellyStore>((set, get) => ({
     requestToken += 1;
     const token = requestToken;
 
-    set({
+    set((state) => ({
       currentTx: {
+        ...state.currentTx,
         recipient: {
           chainId: targetChainId,
           address,
@@ -94,7 +123,7 @@ export const useRedbellyStore = create<RedbellyStore>((set, get) => ({
           loading: true,
         },
       },
-    });
+    }));
 
     wallet
       .getRedbellyVerdict(targetChainId, address)
@@ -102,8 +131,9 @@ export const useRedbellyStore = create<RedbellyStore>((set, get) => ({
         if (token !== requestToken) {
           return;
         }
-        set({
+        set((state) => ({
           currentTx: {
+            ...state.currentTx,
             recipient: {
               chainId: targetChainId,
               address,
@@ -111,7 +141,7 @@ export const useRedbellyStore = create<RedbellyStore>((set, get) => ({
               loading: false,
             },
           },
-        });
+        }));
       })
       .catch((error) => {
         if (token !== requestToken) {
@@ -121,8 +151,9 @@ export const useRedbellyStore = create<RedbellyStore>((set, get) => ({
         // reaching here means the message channel itself failed. Report it the
         // same way rather than leaving the panel spinning (NFR2).
         console.error('[redbelly] recipient check failed', error);
-        set({
+        set((state) => ({
           currentTx: {
+            ...state.currentTx,
             recipient: {
               chainId: targetChainId,
               address,
@@ -130,12 +161,100 @@ export const useRedbellyStore = create<RedbellyStore>((set, get) => ({
               loading: false,
             },
           },
-        });
+        }));
+      });
+  },
+
+  /**
+   * Check the account that will sign the current send (FR5 / US9).
+   *
+   * An unregistered sender is not blocked locally: Redbelly's node rejects it
+   * with -32603, and the confirmation should explain that rejection instead
+   * of pretending the node is unavailable. A failed read is explicitly kept
+   * as an unverified result (NFR2).
+   */
+  checkSender(chainId, address) {
+    const { sender } = get().currentTx;
+
+    if (!isRedbellyChainId(chainId) || !address) {
+      if (sender.completed || sender.loading) {
+        set((state) => ({
+          currentTx: {
+            ...state.currentTx,
+            sender: getDefaultRedbellyState().currentTx.sender,
+          },
+        }));
+      }
+      return;
+    }
+
+    const targetChainId = Number(chainId);
+    const sameTarget =
+      sender.chainId === targetChainId &&
+      sender.address?.toLowerCase() === address.toLowerCase();
+
+    if (sameTarget && (sender.loading || sender.completed)) {
+      return;
+    }
+
+    senderRequestToken += 1;
+    const token = senderRequestToken;
+
+    set((state) => ({
+      currentTx: {
+        ...state.currentTx,
+        sender: {
+          chainId: targetChainId,
+          address,
+          isRegistered: null,
+          completed: false,
+          loading: true,
+        },
+      },
+    }));
+
+    wallet
+      .getRedbellyIsRegistered(targetChainId, address)
+      .then((isRegistered) => {
+        if (token !== senderRequestToken) {
+          return;
+        }
+        set((state) => ({
+          currentTx: {
+            ...state.currentTx,
+            sender: {
+              chainId: targetChainId,
+              address,
+              isRegistered,
+              completed: true,
+              loading: false,
+            },
+          },
+        }));
+      })
+      .catch((error) => {
+        if (token !== senderRequestToken) {
+          return;
+        }
+        console.error('[redbelly] sender registration check failed', error);
+        set((state) => ({
+          currentTx: {
+            ...state.currentTx,
+            sender: {
+              chainId: targetChainId,
+              address,
+              isRegistered: null,
+              completed: true,
+              loading: false,
+            },
+          },
+        }));
       });
   },
 
   resetCurrentTx() {
     requestToken += 1;
+    senderRequestToken += 1;
     set({ ...getDefaultRedbellyState() });
   },
 }));

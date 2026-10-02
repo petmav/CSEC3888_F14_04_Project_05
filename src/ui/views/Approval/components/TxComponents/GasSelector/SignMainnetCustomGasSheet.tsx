@@ -531,8 +531,13 @@ export const SignMainnetCustomGasSheet = ({
           </>
         ) : (
           <>
-            <div className="gas-selector-modal-amount">{gasCostUsdStr}</div>
-            <div className="gas-selector-modal-usd">
+            <div className="gas-selector-modal-amount">
+              {gasCostUsdStr || gasCostAmountStr}
+            </div>
+            <div
+              className="gas-selector-modal-usd"
+              style={gasCostUsdStr ? undefined : { display: 'none' }}
+            >
               <img
                 src={
                   resolvedGasToken.logoUrl ||

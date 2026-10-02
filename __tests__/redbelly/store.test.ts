@@ -6,12 +6,17 @@ import type { Verdict } from '@/utils/redbelly/verdict';
 jest.mock('@/ui/wallet', () => ({
   wallet: {
     getRedbellyVerdict: jest.fn(),
+    getRedbellyIsRegistered: jest.fn(),
   },
 }));
 
 const getRedbellyVerdict = wallet.getRedbellyVerdict as jest.MockedFunction<
   typeof wallet.getRedbellyVerdict
 >;
+const getRedbellyIsRegistered =
+  wallet.getRedbellyIsRegistered as jest.MockedFunction<
+    typeof wallet.getRedbellyIsRegistered
+  >;
 
 const MAINNET = 151;
 const ALICE = '0xfbc724445400a693dfd8c3c59cb2d0f0de52d1af';
@@ -34,9 +39,11 @@ function deferred(): {
 }
 
 const recipientOf = () => useRedbellyStore.getState().currentTx.recipient;
+const senderOf = () => useRedbellyStore.getState().currentTx.sender;
 
 beforeEach(() => {
   getRedbellyVerdict.mockReset();
+  getRedbellyIsRegistered.mockReset();
   useRedbellyStore.setState(getDefaultRedbellyState());
 });
 
@@ -190,5 +197,62 @@ describe('resetCurrentTx', () => {
 
     expect(recipientOf().verdict).toBeNull();
     expect(recipientOf().address).toBeNull();
+  });
+});
+
+describe('checkSender', () => {
+  it('does not query an account on a non-Redbelly chain', () => {
+    useRedbellyStore.getState().checkSender(1, ALICE);
+
+    expect(getRedbellyIsRegistered).not.toHaveBeenCalled();
+    expect(senderOf().completed).toBe(false);
+  });
+
+  it('shows an unregistered sender as a completed negative result', async () => {
+    getRedbellyIsRegistered.mockResolvedValue(false);
+
+    useRedbellyStore.getState().checkSender(MAINNET, ALICE);
+    expect(senderOf()).toMatchObject({ loading: true, completed: false });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(senderOf()).toMatchObject({
+      chainId: MAINNET,
+      address: ALICE,
+      isRegistered: false,
+      loading: false,
+      completed: true,
+    });
+  });
+
+  it('reports a failed sender check as unverified and does not retry forever', async () => {
+    getRedbellyIsRegistered.mockRejectedValue(new Error('port disconnected'));
+
+    useRedbellyStore.getState().checkSender(MAINNET, ALICE);
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(senderOf()).toMatchObject({
+      isRegistered: null,
+      loading: false,
+      completed: true,
+    });
+
+    useRedbellyStore.getState().checkSender(MAINNET, ALICE);
+    expect(getRedbellyIsRegistered).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the recipient verdict while the sender status is updated', async () => {
+    getRedbellyVerdict.mockResolvedValue('REGISTERED');
+    getRedbellyIsRegistered.mockResolvedValue(false);
+
+    useRedbellyStore.getState().checkRecipient(MAINNET, BOB);
+    useRedbellyStore.getState().checkSender(MAINNET, ALICE);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(recipientOf().verdict).toBe('REGISTERED');
+    expect(senderOf().isRegistered).toBe(false);
   });
 });

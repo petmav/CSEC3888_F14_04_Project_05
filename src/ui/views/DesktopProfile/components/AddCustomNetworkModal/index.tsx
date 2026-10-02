@@ -14,7 +14,12 @@ export const AddCustomNetworkModal: React.FC<
       width={400}
       title={null}
       centered
-      bodyStyle={{ background: 'transparent', maxHeight: 'unset', padding: 0 }}
+      bodyStyle={{
+        background: 'transparent',
+        maxHeight: 'unset',
+        padding: 0,
+        overflow: 'visible',
+      }}
       footer={null}
       className="modal-support-darkmode"
       zIndex={1000}

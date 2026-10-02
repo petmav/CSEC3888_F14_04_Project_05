@@ -1,3 +1,7 @@
+import {
+  isRedbellyServerId,
+  redbellyRpcUrlForServerId,
+} from '@/constant/redbelly';
 import { CHAINS_ENUM } from '@debank/common';
 import { createPersistStore, patchPersistStore } from 'background/utils';
 import { findChainByEnum } from '@/utils/chain';
@@ -168,6 +172,18 @@ class RPCService {
     return changedChains;
   };
 
+  /**
+   * RPC hosts for a chain: the DeBank-synced list, or Redbelly's own public
+   * endpoint (which DeBank does not list).
+   */
+  private hostsForChain = (chainServerId: string): string[] => {
+    const redbellyUrl = redbellyRpcUrlForServerId(chainServerId);
+    if (redbellyUrl) {
+      return [redbellyUrl];
+    }
+    return this.store.defaultRPC?.[chainServerId]?.rpcUrl || [];
+  };
+
   syncDefaultRPC = async () => {
     try {
       // TODO: remove  after test
@@ -263,7 +279,7 @@ class RPCService {
     method: string,
     params: any[]
   ) => {
-    const hostList = this?.store?.defaultRPC?.[chainServerId]?.rpcUrl || [];
+    const hostList = this.hostsForChain(chainServerId);
     if (!hostList.length) {
       throw new Error(`No available rpc for ${chainServerId}`);
     }
@@ -283,7 +299,7 @@ class RPCService {
     params: any;
     origin?: string;
   }) => {
-    const rpcUrls = this.store.defaultRPC?.[chainServerId]?.rpcUrl || [];
+    const rpcUrls = this.hostsForChain(chainServerId);
     const preferredRPC = this.preferredRPC[chainServerId];
     const hostList =
       method !== 'eth_sendRawTransaction' &&
@@ -291,7 +307,10 @@ class RPCService {
       rpcUrls.includes(preferredRPC)
         ? [preferredRPC, ...rpcUrls.filter((url) => url !== preferredRPC)]
         : rpcUrls;
-    const isBESupported = this.supportedRpcMethodByBE(method);
+    // DeBank's backend knows nothing about Redbelly, so it must never be
+    // asked to serve a Redbelly call.
+    const isBESupported =
+      !isRedbellyServerId(chainServerId) && this.supportedRpcMethodByBE(method);
 
     if (!hostList.length || isBESupported) {
       // throw new Error(`No available rpc for ${chainServerId}`);

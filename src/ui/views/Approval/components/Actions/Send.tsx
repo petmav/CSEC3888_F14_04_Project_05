@@ -14,7 +14,11 @@ import { Table, Col, Row } from './components/Table';
 import * as Values from './components/Values';
 import LogoWithText from './components/LogoWithText';
 import ViewMore from './components/ViewMore';
-import { RedbellyRecipientCheck } from './components/RedbellyRecipientCheck';
+import {
+  RedbellyRecipientBanner,
+  RedbellyRecipientCheck,
+  RedbellySenderCheck,
+} from './components/RedbellyRecipientCheck';
 import { SecurityListItem } from './components/SecurityListItem';
 import { SubCol, SubRow, SubTable } from './components/SubTable';
 import { ALIAS_ADDRESS } from '@/constant';
@@ -39,11 +43,13 @@ const Send = ({
   data,
   requireData,
   chain,
+  senderAddress,
   engineResults,
 }: {
   data: ParsedTransactionActionData['send'];
   requireData: SendRequireData;
   chain: Chain;
+  senderAddress?: string;
   engineResults: Result[];
 }) => {
   const actionData = data!;
@@ -127,6 +133,7 @@ const Send = ({
           {/* First row on Redbelly: it is the reason this fork exists, and on
               any other chain it renders nothing. */}
           <RedbellyRecipientCheck chainId={chain.id} address={actionData.to} />
+          <RedbellySenderCheck chainId={chain.id} address={senderAddress} />
           <SubCol>
             <SubRow isTitle>{t('page.signTx.addressNote')}</SubRow>
             <SubRow>
@@ -247,6 +254,9 @@ const Send = ({
           />
         </SubTable>
       </Table>
+      {/* Outside the collapsible SubTable so the verdict is visible without
+          hovering the address. */}
+      <RedbellyRecipientBanner chainId={chain.id} address={actionData.to} />
     </Wrapper>
   );
 };

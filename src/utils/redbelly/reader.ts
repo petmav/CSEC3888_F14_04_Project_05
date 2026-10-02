@@ -79,6 +79,25 @@ async function ethCall(
 }
 
 /**
+ * Decode an `isAllowed` answer, refusing anything that is not one full word.
+ *
+ * `decodeBoolean('0x')` is false, so an empty answer (an eth_call to an
+ * address with no code, a node returning nothing) would otherwise read as
+ * "not registered" and block a legitimate send. A malformed answer must
+ * surface as a failed check, which the UI reports as "could not verify".
+ *
+ * @param word - The raw eth_call result.
+ * @returns The decoded boolean.
+ * @throws If the result is not exactly one 32-byte ABI word.
+ */
+function decodeAllowed(word: string): boolean {
+  if (!/^0x[0-9a-f]{64}$/iu.test(word)) {
+    throw new Error(`Unexpected isAllowed result: ${word}`);
+  }
+  return decodeBoolean(word);
+}
+
+/**
  * Resolve a contract address from the bootstrap registry, caching the result.
  *
  * @param request - The provider request function.
@@ -154,7 +173,7 @@ export async function readAddressFacts(
 
   return {
     hasCode: code !== '0x' && code !== '0x0' && code !== '',
-    isAllowed: decodeBoolean(allowed),
+    isAllowed: decodeAllowed(allowed),
   };
 }
 
@@ -182,7 +201,7 @@ export async function readIsAllowed(
     permission,
     SELECTOR_IS_ALLOWED + encodeAddressArgument(address)
   );
-  return decodeBoolean(allowed);
+  return decodeAllowed(allowed);
 }
 
 /**
@@ -207,6 +226,23 @@ export async function readBalance(
 
   if (typeof result !== 'string') {
     throw new Error(`Unexpected eth_getBalance result: ${String(result)}`);
+  }
+
+  return BigInt(result);
+}
+
+/**
+ * Read the node's current gas price, in wei per unit of gas.
+ *
+ * @param request - The provider request function.
+ * @returns The gas price in wei.
+ * @throws If the node returns anything other than a hex quantity.
+ */
+export async function readGasPrice(request: EthereumRequest): Promise<bigint> {
+  const result = await request({ method: 'eth_gasPrice', params: [] });
+
+  if (typeof result !== 'string' || !/^0x[0-9a-f]+$/iu.test(result)) {
+    throw new Error(`Unexpected eth_gasPrice result: ${String(result)}`);
   }
 
   return BigInt(result);

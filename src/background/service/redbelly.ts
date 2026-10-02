@@ -6,8 +6,8 @@
  * to Redbelly's public RPC endpoints directly (NFR3) rather than through
  * DeBank, which does not index Redbelly.
  *
- * Read-only by construction. This service issues `eth_call`, `eth_getCode` and
- * `eth_getBalance` and nothing else; it never signs, never submits, and holds
+ * Read-only by construction. This service issues `eth_call`, `eth_getCode`,
+ * `eth_getBalance` and `eth_gasPrice` and nothing else; it never signs, never submits, and holds
  * no key material.
  */
 
@@ -21,6 +21,7 @@ import {
   clearRedbellyContractCache,
   readAddressFacts,
   readBalance,
+  readGasPrice,
   readIsAllowed,
   readUsdPerGas,
 } from '@/utils/redbelly/reader';
@@ -205,6 +206,30 @@ class RedbellyService {
     } catch (error) {
       // US7: no dollar figure at all beats a figure we cannot substantiate.
       console.error('[redbelly] gas peg read failed', error);
+      return null;
+    }
+  };
+
+  /**
+   * The node's current gas price in wei, for the Send page's fee row (FR3).
+   *
+   * Redbelly is not a DeBank chain, so there is no DeBank gas market to ask.
+   *
+   * @param chainId - The numeric chain ID.
+   * @returns The gas price as a decimal string, or `null` if unavailable.
+   */
+  getGasPrice = async (chainId: number): Promise<string | null> => {
+    if (!isRedbellyChainId(chainId)) {
+      return null;
+    }
+    try {
+      const price = await withTimeout(
+        readGasPrice(this.transport(chainId)),
+        RPC_TIMEOUT
+      );
+      return price.toString();
+    } catch (error) {
+      console.error('[redbelly] gas price read failed', error);
       return null;
     }
   };
