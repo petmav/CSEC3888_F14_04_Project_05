@@ -1,5 +1,5 @@
 import {
-  BLANK_IMAGE,
+  BLOCKED_IMAGE,
   guardImageAttribute,
   isBlockedRequest,
   isBlockedSrcset,
@@ -49,9 +49,9 @@ describe('isBlockedRequest', () => {
 describe('image guard', () => {
   const LOGO = 'https://static.debank.com/image/coin/logo_url/eth/1.png';
 
-  it('swaps a blocked src for a blank image', () => {
-    expect(guardImageAttribute('src', LOGO)).toBe(BLANK_IMAGE);
-    expect(guardImageAttribute('SRC', LOGO)).toBe(BLANK_IMAGE);
+  it('swaps a blocked src for one that fails without a request', () => {
+    expect(guardImageAttribute('src', LOGO)).toBe(BLOCKED_IMAGE);
+    expect(guardImageAttribute('SRC', LOGO)).toBe(BLOCKED_IMAGE);
     expect(guardImageAttribute('src', '/images/redbelly.png')).toBe(
       '/images/redbelly.png'
     );
@@ -67,10 +67,10 @@ describe('image guard', () => {
   it('is installed on <img>, by property and by attribute', () => {
     const img = document.createElement('img');
     img.src = LOGO;
-    expect(img.getAttribute('src')).toBe(BLANK_IMAGE);
+    expect(img.getAttribute('src')).toBe(BLOCKED_IMAGE);
 
     img.setAttribute('src', LOGO);
-    expect(img.getAttribute('src')).toBe(BLANK_IMAGE);
+    expect(img.getAttribute('src')).toBe(BLOCKED_IMAGE);
 
     img.setAttribute('src', '/images/redbelly.png');
     expect(img.getAttribute('src')).toBe('/images/redbelly.png');

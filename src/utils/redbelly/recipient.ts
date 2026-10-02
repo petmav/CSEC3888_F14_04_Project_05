@@ -35,27 +35,36 @@ const TRANSFERS = new Map<string, number>([
   ['0xf242432a', 1],
   // ERC-1155 safeBatchTransferFrom(address,address,uint256[],uint256[],bytes)
   ['0x2eb2c2d6', 1],
+  // ERC-677 transferAndCall(address,uint256,bytes)
+  ['0x4000aea0', 0],
+  // ERC-777 send(address,uint256,bytes)
+  ['0x9bd9bbc6', 0],
 ]);
 
 /**
  * Calls that let another address spend the user's tokens, by selector, with
- * the index of the argument that holds the spender.
+ * the indices of the arguments that hold the spender and the amount (or, for
+ * `setApprovalForAll`, the bool). A zero amount or `false` is a revoke.
  */
-const APPROVALS = new Map<string, number>([
-  [SELECTOR_APPROVE, 0],
+const APPROVALS = new Map<string, { spender: number; amount: number }>([
+  [SELECTOR_APPROVE, { spender: 0, amount: 1 }],
   // setApprovalForAll(address,bool) - ERC-721 and ERC-1155
-  ['0xa22cb465', 0],
+  ['0xa22cb465', { spender: 0, amount: 1 }],
   // increaseAllowance(address,uint256) - OpenZeppelin ERC-20
-  ['0x39509351', 0],
+  ['0x39509351', { spender: 0, amount: 1 }],
+  // EIP-2612 permit(address,address,uint256,uint256,uint8,bytes32,bytes32)
+  ['0xd505accf', { spender: 1, amount: 2 }],
 ]);
 
 /**
  * What a transaction pays and to whom.
  *
  * - `native` - RBNT to `recipient`, with no calldata.
- * - `token` - a token transfer (ERC-20, ERC-721 or ERC-1155) of `token`
- * to `recipient`.
- * - `approval` - lets `recipient` spend the user's `token`.
+ * - `token` - a token transfer (ERC-20, ERC-721, ERC-1155, ERC-677 or
+ * ERC-777) of `token` to `recipient`.
+ * - `approval` - lets `recipient` spend the user's `token`. Revoking an
+ * approval is a `call`: it takes a permission away, so the spender is not
+ * the risk.
  * - `call` - any other call to `recipient`. Only `recipient` itself can
  * be checked: if the contract forwards funds on, the address it forwards to
  * is not visible in the calldata, so it is not checked.
@@ -69,6 +78,17 @@ export type PaymentTarget =
   | { kind: 'none' };
 
 const WORD = 64;
+
+/**
+ * Whether the `index`th 32-byte argument of `calldata` is present and zero.
+ *
+ * @param calldata - Hex calldata without the `0x` prefix and selector.
+ * @param index - Zero-based argument index.
+ * @returns True for an all-zero word; false if it is non-zero or missing.
+ */
+function isZeroArgument(calldata: string, index: number): boolean {
+  return /^0{64}$/u.test(calldata.slice(index * WORD, (index + 1) * WORD));
+}
 
 /**
  * Read the address held in the `index`th 32-byte argument of `calldata`.
@@ -130,9 +150,9 @@ export function paymentTarget(transaction: {
     }
   }
 
-  const spenderIndex = APPROVALS.get(selector);
-  if (spenderIndex !== undefined) {
-    const recipient = addressArgument(args, spenderIndex);
+  const approval = APPROVALS.get(selector);
+  if (approval !== undefined && !isZeroArgument(args, approval.amount)) {
+    const recipient = addressArgument(args, approval.spender);
     if (recipient) {
       return { kind: 'approval', recipient, token: to };
     }

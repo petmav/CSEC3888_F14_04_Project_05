@@ -6,13 +6,14 @@
  * call site would miss the next one added upstream, so the guard sits under
  * all of them instead: `fetch`, `XMLHttpRequest`, `sendBeacon`, `WebSocket`
  * and `EventSource` refuse these hosts in the extension's own contexts, and
- * images from them are not loaded (a logo from DeBank's CDN still tells it
- * the user's IP address). Callers see an ordinary network error, which every
- * one of them already has to handle.
+ * `<img>`/`<source>` elements do not load from them (a logo from DeBank's
+ * CDN still tells it the user's IP address). Callers see an ordinary network
+ * error, which every one of them already has to handle.
  *
  * This is monkey-patching, not enforcement: code that captured `fetch`
  * before the guard ran would get past it, which is why it must be the first
- * import.
+ * import. Images reaching the page another way - `innerHTML`, CSS `url()`,
+ * SVG `<image>`, `setAttributeNS` - are not covered.
  *
  * Installed by importing this module first in each extension entry point
  * (background, UI, offscreen). Never imported by the content scripts, which
@@ -76,9 +77,12 @@ const logBlocked = (url: string) =>
 const UNREACHABLE = 'http://0.0.0.0:0/redbelly-blocked';
 const UNREACHABLE_WS = 'ws://0.0.0.0:0/redbelly-blocked';
 
-/** What a blocked image shows instead: a transparent 1x1 GIF. */
-export const BLANK_IMAGE =
-  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+/**
+ * What a blocked image loads instead: an empty data URL, which fails to
+ * decode without a network request. The image fires `error`, so the UI's
+ * own fallbacks (placeholder token and chain icons) take over.
+ */
+export const BLOCKED_IMAGE = 'data:,';
 
 /**
  * Whether an `<img>`/`<source>` `srcset` names a blocked host anywhere.
@@ -98,13 +102,13 @@ export function isBlockedSrcset(srcset: string): boolean {
  *
  * @param name - The attribute name.
  * @param value - The value asked for.
- * @returns `value`, or a blank stand-in if it would load a blocked host.
+ * @returns `value`, or a failing stand-in if it would load a blocked host.
  */
 export function guardImageAttribute(name: string, value: string): string {
   const attribute = name.toLowerCase();
   if (attribute === 'src' && isBlockedRequest(value)) {
     logBlocked(value);
-    return BLANK_IMAGE;
+    return BLOCKED_IMAGE;
   }
   if (attribute === 'srcset' && isBlockedSrcset(value)) {
     logBlocked(value);

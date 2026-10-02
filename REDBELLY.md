@@ -52,13 +52,17 @@ checked is decoded locally from `to` and calldata
 (`utils/redbelly/recipient.ts`, shared with the Snap):
 
 - a token transfer (ERC-20 `transfer`/`transferFrom`, ERC-721 and ERC-1155
-  `safeTransferFrom`, `safeBatchTransferFrom`) checks the payee inside the
-  calldata, not the token contract;
-- an approval (`approve`, `setApprovalForAll`, `increaseAllowance`) checks
-  the spender, and says that signing lets it spend the user's tokens;
+  `safeTransferFrom`, `safeBatchTransferFrom`, ERC-677 `transferAndCall`,
+  ERC-777 `send`) checks the payee inside the calldata, not the token
+  contract;
+- an approval (`approve`, `setApprovalForAll`, `increaseAllowance`, EIP-2612
+  `permit`) checks the spender, and says that signing lets it spend the
+  user's tokens. Revoking one (a zero amount, or `false`) is not warned
+  about: it takes a permission away;
 - any other contract call checks the contract, and the panel says plainly
   that an address the contract passes funds on to is not checked - a swap
-  router's `to` argument, for example.
+  router's `to` argument, for example. `decreaseAllowance`, Permit2 and
+  batching contracts (multicall, Safe) fall here.
 
 The team chose
 **warn and confirm, not block** (2026-10-02), matching the Send page:
@@ -132,7 +136,9 @@ are or what they do. In the Redbelly-only build:
   symbol instead of DeBank's flag images.
 - The guard patches the browser APIs rather than being enforced by the
   browser, so it covers code that runs after it - which is why it is the
-  first import. CSS `url()` images are not covered.
+  first import. Images that reach the page another way - `innerHTML`, CSS
+  `url()`, SVG `<image>` - are not covered. A blocked image fails to load, so
+  the UI's placeholder icon shows.
 - The hourly DeBank chain sync, default-RPC sync, CEX labelling, uninstall
   survey URL and Perps connections do not start.
 
@@ -148,8 +154,8 @@ does not call:
 - Redbelly transactions take the custom-network path, which has no
   simulated balance changes and no DeBank risk preview.
 
-What remains on the signing screen is the Redbelly KYC check and the
-decoded payee in full. Say so in demos and user docs: the wallet does not
+What remains on the signing screen is the Redbelly KYC check, with the
+checked address in full - for a contract call, only the contract. Say so in demos and user docs: the wallet does not
 warn about a phishing site.
 
 ## Contracts and endpoints

@@ -50,11 +50,27 @@ type Props = Parameters<typeof useRedbellyTxGate>[0];
 
 let root: Root;
 let gate: RedbellyTxGate;
+/** Every render, including those before effects run. */
+let renders: RedbellyTxGate[] = [];
 
 const Probe = (props: Props) => {
   gate = useRedbellyTxGate(props);
+  renders.push(gate);
   return null;
 };
+
+/**
+ * Every render of the gate for `address`, so a test can check the renders
+ * before effects ran - not just the settled one `act()` leaves behind.
+ *
+ * @param address - The recipient.
+ * @returns The renders for that recipient.
+ */
+const rendersFor = (address: string) =>
+  renders.filter(
+    (state) =>
+      state.target.kind !== 'none' && state.target.recipient === address
+  );
 
 /**
  * Render the gate with `props`, or re-render it if already mounted.
@@ -101,6 +117,7 @@ beforeEach(() => {
   mockUiWallet.getRedbellyIsRegistered.mockReset().mockResolvedValue(true);
   mockUiWallet.getRedbellyUsdPerGas.mockReset().mockResolvedValue(null);
   root = createRoot(document.createElement('div'));
+  renders = [];
 });
 
 afterEach(async () => {
@@ -151,8 +168,13 @@ describe('useRedbellyTxGate', () => {
     const bob = deferred();
     getRedbellyVerdict.mockReturnValue(bob.promise);
     await render(send(BOB));
-    // Alice's verdict and tick must not open the gate for Bob.
-    expect(gate.acknowledged).toBe(false);
+    // Alice's verdict and tick must not open the gate for Bob - in any
+    // render, including the first, before an effect could reset anything.
+    expect(rendersFor(BOB).length).toBeGreaterThan(0);
+    for (const state of rendersFor(BOB)) {
+      expect(state.acknowledged).toBe(false);
+      expect(state.blockReason).not.toBeNull();
+    }
     expect(gate.blockReason).toBe(CHECKING);
 
     await act(async () => bob.resolve('NOT_REGISTERED'));
@@ -175,7 +197,12 @@ describe('useRedbellyTxGate', () => {
     await act(async () => gate.setAcknowledged(true));
     expect(gate.blockReason).toBeNull();
 
+    const before = renders.length;
     await render(send(ALICE, { chainId: 153 }));
+    for (const state of renders.slice(before)) {
+      expect(state.acknowledged).toBe(false);
+      expect(state.blockReason).not.toBeNull();
+    }
     await settle();
     expect(gate.acknowledged).toBe(false);
     expect(gate.blockReason).toBe(ACKNOWLEDGE);
