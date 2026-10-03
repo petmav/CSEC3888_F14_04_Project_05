@@ -3,7 +3,9 @@
 CSEC3888 P5. This is the narrative account of the fork: why it exists, how it
 works, what it checks and what it does not, how it was built and tested, and
 what is left. The developer reference (build commands, contract addresses,
-per-feature notes) is [`REDBELLY.md`](../REDBELLY.md); the MetaMask Snap in
+per-feature notes) is [`REDBELLY.md`](../REDBELLY.md), the end-user guide is
+[`user-guide.md`](user-guide.md), and the demo walkthrough is
+[`demo-script.md`](demo-script.md); the MetaMask Snap in
 `redbelly-address-snap/` (on `main`) remains the assessed baseline.
 
 ## 1. Summary

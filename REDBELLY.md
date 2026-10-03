@@ -9,7 +9,10 @@ confirmed unregistered account.
 This is the fork deliverable of CSEC3888 P5. The MetaMask Snap in
 `redbelly-address-snap` remains the assessed baseline. For the narrative
 account - why, how, what is and is not checked, and what is left - see
-[docs/redbelly-wallet-writeup.md](docs/redbelly-wallet-writeup.md).
+[docs/redbelly-wallet-writeup.md](docs/redbelly-wallet-writeup.md). For
+users: [docs/user-guide.md](docs/user-guide.md). For presenting it:
+[docs/demo-script.md](docs/demo-script.md), with a demo dApp in
+[docs/demo/](docs/demo/index.html).
 
 ## Build and load
 

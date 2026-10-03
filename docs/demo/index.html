@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Redbelly Wallet demo dApp</title>
+    <style>
+      body { font: 14px system-ui, sans-serif; background: #111; color: #eee; max-width: 760px; margin: 24px auto; padding: 0 16px; }
+      h1 { font-size: 20px; } h2 { font-size: 15px; margin: 24px 0 8px; color: #ff4646; }
+      button { background: #222; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 8px 12px; margin: 4px 4px 4px 0; cursor: pointer; }
+      button:hover { border-color: #ff4646; }
+      p { color: #aaa; margin: 4px 0 8px; }
+      code { color: #ffb4b4; }
+      pre { background: #000; border: 1px solid #333; border-radius: 6px; padding: 12px; min-height: 120px; white-space: pre-wrap; word-break: break-all; }
+    </style>
+  </head>
+  <body>
+    <h1>Redbelly Wallet demo dApp</h1>
+    <p>
+      Every button sends a request to the wallet. The point is the wallet's
+      signing screen: <strong>press Cancel there</strong> unless the step in
+      <code>docs/demo-script.md</code> says to sign. Nothing here is sent
+      anywhere except to the wallet.
+    </p>
+
+    <h2>1. Connect and network</h2>
+    <button onclick="connect()">Connect</button>
+    <button onclick="switchTo('0x97')">Use Redbelly Mainnet (151)</button>
+    <button onclick="switchTo('0x99')">Use Redbelly Testnet (153)</button>
+    <button onclick="switchTo('0x1')">Try to switch to Ethereum</button>
+
+    <h2>2. Who is being paid? (send 1 wei of RBNT)</h2>
+    <button onclick="send({ to: REGISTERED, value: '0x1' })">To a registered account</button>
+    <button onclick="send({ to: UNREGISTERED, value: '0x1' })">To an unregistered account</button>
+    <button onclick="send({ to: MULTICALL3, data: '0x12345678' })">Call a contract</button>
+
+    <h2>3. Tokens (USDC.e on Mainnet)</h2>
+    <p>The wallet decodes the payee from the calldata, not the token contract in <code>to</code>.</p>
+    <button onclick="send({ to: USDC_E, data: call(TRANSFER, UNREGISTERED, 1) })">Transfer to an unregistered account</button>
+    <button onclick="send({ to: USDC_E, data: call(APPROVE, UNREGISTERED, 1) })">Approve an unregistered spender</button>
+    <button onclick="send({ to: USDC_E, data: call(APPROVE, UNREGISTERED, 0) })">Revoke that approval</button>
+
+    <h2>4. Address poisoning</h2>
+    <p>Pays an address with the same first and last four characters as your own account.</p>
+    <button onclick="lookalike()">Pay a lookalike of my address</button>
+
+    <h2>Log</h2>
+    <pre id="out"></pre>
+
+    <script>
+      // Public addresses with known verdicts (see the Snap's docs/design.md).
+      const REGISTERED = '0xfbc724445400a693dfd8c3c59cb2d0f0de52d1af';
+      const UNREGISTERED = '0x000000000000000000000000000000000000dEaD';
+      const MULTICALL3 = '0xcA11bde05977b3631167028862bE2a173976CA11';
+      const USDC_E = '0x8201c02d4ab2214471e8c3ad6475c8b0cd9f2d06';
+      const TRANSFER = '0xa9059cbb';
+      const APPROVE = '0x095ea7b3';
+
+      const out = (line) => {
+        document.getElementById('out').textContent += line + '\n';
+      };
+      const word = (hex) => hex.replace(/^0x/, '').toLowerCase().padStart(64, '0');
+      const call = (selector, address, amount) =>
+        selector + word(address) + word(amount.toString(16));
+
+      const request = async (method, params = []) => {
+        if (!window.ethereum) {
+          out('No wallet found: install the Redbelly Wallet extension and reload.');
+          throw new Error('no wallet');
+        }
+        return window.ethereum.request({ method, params });
+      };
+      const report = (label) => (error) =>
+        out(`${label}: error ${error.code ?? ''} ${error.message}`);
+
+      async function connect() {
+        try {
+          const accounts = await request('eth_requestAccounts');
+          out('connected ' + accounts[0]);
+          out('chainId ' + (await request('eth_chainId')));
+        } catch (e) { report('connect')(e); }
+      }
+
+      async function switchTo(chainId) {
+        try {
+          await request('wallet_switchEthereumChain', [{ chainId }]);
+          out('now on ' + (await request('eth_chainId')));
+        } catch (e) { report('switch to ' + chainId)(e); }
+      }
+
+      async function send(tx) {
+        try {
+          const [from] = await request('eth_accounts');
+          if (!from) { out('Connect first.'); return; }
+          const hash = await request('eth_sendTransaction', [{ from, ...tx }]);
+          out('sent ' + hash);
+        } catch (e) { report('send')(e); }
+      }
+
+      async function lookalike() {
+        const [from] = await request('eth_accounts');
+        if (!from) { out('Connect first.'); return; }
+        const hex = from.slice(2).toLowerCase();
+        const fake = '0x' + hex.slice(0, 4) + '0'.repeat(32) + hex.slice(-4);
+        out('lookalike of ' + from + ': ' + fake);
+        send({ to: fake, value: '0x1' });
+      }
+    </script>
+  </body>
+</html>
