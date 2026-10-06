@@ -27,6 +27,7 @@ export const RedbellyAssetSection = ({
   visible,
   className,
   onHasBalanceChange,
+  fluid = false,
 }: {
   /** Chain `serverId` currently filtered on, or null for "all chains". */
   selectChainId?: string | null;
@@ -38,6 +39,13 @@ export const RedbellyAssetSection = ({
    * holding only RBNT is shown as empty.
    */
   onHasBalanceChange?: (hasBalance: boolean) => void;
+  /**
+   * Fit the parent's width instead of the viewport's. The popup `Table` is
+   * `w-screen -mx-20`, sized for the 400px extension popup; inside the desktop
+   * profile that is wider than its container, which pushes the whole page past
+   * the window edge. Desktop callers set this.
+   */
+  fluid?: boolean;
 }) => {
   const { t } = useTranslation();
   const wallet = useWallet();
@@ -85,7 +93,7 @@ export const RedbellyAssetSection = ({
           {t('page.dashboard.assets.redbelly.subtitle')}
         </div>
       </div>
-      <Table>
+      <Table className={fluid ? 'w-full mx-0' : undefined}>
         <TBody>
           {summaries.map((summary) => {
             const chain = findChain({ id: summary.chainId });
