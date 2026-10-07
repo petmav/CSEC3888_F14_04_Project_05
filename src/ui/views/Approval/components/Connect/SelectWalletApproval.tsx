@@ -1,3 +1,4 @@
+import { WALLET_NAME } from '@/constant/redbelly';
 import { IExtractFromPromise } from '@/ui/utils/type';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -29,7 +30,7 @@ export const ConnectApproval: React.FC<{
       return null;
     }
     setApproval(approval);
-    document.title = 'Rabby Wallet Notification';
+    document.title = `${WALLET_NAME} Notification`;
   };
 
   useEffect(() => {

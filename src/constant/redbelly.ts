@@ -221,3 +221,6 @@ export function redbellyRpcUrlForServerId(
   }
   return undefined;
 }
+
+/** What this wallet calls itself in window titles and approval screens. */
+export const WALLET_NAME = 'Redbelly Wallet';
