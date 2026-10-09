@@ -158,6 +158,7 @@ export const TokenTab = ({
         <RedbellyAssetSection
           selectChainId={selectChainId ?? null}
           visible
+          fluid
           className="mx-20 mb-[12px]"
           onHasBalanceChange={setRedbellyHasBalance}
         />

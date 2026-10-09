@@ -1,3 +1,4 @@
+import { WALLET_NAME } from '@/constant/redbelly';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { Approval } from 'background/service/notification';
@@ -38,7 +39,7 @@ const Approval: React.FC<{
     // "忽略所有" 只允许作用于当前审批, 不能在同窗口排队切换时残留到下一笔
     resetCurrentTx();
     setApproval(approval);
-    document.title = 'Rabby Wallet Notification';
+    document.title = `${WALLET_NAME} Notification`;
     const account = approval.data.account || (await wallet.getCurrentAccount());
     if (!account) {
       rejectApproval(

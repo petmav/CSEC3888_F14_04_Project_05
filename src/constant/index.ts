@@ -221,7 +221,8 @@ import LogoMagpie from 'ui/assets/swap/magpie.png';
 import LogoSushi from 'ui/assets/swap/sushi.png';
 import LogoUniswap from 'ui/assets/swap/uniswap.png';
 
-import RabbyChainLogo from '@/ui/assets/rabby-chain-logo.png';
+import { REDBELLY_MAINNET } from './redbelly-chains';
+import { WALLET_NAME } from './redbelly';
 import LogoBinance from 'ui/assets/swap/binance.png';
 import LogoCoinbase from 'ui/assets/swap/coinbase.png';
 import LogoKyberSwap from 'ui/assets/swap/kyberswap.png';
@@ -520,9 +521,11 @@ export const WALLETCONNECT_STATUS_MAP = {
 export const INTERNAL_REQUEST_ORIGIN = location.origin;
 
 export const INTERNAL_REQUEST_SESSION = {
-  name: 'Rabby',
+  name: WALLET_NAME,
   origin: INTERNAL_REQUEST_ORIGIN,
-  icon: RabbyChainLogo,
+  // The wallet's own avatar on approval screens. Shares the Redbelly chain
+  // logo so there is one place to set the brand mark.
+  icon: REDBELLY_MAINNET.logo,
 };
 
 export const INITIAL_OPENAPI_URL = 'https://api.rabby.io';

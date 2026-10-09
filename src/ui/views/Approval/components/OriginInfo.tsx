@@ -1,3 +1,4 @@
+import { WALLET_NAME } from '@/constant/redbelly';
 import { INTERNAL_REQUEST_ORIGIN } from '@/constant';
 import { FallbackSiteLogo } from '@/ui/component';
 import { TooltipWithMagnetArrow } from '@/ui/component/Tooltip/TooltipWithMagnetArrow';
@@ -89,7 +90,7 @@ export const OriginInfo: React.FC<Props> = ({
 
   const displayOrigin = useMemo(() => {
     if (origin === INTERNAL_REQUEST_ORIGIN) {
-      return 'Rabby Wallet';
+      return WALLET_NAME;
     }
     return origin;
   }, [origin]);
