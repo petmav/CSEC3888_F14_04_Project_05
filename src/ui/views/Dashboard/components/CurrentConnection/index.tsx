@@ -15,6 +15,7 @@ import IconMetamaskMode from 'ui/assets/metamask-mode-circle.svg';
 import { ChainSelector, FallbackSiteLogo } from 'ui/component';
 import { getCurrentTab, useWallet } from 'ui/utils';
 import { findChain } from '@/utils/chain';
+import { allowedSiteChain } from '@/utils/redbelly/allowlist';
 import ChainSelectorModal from '@/ui/component/ChainSelector/Modal';
 import { useMemoizedFn } from 'ahooks';
 import { AccountSelector } from '@/ui/component/AccountSelector';
@@ -254,7 +255,7 @@ export const CurrentConnection = memo((props: CurrentConnectionProps) => {
       return null;
     }
     return findChain({
-      enum: site.chain || CHAINS_ENUM.ETH,
+      enum: allowedSiteChain(site.chain),
     });
   }, [site]);
 
@@ -293,7 +294,7 @@ export const CurrentConnection = memo((props: CurrentConnectionProps) => {
           return (
             +id ===
             findChain({
-              enum: site.chain || CHAINS_ENUM.ETH,
+              enum: allowedSiteChain(site.chain),
             })?.id
           );
         }) &&
@@ -363,7 +364,7 @@ export const CurrentConnection = memo((props: CurrentConnectionProps) => {
               </div>
               <ChainSelector
                 className={clsx(!site && 'disabled')}
-                value={site?.chain || CHAINS_ENUM.ETH}
+                value={allowedSiteChain(site?.chain) as CHAINS_ENUM}
                 onChange={handleChangeDefaultChain}
                 showModal={visible}
                 onAfterOpen={() => {
@@ -481,7 +482,7 @@ export const CurrentConnection = memo((props: CurrentConnectionProps) => {
         ) : null}
         <ChainSelectorModal
           account={currentSiteAccount}
-          value={site?.chain || CHAINS_ENUM.ETH}
+          value={allowedSiteChain(site?.chain) as CHAINS_ENUM}
           onChange={handleChangeDefaultChain}
           showRPCStatus={true}
           visible={visible}

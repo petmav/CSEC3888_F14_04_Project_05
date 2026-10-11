@@ -9,6 +9,10 @@ import { DisplayedProject } from '@/ui/utils/portfolio/project';
 import styled from 'styled-components';
 import { TokenListViewSkeleton } from '@/ui/views/CommonPopup/AssetList/TokenListViewSkeleton';
 import { HomePerpsPositionList } from '@/ui/views/CommonPopup/AssetList/HomePerpsPositionList';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
+import { useCurrentAccount } from '@/ui/hooks/backgroundState/useAccount';
+import { useRedbellyPortfolio } from '@/ui/hooks/useRedbellyPortfolio';
+import { RedbellyStakingSection } from '@/ui/views/CommonPopup/AssetList/RedbellyStakingSection';
 
 const ListContainer = styled.div`
   background-color: var(--rb-neutral-bg-3, #f9f9f9);
@@ -27,7 +31,7 @@ interface Props {
   removeProtocol: (id: string) => void;
 }
 
-export const DIFITab = ({
+const DebankDifiTab = ({
   appIds,
   displayPortfolios,
   currentPortfolioNetWorth,
@@ -107,3 +111,63 @@ export const DIFITab = ({
     </>
   );
 };
+
+/**
+ * The DeFi tab on Redbelly.
+ *
+ * DeBank, which feeds the tab elsewhere, knows nothing about Redbelly, so its
+ * protocol list is always empty and (before it was switched off) never
+ * finished loading. Redbelly's DeFi is staking, read from the pools
+ * themselves, so that is what the tab shows.
+ */
+const RedbellyDifiTab = ({
+  onProjectOverviewListChange,
+}: Pick<Props, 'onProjectOverviewListChange'>) => {
+  const { t } = useTranslation();
+  const currentAccount = useCurrentAccount();
+  const portfolio = useRedbellyPortfolio(currentAccount?.address);
+
+  // The shortcut rail beside the list is for DeBank protocols; clear it.
+  useEffect(() => {
+    onProjectOverviewListChange?.([]);
+  }, []);
+
+  if (portfolio.loading) {
+    return (
+      <div className="mx-20">
+        <TokenListViewSkeleton />
+      </div>
+    );
+  }
+
+  if (!portfolio.staking.length && !portfolio.stakingUnavailable) {
+    return (
+      <ListContainer className="mt-20">
+        <TokenListEmpty
+          text={t('page.dashboard.redbelly.noDefiPositions', {
+            defaultValue: 'No DeFi positions yet',
+          })}
+        />
+      </ListContainer>
+    );
+  }
+
+  return (
+    <div className="mx-20 mb-20">
+      <RedbellyStakingSection
+        positions={portfolio.staking}
+        unavailable={portfolio.stakingUnavailable}
+        rbntUsd={portfolio.rbntUsd}
+      />
+    </div>
+  );
+};
+
+export const DIFITab = (props: Props) =>
+  REDBELLY_ONLY ? (
+    <RedbellyDifiTab
+      onProjectOverviewListChange={props.onProjectOverviewListChange}
+    />
+  ) : (
+    <DebankDifiTab {...props} />
+  );

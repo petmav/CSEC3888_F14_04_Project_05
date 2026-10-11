@@ -1,6 +1,9 @@
 import { ConnectedSite } from '@/background/service/permission';
 import { REDBELLY_ONLY } from '@/constant/redbelly';
-import { DEFAULT_SITE_CHAIN_ENUM } from '@/utils/redbelly/allowlist';
+import {
+  allowedSiteChain,
+  DEFAULT_SITE_CHAIN_ENUM,
+} from '@/utils/redbelly/allowlist';
 import i18n from '@/i18n';
 import { ReactComponent as ArrowDownSVG } from '@/ui/assets/approval/arrow-down-blue.svg';
 import { findChain } from '@/utils/chain';
@@ -601,7 +604,9 @@ export const ConnectContent = (
       if (!isShowTestnet && findChain({ enum: site.chain })?.isTestnet) {
         return;
       }
-      setDefaultChain(site.chain);
+      // A site remembered on a chain this wallet no longer offers (e.g. from
+      // before Redbelly-only) starts on Redbelly rather than that chain.
+      setDefaultChain(allowedSiteChain(site.chain) as CHAINS_ENUM);
       return;
     }
     setIsLoading(false);

@@ -14,15 +14,12 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as RcIconActivities } from 'ui/assets/dashboard/activities.svg';
 import { ReactComponent as RcIconArrowRight } from 'ui/assets/dashboard/settings/icon-right-arrow.svg';
 import { useRabbyDispatch, useRabbySelector } from '@/ui/store';
-import { ReactComponent as RcIconAddresses } from 'ui/assets/dashboard/addresses.svg';
 import { ReactComponent as RcIconCustomRPC } from 'ui/assets/dashboard/custom-rpc.svg';
 import { ReactComponent as RcIconCustomTestnet } from 'ui/assets/dashboard/icon-custom-testnet.svg';
 import { ReactComponent as RcIconPreferMetamask } from 'ui/assets/dashboard/icon-prefer-metamask.svg';
 import { ReactComponent as RcIconAutoLock } from 'ui/assets/dashboard/settings/icon-auto-lock.svg';
-import { ReactComponent as RcIconLockWallet } from 'ui/assets/dashboard/settings/lock.svg';
 import { ReactComponent as RcIconSwitchPwdForNonWhitelistedTx } from 'ui/assets/dashboard/settings/switch-password-non-whitelisted-tx.svg';
 import { ReactComponent as RcIconDappSwitchAddress } from 'ui/assets/dashboard/dapp-switch-address.svg';
 import { ReactComponent as RcIconThemeMode } from 'ui/assets/settings/theme-mode.svg';
@@ -42,7 +39,6 @@ import { ReactComponent as RcIconServerCC } from 'ui/assets/server-cc.svg';
 import IconSuccess from 'ui/assets/success.svg';
 import { Checkbox, Field, PageHeader, Popup } from 'ui/component';
 import {
-  detectClientOS,
   getUiType,
   openInTab,
   openInternalPageInTab,
@@ -51,7 +47,6 @@ import {
 import './style.less';
 
 import IconCheck from 'ui/assets/check-2.svg';
-import { ReactComponent as RcIconSettingsFeatureConnectedDapps } from 'ui/assets/dashboard/settings/connected-dapps.svg';
 import { ReactComponent as RcIconSettingsAboutFollowUs } from 'ui/assets/dashboard/settings/follow-us.svg';
 import { ReactComponent as RcIconSettingsAboutSupporetedChains } from 'ui/assets/dashboard/settings/supported-chains.svg';
 import { ReactComponent as RcIconSettingsAboutVersion } from 'ui/assets/dashboard/settings/version.svg';
@@ -69,7 +64,6 @@ import stats from '@/stats';
 import { useAsync, useCss } from 'react-use';
 import semver from 'semver-compare';
 import Contacts from '../Contacts';
-import RecentConnections from '../RecentConnections';
 import SwitchThemeModal from './components/SwitchThemeModal';
 import { CurrencyModal } from './components/CurrencyModal';
 import ThemeIcon from '@/ui/component/ThemeMode/ThemeIcon';
@@ -630,7 +624,6 @@ const SettingsInner = ({
   const [isShowCurrencyModal, setIsShowCurrencyModal] = useState(false);
   const [isShowThemeModeModal, setIsShowThemeModeModal] = useState(false);
   const [contactsVisible, setContactsVisible] = useState(false);
-  const [connectedDappsVisible, setConnectedDappsVisible] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [isShowDappAccountModal, setIsShowDappAccountModal] = useState(false);
   const [biometricSupported, setBiometricSupported] = useState(false);
@@ -642,9 +635,6 @@ const SettingsInner = ({
   const [perpsIncludeWatchForTest, setPerpsIncludeWatchForTest] = useState(
     () => localStorage.getItem(PERPS_TEST_INCLUDE_WATCH_KEY) === '1'
   );
-  const lockShortcutLabel = useMemo(() => {
-    return detectClientOS() === 'darwin' ? '⌘ + L' : 'Ctrl + L';
-  }, []);
 
   const autoLockTime = useRabbySelector(
     (state) => state.preference.autoLockTime || 0
@@ -901,73 +891,6 @@ const SettingsInner = ({
       label: t('page.dashboard.settings.features.label'),
       items: [
         {
-          leftIcon: RcIconLockWallet,
-          content: t('page.dashboard.settings.features.lockWallet'),
-          rightIcon: (
-            <div className="setting-shortcut">
-              {lockShortcutLabel.split(' + ').map((label) => (
-                <span key={label} className="setting-shortcut-key">
-                  {label}
-                </span>
-              ))}
-              <ThemeIcon
-                src={RcIconArrowRight}
-                className="icon icon-arrow-right"
-              />
-            </div>
-          ),
-          onClick: () => {
-            lockWallet();
-            matomoRequestEvent({
-              category: 'Setting',
-              action: 'clickToUse',
-              label: 'Lock Wallet',
-            });
-
-            ga4.fireEvent('More_LockWallet', {
-              event_category: 'Click More',
-            });
-
-            reportSettings('Lock Wallet');
-          },
-        },
-        {
-          leftIcon: RcIconActivities,
-          content: t('page.dashboard.settings.features.signatureRecord'),
-          onClick: () => {
-            history.push('/activities');
-            matomoRequestEvent({
-              category: 'Setting',
-              action: 'clickToUse',
-              label: 'Signature Record',
-            });
-
-            ga4.fireEvent('More_SignatureRecord', {
-              event_category: 'Click More',
-            });
-
-            reportSettings('Signature Record');
-          },
-        },
-        {
-          leftIcon: RcIconAddresses,
-          content: t('page.dashboard.settings.features.manageAddress'),
-          onClick: () => {
-            history.push('/settings/address');
-            matomoRequestEvent({
-              category: 'Setting',
-              action: 'clickToUse',
-              label: 'Manage Address',
-            });
-
-            ga4.fireEvent('More_ManageAddress', {
-              event_category: 'Click More',
-            });
-
-            reportSettings('Manage Address');
-          },
-        },
-        {
           leftIcon: RcIconEcosystemCC,
           leftIconClassName: 'text-r-neutral-body',
           content: t('page.dashboard.settings.features.ecosystem'),
@@ -1007,24 +930,6 @@ const SettingsInner = ({
 
             reportSettings('Search Dapps');
             openInternalPageInTab('dapp-search');
-          },
-        },
-        {
-          leftIcon: RcIconSettingsFeatureConnectedDapps,
-          content: t('page.dashboard.settings.features.connectedDapp'),
-          onClick: () => {
-            setConnectedDappsVisible(true);
-            matomoRequestEvent({
-              category: 'Setting',
-              action: 'clickToUse',
-              label: 'Connected Dapps',
-            });
-
-            ga4.fireEvent('More_ConnectedDapps', {
-              event_category: 'Click More',
-            });
-
-            reportSettings('Connected Dapps');
           },
         },
       ] as SettingItem[],
@@ -1635,12 +1540,6 @@ const SettingsInner = ({
     delete renderData.debugkits;
   }
 
-  const lockWallet = async () => {
-    reportSettings('lockWallet');
-    await wallet.lockWallet();
-    history.push('/unlock');
-  };
-
   const handleClose: DrawerProps['onClose'] = (e) => {
     setShowOpenApiModal(false);
     setShowResetAccountModal(false);
@@ -1797,13 +1696,6 @@ const SettingsInner = ({
         visible={isShowThemeModeModal}
         onFinish={() => setIsShowThemeModeModal(false)}
         onCancel={() => setIsShowThemeModeModal(false)}
-      />
-      <RecentConnections
-        canBack={true}
-        visible={connectedDappsVisible}
-        onClose={() => {
-          setConnectedDappsVisible(false);
-        }}
       />
       <FeedbackPopup
         visible={feedbackVisible}

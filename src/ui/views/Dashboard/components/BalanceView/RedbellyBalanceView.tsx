@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import type { Account } from '@/background/service/preference';
 import { REDBELLY_MAINNET_CHAIN_ID } from '@/constant/redbelly';
 import { useRedbellyPortfolio } from '@/ui/hooks/useRedbellyPortfolio';
-import { useCommonPopupView } from '@/ui/utils';
+import { useWallet } from '@/ui/utils';
 import { formatTokenAmount } from '@/ui/utils/number';
 import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 
@@ -34,7 +34,7 @@ export const RedbellyBalanceView = ({
   currentAccount?: Account | null;
 }) => {
   const { t } = useTranslation();
-  const { activePopup } = useCommonPopupView();
+  const wallet = useWallet();
   const portfolio = useRedbellyPortfolio(currentAccount?.address);
   const { format } = useRedbellyCurrency();
 
@@ -48,7 +48,10 @@ export const RedbellyBalanceView = ({
         'w-full min-h-[120px] rounded-[8px] px-[16px] py-[12px] cursor-pointer',
         'bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.14)]'
       )}
-      onClick={() => activePopup('AssetList')}
+      onClick={() => {
+        wallet.openInDesktop('/desktop/profile');
+        window.close();
+      }}
       data-testid="redbelly-balance-card"
     >
       {portfolio.loading ? (

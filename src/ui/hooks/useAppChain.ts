@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { AppChainItem } from '@rabby-wallet/rabby-api/dist/types';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { APPCHAIN_SYNC_SCENE, CACHE_VALID_DURATION } from '@/db/constants';
 import { appChainDbService } from '@/db/services/appChainDbService';
 import { syncDbService } from '@/db/services/syncDbService';
@@ -93,6 +94,16 @@ export const useAppChain = (userAddr: string | undefined, visible = true) => {
 
   const loadProcess = async ({ forceRefresh = false } = {}) => {
     if (!userAddr) return;
+
+    // App chains (Hyperliquid, Polymarket) are DeBank data with nothing behind
+    // them on Redbelly, and the network guard blocks the request.
+    if (REDBELLY_ONLY) {
+      setAppChains([]);
+      setData([]);
+      setHasValue(false);
+      setLoading(false);
+      return;
+    }
 
     const currentAbort = new AbortController();
     abortProcess.current = currentAbort;

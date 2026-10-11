@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tabs } from 'antd';
 import { PageHeader } from 'ui/component';
+import { useBackToSettings } from '@/ui/hooks/useBackToSettings';
 
 import './style.less';
 import TransactionHistory from '../TransactionHistory';
@@ -15,6 +16,7 @@ const Activities: React.FC<{
   onClose?(e: React.MouseEvent<HTMLElement>): void;
 }> = ({ isInModal, onClose }) => {
   const { t } = useTranslation();
+  const backToSettings = useBackToSettings();
   const [selectedTab, setSelectedTab] = React.useState<
     'signed_tx' | 'signed_text'
   >('signed_tx');
@@ -66,6 +68,7 @@ const Activities: React.FC<{
         <>
           <PageHeader
             canBack={true}
+            onBack={backToSettings}
             closeable={false}
             wrapperClassName="bg-r-neutral-bg-2"
             fixed
