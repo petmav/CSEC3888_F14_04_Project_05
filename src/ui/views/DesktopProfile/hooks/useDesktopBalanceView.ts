@@ -5,6 +5,7 @@ import {
 } from '../../Dashboard/components/BalanceView/useHomeBalanceView';
 import { BALANCE_LOADING_CONFS } from '@/constant/timeout';
 import useCurrentBalance from '@/ui/hooks/useCurrentBalance';
+import { useCurrency } from '@/ui/hooks/useCurrency';
 import {
   formChartData,
   useCurve,
@@ -49,6 +50,8 @@ export const useDesktopBalanceView = ({ address }: { address?: string }) => {
     initBalanceFromLocalCache: !!currentHomeBalanceCache,
   });
 
+  const { currency } = useCurrency();
+
   const {
     curveData: latestCurveData,
     curveChartData: latestCurveChartData,
@@ -59,6 +62,7 @@ export const useDesktopBalanceView = ({ address }: { address?: string }) => {
     nonce: accountBalanceUpdateNonce,
     realtimeNetWorth: latestEvmBalance,
     initData: currentHomeBalanceCache?.originalCurveData,
+    currency,
   });
 
   const {
@@ -80,7 +84,12 @@ export const useDesktopBalanceView = ({ address }: { address?: string }) => {
       appChainIds,
       curveChartData:
         latestCurveChartData ||
-        formChartData(currentHomeBalanceCache?.originalCurveData || []),
+        formChartData(
+          currentHomeBalanceCache?.originalCurveData || [],
+          undefined,
+          undefined,
+          currency
+        ),
       matteredChainBalances: latestMatteredChainBalances.length
         ? latestMatteredChainBalances
         : currentHomeBalanceCache?.matteredChainBalances || [],
@@ -95,6 +104,7 @@ export const useDesktopBalanceView = ({ address }: { address?: string }) => {
     latestChainBalancesWithValue,
     latestCurveChartData,
     currentHomeBalanceCache,
+    currency,
   ]);
 
   const getCacheExpired = useCallback(async () => {

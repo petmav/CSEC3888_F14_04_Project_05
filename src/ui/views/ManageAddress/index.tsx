@@ -1,5 +1,6 @@
 import { KEYRING_CLASS, KEYRING_TYPE } from '@/constant';
 import { PageHeader } from '@/ui/component';
+import { useBackToSettings } from '@/ui/hooks/useBackToSettings';
 import { useRabbyDispatch } from '@/ui/store';
 import React, { useCallback, useState } from 'react';
 import { IDisplayedAccountWithBalance } from '@/ui/state/accountToDisplay';
@@ -50,6 +51,8 @@ const ManageAddress = () => {
   const [{ back = false }] = useState<{
     back?: boolean;
   }>(query2obj(search));
+
+  const backToSettings = useBackToSettings();
 
   const wallet = useWallet();
 
@@ -274,6 +277,7 @@ const ManageAddress = () => {
               <PageHeader
                 className="pt-[24px]"
                 canBack={back}
+                onBack={backToSettings}
                 closeable={!back}
               >
                 {t('page.manageAddress.manage-address')}

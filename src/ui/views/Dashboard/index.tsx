@@ -18,6 +18,7 @@ import { useCurrentAccount } from '@/ui/hooks/backgroundState/useAccount';
 import { GasPriceBar } from './components/GasPriceBar';
 import { RedbellyPriceBar } from './components/GasPriceBar/RedbellyPriceBar';
 import { REDBELLY_ONLY } from '@/constant/redbelly';
+import { DEFAULT_SITE_CHAIN_ENUM } from '@/utils/redbelly/allowlist';
 import { CHAINS_ENUM, KEYRING_CLASS } from '@/constant';
 import Settings from './components/Settings';
 import { useMemoizedFn, useMount } from 'ahooks';
@@ -119,7 +120,7 @@ const Dashboard = () => {
 
   const { t } = useTranslation();
   const [currentConnectedSiteChain, setCurrentConnectedSiteChain] = useState(
-    CHAINS_ENUM.ETH
+    DEFAULT_SITE_CHAIN_ENUM as CHAINS_ENUM
   );
 
   const [settingVisible, setSettingVisible] = useState(false);
@@ -128,7 +129,16 @@ const Dashboard = () => {
     setSettingVisible(!settingVisible);
   });
 
-  const location = useLocation();
+  const location = useLocation<{ openSettings?: boolean } | undefined>();
+  useMount(() => {
+    // Back from a page that Settings opened (Signature Record, Manage
+    // Address): put the Settings drawer back. State is cleared so a reload
+    // does not reopen it.
+    if (location.state?.openSettings) {
+      setSettingVisible(true);
+      history.replace(location.pathname);
+    }
+  });
   const invokeEnterPassphrase = useEnterPassphraseModal('address');
   useMount(() => {
     const check = async () => {

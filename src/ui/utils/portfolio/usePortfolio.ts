@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import produce from 'immer';
 import { ComplexProtocol } from '@rabby-wallet/rabby-api/dist/types';
 
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { isFullVersionAccountType } from '@/utils/account';
 import { defiDbService } from '@/db/services/defiDbService';
 import { syncDbService } from '@/db/services/syncDbService';
@@ -105,6 +106,21 @@ export const usePortfolios = (userAddr: string | undefined, visible = true) => {
 
   const loadProcess = async ({ forceRefresh = false } = {}) => {
     if (!userAddr) return;
+
+    // DeBank's protocol list has nothing for Redbelly, and the network guard
+    // blocks it. Loading it threw before `setLoading(false)` could run, so the
+    // DeFi tab showed its skeleton forever. Mirror `useTokens`: clear the
+    // flag and report no DeBank positions; Redbelly's own positions come from
+    // `useRedbellyPortfolio`.
+    if (REDBELLY_ONLY) {
+      projectDict.current = null;
+      setData([]);
+      setNetWorth(0);
+      setHasValue(false);
+      setLoading(false);
+      return;
+    }
+
     projectDict.current = {};
 
     const currentAbort = new AbortController();
@@ -173,7 +189,16 @@ export const usePortfolios = (userAddr: string | undefined, visible = true) => {
      * 阶段二：接口快照缓存
      */
     let snapshotRes: ComplexProtocol[] = [];
-    snapshotRes = await loadPortfolioSnapshot(userAddr, wallet);
+    try {
+      snapshotRes = await loadPortfolioSnapshot(userAddr, wallet);
+    } catch (error) {
+      // An unreachable API means no DeBank positions, not an endless spinner.
+      log('--Terminate-portfolio-snapshot-error-', userAddr);
+      if (!currentAbort.signal.aborted) {
+        setLoading(false);
+      }
+      return;
+    }
 
     if (currentAbort.signal.aborted || !snapshotRes) {
       log('--Terminate-portfolio-snapshot-', userAddr);

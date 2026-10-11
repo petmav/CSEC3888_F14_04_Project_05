@@ -52,6 +52,8 @@ import {
   RcIconTransactionsCC,
   RcIconConvertDustCC,
   RcIconStakingCC,
+  RcIconLockCC,
+  RcIconSignatureRecordCC,
 } from 'ui/assets/dashboard/panel';
 
 import { useThemeMode } from '@/ui/hooks/usePreference';
@@ -637,8 +639,8 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
     } as IPanelItem,
     dapps: {
       icon: RcIconDappsCC,
-      eventKey: 'Dapps ',
-      content: t('page.dashboard.home.panel.dapps'),
+      eventKey: 'Connected Dapps',
+      content: t('page.dashboard.settings.features.connectedDapp'),
       onClick: () => {
         setIsShowDappsPopup(true);
       },
@@ -649,6 +651,23 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
       content: t('page.dashboard.home.panel.manageAddress'),
       onClick: () => {
         history.push('/settings/address');
+      },
+    } as IPanelItem,
+    lockWallet: {
+      icon: RcIconLockCC,
+      eventKey: 'Lock Wallet',
+      content: t('page.dashboard.settings.features.lockWallet'),
+      onClick: async () => {
+        await wallet.lockWallet();
+        history.push('/unlock');
+      },
+    } as IPanelItem,
+    signatureRecord: {
+      icon: RcIconSignatureRecordCC,
+      eventKey: 'Signature Record',
+      content: t('page.dashboard.settings.features.signatureRecord'),
+      onClick: () => {
+        history.push('/activities');
       },
     } as IPanelItem,
     convertDust: {
@@ -690,6 +709,10 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
         'staking',
         'manageAddress',
         'more',
+        // Moved here from Settings; each sits under the tile above it.
+        'lockWallet',
+        'signatureRecord',
+        'dapps',
       ];
     }
     return [
@@ -705,6 +728,8 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
       'dapps',
       'convertDust',
       'points',
+      'lockWallet',
+      'signatureRecord',
     ];
   }, []);
 
@@ -904,7 +929,7 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
   return (
     <div
       className={clsx(
-        'relative px-[16px] pt-[14px] pb-[12px]',
+        'relative px-[16px] pt-[14px] pb-[8px]',
         'rabby-dashboard-panel-container'
       )}
     >
@@ -912,7 +937,9 @@ export const DashboardPanel: React.FC<{ onSettingClick?(): void }> = ({
       <div
         className="overflow-auto rounded-[8px] bg-r-neutral-card-2"
         style={{
-          height: 264,
+          // Three rows of tiles at most. With fewer rows the box shrinks to
+          // fit instead of leaving an empty band above the price bar.
+          height: Math.min(3, Math.ceil(pickedPanelKeys.length / 3)) * 88,
         }}
         ref={ref}
       >

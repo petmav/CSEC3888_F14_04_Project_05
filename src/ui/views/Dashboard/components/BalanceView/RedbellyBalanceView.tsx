@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import type { Account } from '@/background/service/preference';
 import { REDBELLY_MAINNET_CHAIN_ID } from '@/constant/redbelly';
 import { useRedbellyPortfolio } from '@/ui/hooks/useRedbellyPortfolio';
-import { useCommonPopupView } from '@/ui/utils';
+import { useWallet } from '@/ui/utils';
 import { formatTokenAmount } from '@/ui/utils/number';
 import { useRedbellyCurrency } from '@/ui/hooks/useRedbellyCurrency';
 
@@ -34,9 +34,9 @@ export const RedbellyBalanceView = ({
   currentAccount?: Account | null;
 }) => {
   const { t } = useTranslation();
-  const { activePopup } = useCommonPopupView();
+  const wallet = useWallet();
   const portfolio = useRedbellyPortfolio(currentAccount?.address);
-  const { currencyCode, rotation, rotate, format } = useRedbellyCurrency();
+  const { format } = useRedbellyCurrency();
 
   const mainnet = portfolio.summaries.find(
     (item) => item.chainId === REDBELLY_MAINNET_CHAIN_ID
@@ -48,7 +48,10 @@ export const RedbellyBalanceView = ({
         'w-full min-h-[120px] rounded-[8px] px-[16px] py-[12px] cursor-pointer',
         'bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.14)]'
       )}
-      onClick={() => activePopup('AssetList')}
+      onClick={() => {
+        wallet.openInDesktop('/desktop/profile');
+        window.close();
+      }}
       data-testid="redbelly-balance-card"
     >
       {portfolio.loading ? (
@@ -72,25 +75,6 @@ export const RedbellyBalanceView = ({
                 ? rbnt(portfolio.mainnetRbnt.plus(portfolio.stakedRbnt))
                 : '-'}
             </div>
-            {portfolio.totalUsd && rotation.length > 1 ? (
-              // Tap to cycle the display currency; the same setting as
-              // Settings > Currency, so it applies everywhere.
-              <button
-                type="button"
-                className={clsx(
-                  'text-[12px] font-medium text-r-neutral-title2 border-0 cursor-pointer',
-                  'px-[8px] py-[2px] rounded-[10px] bg-[rgba(255,255,255,0.15)] hover:bg-[rgba(255,255,255,0.25)]'
-                )}
-                title={t('page.dashboard.redbelly.rotateCurrency')}
-                data-testid="redbelly-currency-chip"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  rotate();
-                }}
-              >
-                {currencyCode} ⇄
-              </button>
-            ) : null}
           </div>
 
           {/* Side by side, not stacked: the tile grid overlaps the bottom

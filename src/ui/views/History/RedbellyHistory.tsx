@@ -90,8 +90,16 @@ const ActivityRow = ({
  * Mainnet activity, incoming included, comes from Redbelly's block explorer:
  * DeBank, Rabby's usual source, has nothing for Redbelly. Testnet has no
  * explorer API we can rely on, so it shows what this wallet itself sent.
+ *
+ * Shared by the popup's Transactions page and the profile page's Transactions
+ * tab. `embedded` is for the latter: the profile page already owns the scroll
+ * container and the side padding, so this must not add a second of either.
  */
-export const RedbellyHistory = () => {
+export const RedbellyHistory = ({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) => {
   const { t } = useTranslation();
   const wallet = useWallet();
   const account = useCurrentAccount();
@@ -103,7 +111,7 @@ export const RedbellyHistory = () => {
   });
 
   return (
-    <div className="h-full overflow-auto px-20 pb-20">
+    <div className={embedded ? 'pb-20' : 'h-full overflow-auto px-20 pb-20'}>
       <div className="mt-8 mb-8">
         <div className="text-13 font-medium text-r-neutral-title1">
           {t('page.transactions.redbelly.mainnetTitle')}

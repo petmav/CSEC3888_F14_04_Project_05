@@ -21,6 +21,7 @@ import {
   useRefreshHomeBalanceView,
 } from '@/ui/views/Dashboard/components/BalanceView/useHomeBalanceView';
 import { findChain } from '@/utils/chain';
+import { useCurrency } from '@/ui/hooks/useCurrency';
 import { Chain } from '@debank/common';
 import { useRequest } from 'ahooks';
 import { Skeleton, Tooltip } from 'antd';
@@ -36,8 +37,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import {
+  formatCurrency,
   openInTab,
-  splitNumberByStep,
   useCommonPopupView,
   useWallet,
 } from 'ui/utils';
@@ -82,6 +83,12 @@ export const BalanceView: React.FC<{
   const [curvePoint, setCurvePoint] = useState<CurvePoint>();
   const [isDebounceHover, setIsDebounceHover] = useState(false);
   const currentAccount = useCurrentAccount();
+  const { currency, syncCurrencyList } = useCurrency();
+
+  useEffect(() => {
+    // Without the list the hook falls back to USD, whatever was chosen.
+    syncCurrencyList();
+  }, [syncCurrencyList]);
 
   const { currentHomeBalanceCache } = useHomeBalanceView(
     currentAccount?.address
@@ -179,9 +186,7 @@ export const BalanceView: React.FC<{
                     className="w-[200px] h-[53px] rounded block"
                   />
                 ) : (
-                  <div>
-                    ${splitNumberByStep((currentBalance || 0).toFixed(2))}
-                  </div>
+                  <div>{formatCurrency(currentBalance || 0, { currency })}</div>
                 )}
               </div>
               <div
