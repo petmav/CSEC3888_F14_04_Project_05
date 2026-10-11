@@ -1,3 +1,4 @@
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import { useQueryDbHistory } from '@/db/hooks/history';
 import { useCurrentAccount } from '@/ui/hooks/backgroundState/useAccount';
 import { isSupportDBAccount } from '@/utils/account';
@@ -8,13 +9,14 @@ import { Virtuoso } from 'react-virtuoso';
 import { Empty } from 'ui/component';
 import { DesktopHistoryItem } from './DesktopHistoryItem';
 import { DesktopLoading } from './DesktopLoading';
+import { RedbellyHistory } from '@/ui/views/History/RedbellyHistory';
 
 interface TransactionsTabPaneProps {
   scrollContainerRef?: React.RefObject<HTMLElement>;
   selectChainId?: string;
 }
 
-export const TransactionsTabPane: React.FC<TransactionsTabPaneProps> = ({
+const DebankTransactionsTabPane: React.FC<TransactionsTabPaneProps> = ({
   scrollContainerRef,
   selectChainId,
 }) => {
@@ -83,3 +85,22 @@ export const TransactionsTabPane: React.FC<TransactionsTabPaneProps> = ({
     </div>
   );
 };
+
+/**
+ * The profile page's Transactions tab.
+ *
+ * `useQueryDbHistory` is backed by DeBank, which has no Redbelly history, so
+ * the tab was always empty even though the popup's Transactions page (which
+ * reads Redbelly's block explorer and this wallet's own sent transactions)
+ * was correct. On Redbelly the tab shows that same list.
+ */
+export const TransactionsTabPane: React.FC<TransactionsTabPaneProps> = (
+  props
+) =>
+  REDBELLY_ONLY ? (
+    <div className="pb-[16px] px-[20px]">
+      <RedbellyHistory embedded />
+    </div>
+  ) : (
+    <DebankTransactionsTabPane {...props} />
+  );
