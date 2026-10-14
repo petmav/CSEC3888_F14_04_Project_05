@@ -60,14 +60,20 @@ interface ChainSelectorModalProps {
   hideTestnetTab?: boolean;
   showRPCStatus?: boolean;
   height?: number;
+  mainnetList?: Chain[];
+  testnetList?: Chain[];
 }
 
 const useChainSeletorList = ({
   supportChains,
   netTabKey,
+  mainnetList,
+  testnetList,
 }: {
   supportChains?: Chain['enum'][];
   netTabKey?: NetSwitchTabsKey;
+  mainnetList?: Chain[];
+  testnetList?: Chain[];
 }) => {
   const [search, setSearch] = useState('');
   const { pinned, chainBalances } = useRabbySelector((state) => {
@@ -103,6 +109,8 @@ const useChainSeletorList = ({
       matteredChainBalances: chainBalances,
       pinned,
       netTabKey,
+      mainnetList,
+      testnetList,
     });
 
     return {
@@ -110,7 +118,15 @@ const useChainSeletorList = ({
       matteredList: searchKw ? [] : result.matteredList,
       unmatteredList: searchKw ? [] : result.unmatteredList,
     };
-  }, [search, pinned, supportChains, chainBalances, netTabKey]);
+  }, [
+    search,
+    pinned,
+    supportChains,
+    chainBalances,
+    netTabKey,
+    mainnetList,
+    testnetList,
+  ]);
 
   useEffect(() => {
     dispatch.preference.getPreference('pinnedChain');
@@ -141,6 +157,8 @@ export const ChainSelectorLargeModal = ({
   hideTestnetTab = false,
   showRPCStatus = false,
   height = 494,
+  mainnetList,
+  testnetList,
   ...rest
 }: ModalProps & ChainSelectorModalProps) => {
   const handleCancel = () => {
@@ -168,6 +186,8 @@ export const ChainSelectorLargeModal = ({
   } = useChainSeletorList({
     supportChains,
     netTabKey: selectedTab,
+    mainnetList,
+    testnetList,
   });
 
   useEffect(() => {

@@ -9,9 +9,7 @@ import { SendTokenModal } from './components/SendTokenModal';
 import { DesktopSelectAccountList } from '@/ui/component/DesktopSelectAccountList';
 import { SwapTokenModal } from './components/SwapTokenModal';
 import { TransactionsTabPane } from './components/TransactionsTabPane';
-import { DesktopChainSelector } from '../DesktopChainSelector';
 import { useDesktopProfileStore } from '@/ui/state/desktopProfile';
-import { findChainByEnum } from '@/utils/chain';
 import { useCurrentAccount } from '@/ui/hooks/backgroundState/useAccount';
 import { useDesktopBalanceView } from './hooks/useDesktopBalanceView';
 import { useMemoizedFn, useMount } from 'ahooks';
@@ -116,9 +114,6 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
       sendPageType: searchParams.get('sendPageType'),
     };
   }, [location.search]);
-  const chain = useDesktopProfileStore((state) => state.chain);
-  const setChain = useDesktopProfileStore((state) => state.setChain);
-  const chainInfo = useMemo(() => findChainByEnum(chain), [chain]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const {
     balance,
@@ -168,7 +163,6 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
     refreshPositions,
     refreshTokens,
   } = useTokenAndDefiData({
-    selectChainId: chainInfo?.serverId,
     allTokenMode: !!searchValue,
   });
 
@@ -299,10 +293,6 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                               </div>
                             ) : null}
                             <DesktopPending />
-                            <DesktopChainSelector
-                              value={chain}
-                              onChange={setChain}
-                            />
                           </div>
                         </>
                       ),
@@ -324,7 +314,6 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                         hasTokens={!!hasTokens}
                         lpTokenMode={lpTokenMode}
                         setLpTokenMode={setLpTokenMode}
-                        selectChainId={chainInfo?.serverId}
                       />
                     </Tabs.TabPane>
                     <Tabs.TabPane
@@ -350,14 +339,13 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                       </>
                     </Tabs.TabPane>
                     <Tabs.TabPane tab="NFTs" key="nft">
-                      <NFTTabPane selectChainId={chainInfo?.serverId} />
+                      <NFTTabPane />
                     </Tabs.TabPane>
                     <Tabs.TabPane
                       tab={t('page.desktopProfile.tabs.transactions')}
                       key="transactions"
                     >
                       <TransactionsTabPane
-                        selectChainId={chainInfo?.serverId}
                         scrollContainerRef={scrollContainerRef}
                       />
                     </Tabs.TabPane>
@@ -367,7 +355,6 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                     >
                       <ApprovalsTabPane
                         isDesktop={true}
-                        desktopChain={chain}
                         key={`${currentAccount?.address}-${currentAccount?.type}`}
                       />
                     </Tabs.TabPane>

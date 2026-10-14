@@ -1,4 +1,3 @@
-import { CHAINS_ENUM } from '@/types/chain';
 import { create } from 'zustand';
 
 export type DesktopAddAddressState = {
@@ -8,13 +7,11 @@ export type DesktopAddAddressState = {
 };
 
 export type DesktopProfileState = {
-  chain?: CHAINS_ENUM;
   activeTab: string;
   addAddress: DesktopAddAddressState;
 };
 
 type DesktopProfileActions = {
-  setChain: (chain?: CHAINS_ENUM) => void;
   setActiveTab: (activeTab: string) => void;
   setAddAddress: (addAddress: DesktopAddAddressState) => void;
 };
@@ -22,15 +19,10 @@ type DesktopProfileActions = {
 export type DesktopProfileStore = DesktopProfileState & DesktopProfileActions;
 
 export const useDesktopProfileStore = create<DesktopProfileStore>()((set) => ({
-  chain: undefined,
   activeTab: 'tokens',
   addAddress: {
     visible: false,
     importType: '',
-  },
-
-  setChain(chain) {
-    set({ chain });
   },
   setActiveTab(activeTab) {
     set({ activeTab });
