@@ -84,7 +84,7 @@ import {
 } from '@/ui/utils/biometric';
 import { PERPS_TEST_INCLUDE_WATCH_KEY } from '@/ui/views/Perps/components/SelectAddressList';
 import { useOpenapiStore } from '@/ui/state/openapi';
-import { appIsDebugPkg, appIsDev } from '@/utils/env';
+const SHOW_DEBUG_KITS = false;
 
 const useAutoLockOptions = () => {
   const { t } = useTranslation();
@@ -115,7 +115,7 @@ const useAutoLockOptions = () => {
       label: t('page.dashboard.settings.10Minutes'),
     },
   ];
-  if (appIsDebugPkg || appIsDev) {
+  if (SHOW_DEBUG_KITS) {
     options.push({
       value: 1,
       label: '1 minute',
@@ -1535,7 +1535,7 @@ const SettingsInner = ({
     },
   };
 
-  if (!process.env.DEBUG) {
+  if (!SHOW_DEBUG_KITS) {
     // @ts-expect-error we know it's not defined on production
     delete renderData.debugkits;
   }
