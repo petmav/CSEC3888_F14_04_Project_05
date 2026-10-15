@@ -1,5 +1,9 @@
 import cloneDeep from 'lodash/cloneDeep';
-import { REDBELLY_ONLY } from '@/constant/redbelly';
+import {
+  DEFAULT_GAS_LIMIT_MULTIPLIER,
+  normalizeGasLimitMultiplier,
+  REDBELLY_ONLY,
+} from '@/constant/redbelly';
 import * as Sentry from '@sentry/browser';
 import type { BalanceCacheData } from '@/db/schema/balance';
 import eventBus from '@/eventBus';
@@ -140,6 +144,8 @@ export interface PreferenceStore {
 
   /** @deprecated */
   reserveGasOnSendToken?: boolean;
+  /** Factor applied to the gas estimate to get the signed gas limit. */
+  gasLimitMultiplier?: number;
   isHideEcologyNoticeDict?: Record<string | number, boolean>;
 
   isEnabledPwdForNonWhitelistedTx?: boolean;
@@ -246,6 +252,7 @@ class PreferenceService {
           ...defaultAddressSortStore,
         },
         reserveGasOnSendToken: true,
+        gasLimitMultiplier: DEFAULT_GAS_LIMIT_MULTIPLIER,
         isHideEcologyNoticeDict: {},
         safeSelfHostConfirm: {},
         isEnabledPwdForNonWhitelistedTx: false,
@@ -357,6 +364,9 @@ class PreferenceService {
     if (!this.store.isShowTestnet) {
       this.store.isShowTestnet = false;
     }
+    this.store.gasLimitMultiplier = normalizeGasLimitMultiplier(
+      this.store.gasLimitMultiplier
+    );
     if (!this.store.addressSortStore) {
       this.store.addressSortStore = {
         ...defaultAddressSortStore,
@@ -790,6 +800,12 @@ class PreferenceService {
 
   setThemeMode = (themeMode: DARK_MODE_TYPE) => {
     this.store.themeMode = themeMode;
+  };
+
+  getGasLimitMultiplier = () =>
+    normalizeGasLimitMultiplier(this.store.gasLimitMultiplier);
+  setGasLimitMultiplier = (value: number) => {
+    this.store.gasLimitMultiplier = normalizeGasLimitMultiplier(value);
   };
 
   /** @deprecated */

@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as RcIconArrowRight } from 'ui/assets/dashboard/settings/icon-right-arrow.svg';
 import { useRabbyDispatch, useRabbySelector } from '@/ui/store';
+import { selectGasLimitMultiplier } from '@/ui/state/preference';
 import { ReactComponent as RcIconCustomRPC } from 'ui/assets/dashboard/custom-rpc.svg';
 import { ReactComponent as RcIconCustomTestnet } from 'ui/assets/dashboard/icon-custom-testnet.svg';
 import { ReactComponent as RcIconPreferMetamask } from 'ui/assets/dashboard/icon-prefer-metamask.svg';
@@ -66,6 +67,7 @@ import semver from 'semver-compare';
 import Contacts from '../Contacts';
 import SwitchThemeModal from './components/SwitchThemeModal';
 import { CurrencyModal } from './components/CurrencyModal';
+import GasLimitModal from './components/GasLimitModal';
 import ThemeIcon from '@/ui/component/ThemeMode/ThemeIcon';
 import FeedbackPopup from '../Feedback';
 import { getChainList } from '@/utils/chain';
@@ -623,6 +625,10 @@ const SettingsInner = ({
   const [isShowLangModal, setIsShowLangModal] = useState(false);
   const [isShowCurrencyModal, setIsShowCurrencyModal] = useState(false);
   const [isShowThemeModeModal, setIsShowThemeModeModal] = useState(false);
+  const [isShowGasLimitModal, setIsShowGasLimitModal] = useState(false);
+  const gasLimitMultiplier = useRabbySelector((state) =>
+    selectGasLimitMultiplier(state.preference)
+  );
   const [contactsVisible, setContactsVisible] = useState(false);
   const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [isShowDappAccountModal, setIsShowDappAccountModal] = useState(false);
@@ -1090,6 +1096,27 @@ const SettingsInner = ({
                 role="button"
               >
                 {currency.code}
+              </span>
+              <ThemeIcon
+                src={RcIconArrowRight}
+                className="icon icon-arrow-right"
+              />
+            </>
+          ),
+        },
+        {
+          leftIcon: RcIconCurrency,
+          content: t('page.dashboard.settings.settings.gasLimitMultiplier'),
+          onClick: () => {
+            setIsShowGasLimitModal(true);
+          },
+          rightIcon: (
+            <>
+              <span
+                className="text-14 mr-[8px] text-r-neutral-foot"
+                role="button"
+              >
+                {gasLimitMultiplier}x
               </span>
               <ThemeIcon
                 src={RcIconArrowRight}
@@ -1691,6 +1718,11 @@ const SettingsInner = ({
         visible={isShowCurrencyModal}
         onFinish={() => setIsShowCurrencyModal(false)}
         onCancel={() => setIsShowCurrencyModal(false)}
+      />
+      <GasLimitModal
+        visible={isShowGasLimitModal}
+        onFinish={() => setIsShowGasLimitModal(false)}
+        onCancel={() => setIsShowGasLimitModal(false)}
       />
       <SwitchThemeModal
         visible={isShowThemeModeModal}

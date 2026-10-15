@@ -42,6 +42,7 @@ import {
   KEYRING_TYPE,
 } from 'consts';
 import { connectStore, useRabbySelector } from 'ui/store';
+import { selectGasLimitMultiplier } from '@/ui/state/preference';
 import {
   getUiType,
   isSameAddress,
@@ -375,6 +376,9 @@ const ChainSelectWrapper = styled.div`
 `;
 
 const SendToken = () => {
+  const gasLimitMultiplier = useRabbySelector((state) =>
+    selectGasLimitMultiplier(state.preference)
+  );
   const { useForm } = Form;
   const { t } = useTranslation();
   const history = useHistory();
@@ -2231,13 +2235,20 @@ const SendToken = () => {
       }
 
       const gasUsed = new BigNumber(_gasUsed)
-        .multipliedBy(1.5)
+        .multipliedBy(gasLimitMultiplier)
         .integerValue()
         .toNumber();
 
       return doReturn(Number(gasUsed));
     },
-    [chainItem, currentToken, currentAccount?.address, wallet, toAddress]
+    [
+      chainItem,
+      currentToken,
+      currentAccount?.address,
+      wallet,
+      toAddress,
+      gasLimitMultiplier,
+    ]
   );
 
   const loadCurrentToken = useCallback(
