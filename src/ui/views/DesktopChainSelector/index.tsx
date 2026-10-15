@@ -8,6 +8,10 @@ import { ChainSelectorLargeModal } from '@/ui/component/ChainSelector/LargeModal
 import { findChainByEnum } from '@/utils/chain';
 import { RcIconArrowDownCC } from '@/ui/assets/desktop/common';
 import ChainIcon from '@/ui/component/ChainIcon';
+import {
+  REDBELLY_MAINNET_ENUM,
+  REDBELLY_TESTNET_ENUM,
+} from '@/constant/redbelly';
 
 interface Props {
   value?: CHAINS_ENUM;
@@ -25,6 +29,30 @@ export const DesktopChainSelector: React.FC<Props> = ({
   const chainInfo = React.useMemo(() => {
     return findChainByEnum(value);
   }, [value]);
+
+  const redbellyMainnetChain = React.useMemo(
+    () => findChainByEnum(REDBELLY_MAINNET_ENUM),
+    []
+  );
+  const redbellyTestnetChain = React.useMemo(
+    () => findChainByEnum(REDBELLY_TESTNET_ENUM),
+    []
+  );
+
+  /**
+   * This fork only talks to Redbelly
+   */
+  const redbellyChains = React.useMemo(
+    () =>
+      [redbellyMainnetChain, redbellyTestnetChain].filter(
+        (chain): chain is NonNullable<typeof chain> => !!chain
+      ),
+    [redbellyMainnetChain, redbellyTestnetChain]
+  );
+  const supportedChainEnums = React.useMemo(
+    () => redbellyChains.map((chain) => chain.enum),
+    [redbellyChains]
+  );
 
   return (
     <>
@@ -80,28 +108,26 @@ export const DesktopChainSelector: React.FC<Props> = ({
             )}
           >
             <div className={clsx('flex items-center')}>
-              {[CHAINS_ENUM.ETH, CHAINS_ENUM.OP, CHAINS_ENUM.BASE].map(
-                (chain, idx) => {
-                  return (
-                    <div
-                      className={clsx(
-                        'relative',
-                        'p-2 rounded-[8px] bg-rb-neutral-bg-1'
-                      )}
-                      key={chain}
-                      style={{
-                        left: 0 - idx * 4,
-                      }}
-                    >
-                      <ChainIcon
-                        chain={chain}
-                        key={chain}
-                        innerClassName="w-[18px] h-[18px]"
-                      />
-                    </div>
-                  );
-                }
-              )}
+              {redbellyChains.map((chain, idx) => {
+                return (
+                  <div
+                    className={clsx(
+                      'relative',
+                      'p-2 rounded-[8px] bg-rb-neutral-bg-1'
+                    )}
+                    key={chain.enum}
+                    style={{
+                      left: 0 - idx * 4,
+                    }}
+                  >
+                    <ChainIcon
+                      chain={chain.enum}
+                      key={chain.enum}
+                      innerClassName="w-[18px] h-[18px]"
+                    />
+                  </div>
+                );
+              })}
             </div>
             {t('component.DesktopChainSelector.allChains')}
             <RcIconArrowDownCC />
@@ -113,7 +139,9 @@ export const DesktopChainSelector: React.FC<Props> = ({
         visible={isShowChainSelector}
         title="Select chain"
         value={value}
-        hideTestnetTab
+        supportChains={supportedChainEnums}
+        mainnetList={redbellyMainnetChain ? [redbellyMainnetChain] : []}
+        testnetList={redbellyTestnetChain ? [redbellyTestnetChain] : []}
         onChange={(v) => {
           onChange?.(v);
           setIsShowChainSelector(false);

@@ -6,6 +6,10 @@ import { ReactComponent as RcIconDropdown } from '@/ui/assets/dapp-search/cc-dro
 import { useTranslation } from 'react-i18next';
 import { ChainSelectorLargeModal } from '@/ui/component/ChainSelector/LargeModal';
 import { findChainByEnum } from '@/utils/chain';
+import {
+  REDBELLY_MAINNET_ENUM,
+  REDBELLY_TESTNET_ENUM,
+} from '@/constant/redbelly';
 
 interface Props {
   chain?: CHAINS_ENUM;
@@ -23,6 +27,26 @@ export const ChainSelectorButton: React.FC<Props> = ({
   const chainInfo = React.useMemo(() => {
     return findChainByEnum(chain);
   }, [chain]);
+
+  const redbellyMainnetChain = React.useMemo(
+    () => findChainByEnum(REDBELLY_MAINNET_ENUM),
+    []
+  );
+  const redbellyTestnetChain = React.useMemo(
+    () => findChainByEnum(REDBELLY_TESTNET_ENUM),
+    []
+  );
+
+  /**
+   * Keep selector scoped to Redbelly only.
+   */
+  const supportedChainEnums = React.useMemo(
+    () =>
+      [redbellyMainnetChain, redbellyTestnetChain]
+        .filter((chain): chain is NonNullable<typeof chain> => !!chain)
+        .map((chain) => chain.enum),
+    [redbellyMainnetChain, redbellyTestnetChain]
+  );
 
   return (
     <>
@@ -108,7 +132,9 @@ export const ChainSelectorButton: React.FC<Props> = ({
         visible={isShowChainSelector}
         title="Select chain"
         value={chain}
-        hideTestnetTab
+        supportChains={supportedChainEnums}
+        mainnetList={redbellyMainnetChain ? [redbellyMainnetChain] : []}
+        testnetList={redbellyTestnetChain ? [redbellyTestnetChain] : []}
         onChange={(v) => {
           setChain(v);
           setIsShowChainSelector(false);
