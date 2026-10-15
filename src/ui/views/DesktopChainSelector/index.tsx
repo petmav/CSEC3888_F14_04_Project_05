@@ -43,10 +43,10 @@ export const DesktopChainSelector: React.FC<Props> = ({
    * This fork only talks to Redbelly
    */
   const redbellyChains = React.useMemo(
-    () => 
+    () =>
       [redbellyMainnetChain, redbellyTestnetChain].filter(
-       (chain): chain is NonNullable<typeof chain> => !!chain
-     ),
+        (chain): chain is NonNullable<typeof chain> => !!chain
+      ),
     [redbellyMainnetChain, redbellyTestnetChain]
   );
   const supportedChainEnums = React.useMemo(
@@ -108,28 +108,26 @@ export const DesktopChainSelector: React.FC<Props> = ({
             )}
           >
             <div className={clsx('flex items-center')}>
-              {redbellyChains.map(
-                (chain, idx) => {
-                  return (
-                    <div
-                      className={clsx(
-                        'relative',
-                        'p-2 rounded-[8px] bg-rb-neutral-bg-1'
-                      )}
+              {redbellyChains.map((chain, idx) => {
+                return (
+                  <div
+                    className={clsx(
+                      'relative',
+                      'p-2 rounded-[8px] bg-rb-neutral-bg-1'
+                    )}
+                    key={chain.enum}
+                    style={{
+                      left: 0 - idx * 4,
+                    }}
+                  >
+                    <ChainIcon
+                      chain={chain.enum}
                       key={chain.enum}
-                      style={{
-                        left: 0 - idx * 4,
-                      }}
-                    >
-                      <ChainIcon
-                        chain={chain.enum}
-                        key={chain.enum}
-                        innerClassName="w-[18px] h-[18px]"
-                      />
-                    </div>
-                  );
-                }
-              )}
+                      innerClassName="w-[18px] h-[18px]"
+                    />
+                  </div>
+                );
+              })}
             </div>
             {t('component.DesktopChainSelector.allChains')}
             <RcIconArrowDownCC />
