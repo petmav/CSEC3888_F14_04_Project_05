@@ -41,9 +41,10 @@ export const ChainSelectorButton: React.FC<Props> = ({
    * Keep selector scoped to Redbelly only.
    */
   const supportedChainEnums = React.useMemo(
-    () => [redbellyMainnetChain, redbellyTestnetChain]
-      .filter((chain): chain is NonNullable<typeof chain> => !!chain)
-      .map((chain) => chain.enum),
+    () =>
+      [redbellyMainnetChain, redbellyTestnetChain]
+        .filter((chain): chain is NonNullable<typeof chain> => !!chain)
+        .map((chain) => chain.enum),
     [redbellyMainnetChain, redbellyTestnetChain]
   );
 

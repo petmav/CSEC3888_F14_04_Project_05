@@ -43,9 +43,10 @@ export const DesktopChainSelector: React.FC<Props> = ({
    * This fork only talks to Redbelly
    */
   const redbellyChains = React.useMemo(
-    () => [redbellyMainnetChain, redbellyTestnetChain].filter(
-      (chain): chain is NonNullable<typeof chain> => !!chain
-    ),
+    () => 
+      [redbellyMainnetChain, redbellyTestnetChain].filter(
+       (chain): chain is NonNullable<typeof chain> => !!chain
+     ),
     [redbellyMainnetChain, redbellyTestnetChain]
   );
   const supportedChainEnums = React.useMemo(

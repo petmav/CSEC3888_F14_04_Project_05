@@ -1,10 +1,8 @@
 import { useDesktopProfileStore } from '@/ui/state/desktopProfile';
-import { CHAINS_ENUM } from '@/types/chain';
 
 describe('desktop profile store', () => {
   beforeEach(() => {
     useDesktopProfileStore.setState({
-      chain: undefined,
       activeTab: 'tokens',
       addAddress: {
         visible: false,
@@ -15,7 +13,6 @@ describe('desktop profile store', () => {
 
   test('uses the existing desktop profile defaults', () => {
     expect(useDesktopProfileStore.getState()).toMatchObject({
-      chain: undefined,
       activeTab: 'tokens',
       addAddress: {
         visible: false,
@@ -27,7 +24,6 @@ describe('desktop profile store', () => {
   test('updates desktop-only state through domain actions', () => {
     const store = useDesktopProfileStore.getState();
 
-    store.setChain(CHAINS_ENUM.ARBITRUM);
     store.setActiveTab('transactions');
     store.setAddAddress({
       visible: true,
@@ -36,7 +32,6 @@ describe('desktop profile store', () => {
     });
 
     expect(useDesktopProfileStore.getState()).toMatchObject({
-      chain: CHAINS_ENUM.ARBITRUM,
       activeTab: 'transactions',
       addAddress: {
         visible: true,
