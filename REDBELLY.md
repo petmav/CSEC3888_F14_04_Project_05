@@ -107,6 +107,13 @@ same canonical node.
 markup for custom networks is removed, so the quoted fee is the charged fee.
 Dollars come from the on-chain `gasfees` peg (US$0.01 per 21,000 gas).
 
+**Gas limit.** The gas limit is the node's estimate times a multiplier that
+starts at 1x and can be changed in Settings > Gas Limit Multiplier (presets,
+or a custom value from 1 to 3 under Advanced). Unused gas is not charged, but
+the balance check needs `limit x price + value`, so Rabby's old 1.5x blocked
+accounts holding less than 1.5 times the fee. Raise it for contract calls
+whose gas varies between estimate and execution.
+
 **Balances, tokens, stake, activity.** All read from Redbelly, never zero
 when unknown:
 
