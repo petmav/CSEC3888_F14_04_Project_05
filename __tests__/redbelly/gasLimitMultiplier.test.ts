@@ -7,9 +7,9 @@ import {
 } from '@/constant/redbelly';
 
 describe('normalizeGasLimitMultiplier', () => {
-  it('starts at 1x, so the limit equals the estimate', () => {
-    expect(DEFAULT_GAS_LIMIT_MULTIPLIER).toBe(1);
-    expect(normalizeGasLimitMultiplier(undefined)).toBe(1);
+  it('starts at 1.1x, a small margin over the estimate', () => {
+    expect(DEFAULT_GAS_LIMIT_MULTIPLIER).toBe(1.1);
+    expect(normalizeGasLimitMultiplier(undefined)).toBe(1.1);
   });
 
   it('falls back to the default for anything that is not a finite number', () => {
