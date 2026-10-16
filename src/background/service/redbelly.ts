@@ -24,6 +24,7 @@ import {
   readGasPrice,
   readIsAllowed,
   readUsdPerGas,
+  resolvePermissionContract,
 } from '@/utils/redbelly/reader';
 import type { EthereumRequest } from '@/utils/redbelly/reader';
 import { verdictFor } from '@/utils/redbelly/verdict';
@@ -203,6 +204,27 @@ class RedbellyService {
       );
     } catch (error) {
       console.error('[redbelly] registration check failed', error);
+      return null;
+    }
+  };
+
+  /**
+   * The permission contract for a chain, resolved from the registry.
+   *
+   * @param chainId - The numeric chain ID.
+   * @returns The contract address, or `null` if it could not be resolved.
+   */
+  getPermissionContract = async (chainId: number): Promise<string | null> => {
+    if (!isRedbellyChainId(chainId)) {
+      return null;
+    }
+    try {
+      return await withTimeout(
+        resolvePermissionContract(this.transport(chainId), chainId),
+        RPC_TIMEOUT
+      );
+    } catch (error) {
+      console.error('[redbelly] permission contract lookup failed', error);
       return null;
     }
   };

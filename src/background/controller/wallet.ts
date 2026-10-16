@@ -6717,6 +6717,7 @@ export class WalletController extends BaseController {
   getRedbellyVerdict = redbellyService.getVerdict;
   getRedbellyAddressFacts = redbellyService.getAddressFacts;
   getRedbellyIsRegistered = redbellyService.getIsRegistered;
+  getRedbellyPermissionContract = redbellyService.getPermissionContract;
   getRedbellyUsdPerGas = redbellyService.getUsdPerGas;
   getRedbellyBalance = redbellyService.getBalance;
   getRedbellyGasPrice = redbellyService.getGasPrice;

@@ -238,9 +238,18 @@ export const RedbellyTxPanel = ({
             )}
           </Row>
           {senderRegistered === false ? (
-            <div className="text-12 text-r-orange-default mb-4">
-              {t('page.signTx.redbelly.senderNotRegisteredWarning')}
-            </div>
+            gate.isRegistration ? (
+              <div
+                className="text-12 text-r-neutral-body mb-4"
+                data-testid="redbelly-registration-note"
+              >
+                {t('page.signTx.redbelly.senderRegistrationNote')}
+              </div>
+            ) : (
+              <div className="text-12 text-r-orange-default mb-4">
+                {t('page.signTx.redbelly.senderNotRegisteredWarning')}
+              </div>
+            )
           ) : null}
           <Row label={t('page.signTx.redbelly.networkFee')}>
             {feeRbnt ? (

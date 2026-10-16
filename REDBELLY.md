@@ -77,7 +77,11 @@ The team chose
 - a confirmed unregistered recipient is shown in red, and Sign stays disabled
   until the user ticks "I understand the risks and want to continue" (US12);
 - an unregistered signer gets a warning that the node will reject the
-  transaction (-32603), but signing is not held.
+  transaction (-32603), but signing is not held. The exception is the
+  registration call itself (`0x33f6cfb2` to the permission contract, the
+  "enable wallet" step at access.redbelly.network), which the network accepts
+  from an unregistered account: the panel explains it instead of warning
+  (`utils/redbelly/registration.ts`).
 
 The Send page applies the same verdict to the recipient field before the user
 gets this far.

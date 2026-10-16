@@ -24,6 +24,7 @@ const mockUiWallet = {
   getRedbellyIsRegistered: jest.fn(),
   getRedbellyUsdPerGas: jest.fn(),
   getRedbellyKnownAddresses: jest.fn(),
+  getRedbellyPermissionContract: jest.fn(),
 };
 jest.mock('@/ui/utils', () => ({
   useWallet: () => mockUiWallet,
@@ -41,6 +42,9 @@ const MAINNET = 151;
 const ALICE = '0xfbc724445400a693dfd8c3c59cb2d0f0de52d1af';
 const BOB = '0xcb385cd90ca6b219798f57b4a7958897e91a9163';
 const SIGNER = '0x30025e9f7b5b3b2e389ba1a1de08a006aa217fe1';
+// Mainnet's permission contract, and its registration ("enable") call.
+const PERMISSION = BOB;
+const REGISTER = `0x33f6cfb2${'0'.repeat(64)}`;
 
 const CHECKING = 'page.signTx.redbelly.checkingReason';
 const ACKNOWLEDGE = 'page.signTx.redbelly.acknowledgeReason';
@@ -123,6 +127,9 @@ beforeEach(() => {
   mockUiWallet.getRedbellyKnownAddresses
     .mockReset()
     .mockResolvedValue({ addresses: [], complete: true });
+  mockUiWallet.getRedbellyPermissionContract
+    .mockReset()
+    .mockResolvedValue(PERMISSION);
   root = createRoot(document.createElement('div'));
   renders = [];
 });
@@ -279,6 +286,39 @@ describe('useRedbellyTxGate', () => {
     await settle();
     expect(gate.senderRegistered).toBe(false);
     expect(gate.blockReason).toBeNull();
+  });
+
+  it('recognises an unregistered signer registering, without changing the hold', async () => {
+    getRedbellyVerdict.mockResolvedValue('CONTRACT');
+    mockUiWallet.getRedbellyIsRegistered.mockResolvedValue(false);
+
+    await render(send(PERMISSION, { data: REGISTER }));
+    await settle();
+    expect(mockUiWallet.getRedbellyPermissionContract).toHaveBeenCalledWith(
+      MAINNET
+    );
+    expect(gate.senderRegistered).toBe(false);
+    expect(gate.isRegistration).toBe(true);
+    expect(gate.blockReason).toBeNull();
+  });
+
+  it('does not treat the registration selector to another contract as registering', async () => {
+    getRedbellyVerdict.mockResolvedValue('CONTRACT');
+    mockUiWallet.getRedbellyIsRegistered.mockResolvedValue(false);
+
+    await render(send(ALICE, { data: REGISTER }));
+    await settle();
+    expect(gate.isRegistration).toBe(false);
+  });
+
+  it('keeps the usual warning when the permission contract cannot be resolved', async () => {
+    getRedbellyVerdict.mockResolvedValue('CONTRACT');
+    mockUiWallet.getRedbellyIsRegistered.mockResolvedValue(false);
+    mockUiWallet.getRedbellyPermissionContract.mockResolvedValue(null);
+
+    await render(send(PERMISSION, { data: REGISTER }));
+    await settle();
+    expect(gate.isRegistration).toBe(false);
   });
 
   it('has nothing to check on contract creation', async () => {
