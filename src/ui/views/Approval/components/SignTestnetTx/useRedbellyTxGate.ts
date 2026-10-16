@@ -11,6 +11,7 @@ import {
   recipientFamiliarity,
 } from '@/utils/redbelly/familiarity';
 import { paymentTarget, PaymentTarget } from '@/utils/redbelly/recipient';
+import { isRegistrationCall } from '@/utils/redbelly/registration';
 import { requiresAcknowledgement, Verdict } from '@/utils/redbelly/verdict';
 
 export type RedbellyTxGate = {
@@ -22,6 +23,11 @@ export type RedbellyTxGate = {
   checking: boolean;
   /** Whether the signer is KYC registered; null if unknown or not checked. */
   senderRegistered: boolean | null;
+  /**
+   * The transaction is the permission contract's registration call, which
+   * the network accepts from an unregistered signer. False while unknown.
+   */
+  isRegistration: boolean;
   /** US dollars per unit of gas, or null if the peg could not be read. */
   usdPerGas: number | null;
   /**
@@ -61,7 +67,8 @@ export type RedbellyTxGate = {
  * - so does an address that imitates one the user has paid before (address
  *   poisoning); one never paid before is noted, not held;
  * - an unregistered signer is a warning only: the node rejects it with
- *   -32603, and the panel says so before the user signs (FR5).
+ *   -32603, and the panel says so before the user signs (FR5) - except for
+ *   the registration call itself, which the panel explains instead.
  * An `UNKNOWN` verdict does not hold signing: Redbelly has one public
  * endpoint, and an outage must not brick the wallet.
  *
@@ -174,6 +181,16 @@ export function useRedbellyTxGate({
     { refreshDeps: [isRedbelly, chainId, from] }
   );
 
+  // Only changes what the panel says about an unregistered signer; it never
+  // affects `blockReason`.
+  const { data: permissionContract = null } = useRequest(
+    async () =>
+      isRedbelly ? wallet.getRedbellyPermissionContract(Number(chainId)) : null,
+    { refreshDeps: [isRedbelly, chainId] }
+  );
+  const isRegistration =
+    isRedbelly && isRegistrationCall({ to, data }, permissionContract);
+
   const { data: usdPerGas = null } = useRequest(
     async () =>
       isRedbelly ? wallet.getRedbellyUsdPerGas(Number(chainId)) : null,
@@ -198,6 +215,7 @@ export function useRedbellyTxGate({
     verdict,
     checking,
     senderRegistered,
+    isRegistration,
     usdPerGas,
     familiarity,
     historyComplete: known?.complete ?? true,

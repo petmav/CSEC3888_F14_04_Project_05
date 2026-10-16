@@ -80,6 +80,14 @@ export const SELECTOR_GET_CONTRACT_ADDRESS = '0x04433bbc';
 /** `isAllowed(address)` on the permission contract. */
 export const SELECTOR_IS_ALLOWED = '0xbabcc539';
 
+/**
+ * The permission contract's self-registration call: the "enable wallet" step
+ * at access.redbelly.network, which submits the account's KYC credential.
+ * It is the account's first transaction, and the network accepts it from an
+ * unregistered account. Observed on Mainnet (2026-10-15), not documented.
+ */
+export const SELECTOR_REGISTER = '0x33f6cfb2';
+
 /** `getBaseGasFee()` on the gasfees contract. */
 export const SELECTOR_GET_BASE_GAS_FEE = '0x96ec79c1';
 
