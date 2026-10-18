@@ -78,11 +78,14 @@ export const RedbellyTxPanel = ({
   chain,
   gasUsed,
   gasPrice,
+  gasLimitLowered = false,
 }: {
   gate: RedbellyTxGate;
   chain: { name: string; logo: string; nativeTokenSymbol: string };
   gasUsed?: string | number | null;
   gasPrice?: string | number | null;
+  /** The registration call's gas limit was lowered to fit the balance. */
+  gasLimitLowered?: boolean;
 }) => {
   const { t } = useTranslation();
   const { format } = useRedbellyCurrency();
@@ -269,6 +272,14 @@ export const RedbellyTxPanel = ({
           <div className="text-12 text-r-neutral-foot">
             {t('page.signTx.redbelly.feeNote')}
           </div>
+          {gasLimitLowered ? (
+            <div
+              className="text-12 text-r-orange-default mt-4"
+              data-testid="redbelly-gas-limit-lowered"
+            >
+              {t('page.signTx.redbelly.gasLimitLowered')}
+            </div>
+          ) : null}
         </div>
       </div>
     </Card>

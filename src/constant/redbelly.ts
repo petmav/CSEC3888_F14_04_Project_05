@@ -88,6 +88,17 @@ export const SELECTOR_IS_ALLOWED = '0xbabcc539';
  */
 export const SELECTOR_REGISTER = '0x33f6cfb2';
 
+/**
+ * Gas limit for the registration call, as a multiple of the node's estimate.
+ *
+ * Every other transaction keeps Rabby's 1.5x. Redbelly funds a new account
+ * with roughly 1.12-1.14x the registration fee, so 1.5x would refuse it; and
+ * the call's gas barely varies (about 98% of the estimate is used). If the
+ * balance cannot cover 1.1x, the limit is lowered to what it can cover, but
+ * never below the estimate (`registrationGasLimit`).
+ */
+export const REGISTRATION_GAS_LIMIT_RATIO = 1.1;
+
 /** `getBaseGasFee()` on the gasfees contract. */
 export const SELECTOR_GET_BASE_GAS_FEE = '0x96ec79c1';
 

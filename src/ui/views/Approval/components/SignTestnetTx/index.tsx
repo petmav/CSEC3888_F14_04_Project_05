@@ -51,6 +51,8 @@ import * as Sentry from '@sentry/browser';
 import { getCexInfo } from '@/ui/state/exchange';
 import { useSetReportGasLevel } from '@/ui/hooks/useSetReportGasLevel';
 import { gasUnitsToUsd } from '@/utils/redbelly/fees';
+import { registrationGasLimit } from '@/utils/redbelly/registration';
+import { REGISTRATION_GAS_LIMIT_RATIO } from '@/constant/redbelly';
 import { RedbellyTxPanel } from './RedbellyTxPanel';
 import { useRedbellyTxGate } from './useRedbellyTxGate';
 
@@ -250,6 +252,11 @@ export const SignTestnetTx = ({
   const [isLedger, setIsLedger] = useState(false);
   const [isHardware, setIsHardware] = useState(false);
   const [nativeTokenBalance, setNativeTokenBalance] = useState('0x0');
+  // The registration gas limit is fitted to the balance only once it has
+  // really been read; the '0x0' above is a placeholder, not a balance.
+  const [balanceLoaded, setBalanceLoaded] = useState(false);
+  const [estimateFailed, setEstimateFailed] = useState(false);
+  const [gasLimitEdited, setGasLimitEdited] = useState(false);
   const [canProcess, setCanProcess] = useState(true);
   const [
     cantProcessReason,
@@ -364,6 +371,7 @@ export const SignTestnetTx = ({
         return `0x${new BigNumber(estimateGas).integerValue().toString(16)}`;
       } catch (e) {
         console.error(e);
+        setEstimateFailed(true);
         const fallbackNumber = 2000000;
         const fallback = intToHex(fallbackNumber);
         if (!gasLimit) {
@@ -377,6 +385,43 @@ export const SignTestnetTx = ({
       manual: true,
     }
   );
+
+  // The registration call (the "enable wallet" step) gets 1.1x its estimate,
+  // fitted to the balance; everything else keeps Rabby's 1.5x. Not applied
+  // if the estimate failed, the balance is not known yet, or the user set the
+  // gas limit themselves.
+  const registrationGas = useMemo(
+    () =>
+      redbellyGate.isRegistration &&
+      !estimateFailed &&
+      !gasLimitEdited &&
+      balanceLoaded &&
+      gasLimit &&
+      gasUsed
+        ? registrationGasLimit({
+            estimate: gasUsed,
+            ceiling: gasLimit,
+            dappGasLimit: gas || params.data[0].gasLimit,
+            balance: nativeTokenBalance,
+            value: tx.value,
+            gasPrice: selectedGas?.price,
+          })
+        : null,
+    [
+      redbellyGate.isRegistration,
+      estimateFailed,
+      gasLimitEdited,
+      balanceLoaded,
+      gasLimit,
+      gasUsed,
+      gas,
+      params.data,
+      nativeTokenBalance,
+      tx.value,
+      selectedGas?.price,
+    ]
+  );
+  const effectiveGasLimit = registrationGas?.gasLimit ?? gasLimit;
 
   const {
     loading: isLoadingGasMarket,
@@ -439,6 +484,7 @@ export const SignTestnetTx = ({
         });
 
         setNativeTokenBalance(balance.rawAmount);
+        setBalanceLoaded(true);
       } catch (e) {
         console.error(e);
         if (chain && (await wallet.hasCustomRPC(chain.enum))) {
@@ -730,6 +776,10 @@ export const SignTestnetTx = ({
       nonce: afterNonce,
     });
     setGasLimit(intToHex(gas.gasLimit));
+    // A limit the user typed is theirs; it is not refitted to the balance.
+    if (Number(gas.gasLimit) !== Number(effectiveGasLimit)) {
+      setGasLimitEdited(true);
+    }
 
     if (!isGnosisAccount) {
       setRealNonce(afterNonce);
@@ -825,7 +875,7 @@ export const SignTestnetTx = ({
         ...transaction,
         isSend,
         nonce: realNonce || tx.nonce,
-        gas: gasLimit,
+        gas: effectiveGasLimit,
         uiRequestComponent: WaitingSignComponent[currentAccount.type],
         $account: currentAccount,
         type: currentAccount.type,
@@ -872,7 +922,7 @@ export const SignTestnetTx = ({
     resolveApproval({
       ...transaction,
       nonce: realNonce || tx.nonce,
-      gas: gasLimit,
+      gas: effectiveGasLimit,
       isSend,
       signingTxId: approval.signingTxId,
       reqId,
@@ -882,17 +932,19 @@ export const SignTestnetTx = ({
   const checkErrors = useCheckGasAndNonce({
     recommendGasLimit: gasUsed || 0,
     recommendNonce: recommendNonce || '',
-    gasLimit: Number(gasLimit),
+    gasLimit: Number(effectiveGasLimit),
     nonce: Number(realNonce || tx.nonce),
     maxGasCostAmount: new BigNumber(selectedGas?.price || 0)
-      .multipliedBy(gasLimit || 0)
+      .multipliedBy(effectiveGasLimit || 0)
       .div(1e18),
     isSpeedUp,
     isCancel,
     tx,
     isGnosisAccount: isGnosisAccount || isCoboArugsAccount,
     nativeTokenBalance,
-    recommendGasLimitRatio: 1.5,
+    recommendGasLimitRatio: registrationGas
+      ? REGISTRATION_GAS_LIMIT_RATIO
+      : DEFAULT_GAS_LIMIT_RATIO,
   });
 
   useSetReportGasLevel(selectedGas?.level);
@@ -907,8 +959,9 @@ export const SignTestnetTx = ({
         <RedbellyTxPanel
           gate={redbellyGate}
           chain={chain}
-          gasUsed={gasLimit && gasUsed ? gasUsed : null}
+          gasUsed={effectiveGasLimit && gasUsed ? gasUsed : null}
           gasPrice={selectedGas?.price ?? null}
+          gasLimitLowered={!!registrationGas?.lowered}
         />
         <TestnetActions
           account={currentAccount}
@@ -919,7 +972,7 @@ export const SignTestnetTx = ({
           raw={{
             ...tx,
             nonce: realNonce || tx.nonce,
-            gas: gasLimit!,
+            gas: effectiveGasLimit!,
           }}
           isSpeedUp={isSpeedUp}
           originLogo={params.session.icon}
@@ -930,7 +983,7 @@ export const SignTestnetTx = ({
         {isReady && (
           <SignAdvancedSettings
             isReady={isReady}
-            gasLimit={gasLimit}
+            gasLimit={effectiveGasLimit}
             recommendGasLimit={gasUsed || ''}
             recommendNonce={recommendNonce || ''}
             onChange={handleAdvancedSettingsChange}
@@ -962,7 +1015,7 @@ export const SignTestnetTx = ({
             tx={tx}
             disabled={false}
             isReady={isReady}
-            gasLimit={gasLimit}
+            gasLimit={effectiveGasLimit}
             noUpdate={isCancel || isSpeedUp}
             gasList={gasList || []}
             selectedGas={selectedGas}

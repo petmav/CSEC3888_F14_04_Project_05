@@ -111,6 +111,18 @@ same canonical node.
 markup for custom networks is removed, so the quoted fee is the charged fee.
 Dollars come from the on-chain `gasfees` peg (US$0.01 per 21,000 gas).
 
+**Gas limit.** Transactions keep Rabby's gas limit of 1.5x the node's
+estimate, a margin against running out of gas. The exception is the
+registration call (the "enable wallet" step): Redbelly funds a new account
+with roughly 1.12-1.14x its fee, so 1.5x would refuse it. That call gets 1.1x
+the estimate, and if the balance cannot cover 1.1x the limit is lowered to
+what it can cover, never below the estimate; the signing screen says so
+(`registrationGasLimit` in `utils/redbelly/registration.ts`). The fitting is
+skipped if the gas estimate failed, the balance has not loaded, or the user
+edited the gas limit. Because the fee is pegged in dollars, its RBNT cost
+moves with the RBNT price, so an account that waits before enabling may need
+the lowered limit.
+
 **Balances, tokens, stake, activity.** All read from Redbelly, never zero
 when unknown:
 
