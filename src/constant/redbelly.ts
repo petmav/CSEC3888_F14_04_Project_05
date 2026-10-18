@@ -238,11 +238,11 @@ export const WALLET_NAME = 'Redbelly Wallet';
  * the gas limit a transaction is signed with. Redbelly's gas is cheap and an
  * unused limit is refunded, but the wallet checks `limit * price + value`
  * against the balance up front, so a large factor blocks an account that holds
- * only a little more than the real fee. It therefore starts at 1.1x, enough to
- * absorb small differences between estimate and execution, and can be changed
- * in Settings (1x to 3x) for contract calls whose gas varies more.
+ * only a little more than the real fee. It therefore starts at 1x and can be
+ * raised in Settings for contract calls whose gas varies between estimate and
+ * execution.
  */
-export const DEFAULT_GAS_LIMIT_MULTIPLIER = 1.1;
+export const DEFAULT_GAS_LIMIT_MULTIPLIER = 1;
 export const MIN_GAS_LIMIT_MULTIPLIER = 1;
 export const MAX_GAS_LIMIT_MULTIPLIER = 3;
 export const GAS_LIMIT_MULTIPLIER_PRESETS = [1, 1.1, 1.25, 1.5];
