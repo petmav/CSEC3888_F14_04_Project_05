@@ -128,9 +128,12 @@ const KycChip = ({ isRegistered }: { isRegistered: boolean | null }) => {
           : t('page.dashboard.assets.redbelly.kycNotRegisteredTip')
       }
     >
+      {/* Registration is per network and this chip reads Mainnet only;
+          naming it stops a Testnet-only account looking unregistered for
+          no reason. */}
       {isRegistered
-        ? t('page.dashboard.assets.redbelly.kycRegistered')
-        : t('page.dashboard.assets.redbelly.kycNotRegistered')}
+        ? t('page.dashboard.assets.redbelly.kycRegisteredMainnet')
+        : t('page.dashboard.assets.redbelly.kycNotRegisteredMainnet')}
     </div>
   );
 };

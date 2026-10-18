@@ -12,6 +12,7 @@ import { Card } from '../Card';
 import { ReactComponent as RcIconCheckboxChecked } from '@/ui/assets/send-token/icon-checkbox-checked.svg';
 import { ReactComponent as RcIconCheckboxUncheck } from '@/ui/assets/send-token/icon-checkbox-uncheck.svg';
 import type { RedbellyTxGate } from './useRedbellyTxGate';
+import type { EstimateFailure } from '@/utils/redbelly/estimate';
 
 type Tone = 'safe' | 'danger' | 'warning' | 'neutral';
 
@@ -79,6 +80,7 @@ export const RedbellyTxPanel = ({
   gasUsed,
   gasPrice,
   gasLimitLowered = false,
+  estimateFailure = null,
 }: {
   gate: RedbellyTxGate;
   chain: { name: string; logo: string; nativeTokenSymbol: string };
@@ -86,6 +88,8 @@ export const RedbellyTxPanel = ({
   gasPrice?: string | number | null;
   /** The registration call's gas limit was lowered to fit the balance. */
   gasLimitLowered?: boolean;
+  /** Why the gas estimate failed, if it did. */
+  estimateFailure?: EstimateFailure | null;
 }) => {
   const { t } = useTranslation();
   const { format } = useRedbellyCurrency();
@@ -272,6 +276,22 @@ export const RedbellyTxPanel = ({
           <div className="text-12 text-r-neutral-foot">
             {t('page.signTx.redbelly.feeNote')}
           </div>
+          {estimateFailure === 'reverted' ? (
+            <div
+              className="text-12 text-r-red-default mt-4"
+              data-testid="redbelly-estimate-reverted"
+            >
+              {t('page.signTx.redbelly.estimateReverted')}
+            </div>
+          ) : null}
+          {estimateFailure === 'unavailable' ? (
+            <div
+              className="text-12 text-r-red-default mt-4"
+              data-testid="redbelly-estimate-unavailable"
+            >
+              {t('page.signTx.redbelly.estimateUnavailable')}
+            </div>
+          ) : null}
           {gasLimitLowered ? (
             <div
               className="text-12 text-r-orange-default mt-4"

@@ -52,6 +52,7 @@ import { getCexInfo } from '@/ui/state/exchange';
 import { useSetReportGasLevel } from '@/ui/hooks/useSetReportGasLevel';
 import { gasUnitsToUsd } from '@/utils/redbelly/fees';
 import { registrationGasLimit } from '@/utils/redbelly/registration';
+import { EstimateFailure, estimateFailureOf } from '@/utils/redbelly/estimate';
 import { REGISTRATION_GAS_LIMIT_RATIO } from '@/constant/redbelly';
 import { RedbellyTxPanel } from './RedbellyTxPanel';
 import { useRedbellyTxGate } from './useRedbellyTxGate';
@@ -255,7 +256,13 @@ export const SignTestnetTx = ({
   // The registration gas limit is fitted to the balance only once it has
   // really been read; the '0x0' above is a placeholder, not a balance.
   const [balanceLoaded, setBalanceLoaded] = useState(false);
-  const [estimateFailed, setEstimateFailed] = useState(false);
+  // Why the gas estimate failed on Redbelly: the node refused the
+  // transaction (`reverted`), or could not be reached (`unavailable`).
+  const [
+    estimateFailure,
+    setEstimateFailure,
+  ] = useState<EstimateFailure | null>(null);
+  const estimateFailed = estimateFailure !== null;
   const [gasLimitEdited, setGasLimitEdited] = useState(false);
   const [canProcess, setCanProcess] = useState(true);
   const [
@@ -371,7 +378,11 @@ export const SignTestnetTx = ({
         return `0x${new BigNumber(estimateGas).integerValue().toString(16)}`;
       } catch (e) {
         console.error(e);
-        setEstimateFailed(true);
+        setEstimateFailure(
+          redbellyGate.isRedbelly
+            ? estimateFailureOf(e) ?? 'unavailable'
+            : 'unavailable'
+        );
         const fallbackNumber = 2000000;
         const fallback = intToHex(fallbackNumber);
         if (!gasLimit) {
@@ -709,6 +720,20 @@ export const SignTestnetTx = ({
 
   const { t } = useTranslation();
 
+  // A Redbelly transaction is not signed without a gas estimate. If the node
+  // executed and refused it, it would fail on chain and still be charged; if
+  // the node could not be reached, the limit would be a 2,000,000 guess that
+  // can run out of gas (the registration call needs ~2.2M) - and the same
+  // node broadcasts it. Either way the user restarts or retries.
+  const estimateBlockReason = !redbellyGate.isRedbelly
+    ? null
+    : estimateFailure === 'reverted'
+    ? t('page.signTx.redbelly.estimateRevertedReason')
+    : estimateFailure === 'unavailable'
+    ? t('page.signTx.redbelly.estimateUnavailableReason')
+    : null;
+  const signBlockReason = redbellyGate.blockReason ?? estimateBlockReason;
+
   const [getApproval, resolveApproval, rejectApproval] = useApproval();
 
   const checkCanProcess = async () => {
@@ -826,7 +851,7 @@ export const SignTestnetTx = ({
     }
     // The button is disabled while this is set; checked again here so no
     // other route to a signature can skip the Redbelly gate (FR7).
-    if (redbellyGate.blockReason) {
+    if (signBlockReason) {
       return;
     }
 
@@ -962,6 +987,7 @@ export const SignTestnetTx = ({
           gasUsed={effectiveGasLimit && gasUsed ? gasUsed : null}
           gasPrice={selectedGas?.price ?? null}
           gasLimitLowered={!!registrationGas?.lowered}
+          estimateFailure={redbellyGate.isRedbelly ? estimateFailure : null}
         />
         <TestnetActions
           account={currentAccount}
@@ -1065,13 +1091,13 @@ export const SignTestnetTx = ({
         onSubmit={handleAllow}
         onIgnoreAllRules={() => {}}
         enableTooltip={
-          !!redbellyGate.blockReason ||
+          !!signBlockReason ||
           !canProcess ||
           !!checkErrors.find((item) => item.level === 'forbidden')
         }
         tooltipContent={
-          redbellyGate.blockReason ? (
-            <div>{redbellyGate.blockReason}</div>
+          signBlockReason ? (
+            <div>{signBlockReason}</div>
           ) : checkErrors.find((item) => item.level === 'forbidden') ? (
             checkErrors.find((item) => item.level === 'forbidden')!.msg
           ) : (
@@ -1079,7 +1105,7 @@ export const SignTestnetTx = ({
           )
         }
         disabledProcess={
-          !!redbellyGate.blockReason ||
+          !!signBlockReason ||
           !isReady ||
           (selectedGas ? selectedGas.price < 0 : true) ||
           isGnosisAccount ||
