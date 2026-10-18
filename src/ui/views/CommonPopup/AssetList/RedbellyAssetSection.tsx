@@ -28,6 +28,7 @@ export const RedbellyAssetSection = ({
   className,
   onHasBalanceChange,
   fluid = false,
+  refreshSignal = 0,
 }: {
   /** Chain `serverId` currently filtered on, or null for "all chains". */
   selectChainId?: string | null;
@@ -46,6 +47,12 @@ export const RedbellyAssetSection = ({
    * the window edge. Desktop callers set this.
    */
   fluid?: boolean;
+  /**
+   * Bump to re-read the balances in place. The rows already on screen stay
+   * until the new answer arrives, so a refresh that finds nothing new changes
+   * nothing visible (a remount would blank the list for a moment).
+   */
+  refreshSignal?: number;
 }) => {
   const { t } = useTranslation();
   const wallet = useWallet();
@@ -53,18 +60,30 @@ export const RedbellyAssetSection = ({
     currentAccount: s.account.currentAccount,
   }));
 
-  const { data: summaries, loading } = useRequest(
+  const { data } = useRequest(
     async () => {
-      if (!currentAccount?.address) {
-        return [];
+      const address = currentAccount?.address;
+      if (!address) {
+        return { address: '', list: [] };
       }
-      return wallet.getRedbellyAccountSummaries(currentAccount.address);
+      return {
+        address,
+        list: await wallet.getRedbellyAccountSummaries(address),
+      };
     },
     {
-      refreshDeps: [currentAccount?.address, visible],
+      refreshDeps: [currentAccount?.address, visible, refreshSignal],
       ready: !!currentAccount?.address && visible !== false,
     }
   );
+
+  // Keep showing the last answer while a refresh runs, but never one that
+  // belongs to a different account.
+  const summaries =
+    data &&
+    data.address.toLowerCase() === (currentAccount?.address || '').toLowerCase()
+      ? data.list
+      : undefined;
 
   const hasBalance = !!summaries?.some(
     (summary) => BigInt(summary.balanceWei ?? '0') > 0n
@@ -79,7 +98,7 @@ export const RedbellyAssetSection = ({
     return null;
   }
 
-  if (loading || !summaries?.length) {
+  if (!summaries?.length) {
     return null;
   }
 
