@@ -56,6 +56,7 @@ import {
   builtinRedbellyNetwork,
   REDBELLY_NETWORKS,
 } from '@/constant/redbelly-chains';
+import { redbellyEstimateError } from '@/utils/redbelly/estimate';
 import {
   RBNT_PEGGED_TOKENS,
   REDBELLY_DEFAULT_TOKENS,
@@ -472,11 +473,20 @@ class CustomTestnetService {
     if (!client) {
       throw new Error(`Invalid chainId: ${chainId}`);
     }
-    const res = await estimateGas(client, {
-      account: address as any,
-      ...tx,
-    } as any);
-    return res.toString();
+    try {
+      const res = await estimateGas(client, {
+        account: address as any,
+        ...tx,
+      } as any);
+      return res.toString();
+    } catch (error) {
+      // Only message, code and data reach the UI, so say here whether the
+      // node refused the transaction or could not be reached.
+      if (isRedbellyChainId(+chainId)) {
+        throw redbellyEstimateError(error);
+      }
+      throw error;
+    }
   };
 
   getGasPrice = async (chainId: number) => {
