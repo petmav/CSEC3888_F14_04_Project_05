@@ -121,6 +121,7 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
     curveChartData,
     isBalanceLoading,
     isCurveLoading,
+    isSkeletonLoading,
     isRefreshing,
     appChainIds,
     refreshBalance,
@@ -255,7 +256,7 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                     balance={balance}
                     evmBalance={evmBalance}
                     curveChartData={curveChartData}
-                    isLoading={isBalanceLoading || isCurveLoading}
+                    isLoading={isSkeletonLoading}
                     isRefreshing={isRefreshing}
                     onRefresh={handleUpdate}
                     appChainIds={appChainIds}

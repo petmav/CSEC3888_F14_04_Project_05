@@ -12,7 +12,7 @@ import {
 } from '@/utils/redbelly/familiarity';
 import { paymentTarget, PaymentTarget } from '@/utils/redbelly/recipient';
 import { isRegistrationCall } from '@/utils/redbelly/registration';
-import { requiresAcknowledgement, Verdict } from '@/utils/redbelly/verdict';
+import { blocksSigning, Verdict } from '@/utils/redbelly/verdict';
 
 export type RedbellyTxGate = {
   isRedbelly: boolean;
@@ -40,7 +40,9 @@ export type RedbellyTxGate = {
    * may then be one they have paid, so it is not called first-time.
    */
   historyComplete: boolean;
-  /** The verdict or familiarity needs acknowledgement before signing. */
+  /** The recipient is confirmed unregistered: signing is refused outright. */
+  blocked: boolean;
+  /** A lookalike address needs acknowledgement before signing. */
   needsAcknowledgement: boolean;
   acknowledged: boolean;
   setAcknowledged: (value: boolean) => void;
@@ -150,9 +152,9 @@ export function useRedbellyTxGate({
   const checking =
     isRedbelly && !!recipientAddress && (!verdict || knownAddresses === null);
   const isLookalike = familiarity?.kind === 'lookalike';
-  const needsAcknowledgement =
-    !checking &&
-    ((!!verdict && requiresAcknowledgement(verdict)) || isLookalike);
+  const blocked = !checking && !!verdict && blocksSigning(verdict);
+  // Only a lookalike can be acknowledged; an unregistered recipient cannot.
+  const needsAcknowledgement = !checking && !blocked && isLookalike;
 
   // An acknowledgement is for one recipient on one chain. It is stored
   // against that pair rather than reset by an effect, so a tick can never
@@ -201,11 +203,13 @@ export function useRedbellyTxGate({
   if (isRedbelly) {
     if (checking) {
       blockReason = t('page.signTx.redbelly.checkingReason');
+    } else if (blocked) {
+      blockReason = t(
+        'page.signTx.redbelly.blockedReason',
+        'Recipient is not registered on Redbelly. Funds sent there cannot be spent.'
+      );
     } else if (needsAcknowledgement && !acknowledged) {
-      blockReason =
-        verdict && requiresAcknowledgement(verdict)
-          ? t('page.signTx.redbelly.acknowledgeReason')
-          : t('page.signTx.redbelly.lookalikeReason');
+      blockReason = t('page.signTx.redbelly.lookalikeReason');
     }
   }
 
@@ -219,6 +223,7 @@ export function useRedbellyTxGate({
     usdPerGas,
     familiarity,
     historyComplete: known?.complete ?? true,
+    blocked,
     needsAcknowledgement,
     acknowledged,
     setAcknowledged,

@@ -153,6 +153,17 @@ export const RedbellyTxPanel = ({
                 </div>
               ) : null}
             </div>
+            {gate.blocked ? (
+              <div
+                className="text-12 font-medium text-r-red-default mt-6"
+                data-testid="redbelly-blocked"
+              >
+                {t(
+                  'page.signTx.redbelly.blockedNote',
+                  'Signing is blocked: this address is not verified on the Redbelly Network.'
+                )}
+              </div>
+            ) : null}
             {gate.familiarity?.kind === 'lookalike' ? (
               <div
                 className="text-12 text-r-red-default mt-6 break-all"
