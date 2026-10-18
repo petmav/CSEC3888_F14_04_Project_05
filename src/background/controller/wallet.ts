@@ -2590,10 +2590,6 @@ export class WalletController extends BaseController {
   setThemeMode = (themeMode: DARK_MODE_TYPE) =>
     preferenceService.setThemeMode(themeMode);
 
-  getGasLimitMultiplier = () => preferenceService.getGasLimitMultiplier();
-  setGasLimitMultiplier = (value: number) =>
-    preferenceService.setGasLimitMultiplier(value);
-
   isReserveGasOnSendToken = () => preferenceService.isReserveGasOnSendToken();
   setReserveGasOnSendToken = (val: boolean) =>
     preferenceService.setPreferencePartials({ reserveGasOnSendToken: val });

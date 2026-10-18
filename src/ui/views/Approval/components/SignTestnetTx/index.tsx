@@ -1,8 +1,6 @@
 import { Account, ChainGas } from 'background/service/preference';
 import React, { ReactNode, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRabbySelector } from '@/ui/store';
-import { selectGasLimitMultiplier } from '@/ui/state/preference';
 import { findChain } from '@/utils/chain';
 import BigNumber from 'bignumber.js';
 import { FooterBar } from '../FooterBar/FooterBar';
@@ -16,6 +14,7 @@ import { useMount, useRequest } from 'ahooks';
 import {
   ALIAS_ADDRESS,
   DEFAULT_GAS_LIMIT_BUFFER,
+  DEFAULT_GAS_LIMIT_RATIO,
   HARDWARE_KEYRING_TYPES,
   INTERNAL_REQUEST_ORIGIN,
   KEYRING_CATEGORY_MAP,
@@ -99,19 +98,29 @@ const checkGasAndNonce = ({
     ) &&
     new BigNumber(gasLimit).gte(21000)
   ) {
-    const realRatio = new BigNumber(gasLimit).div(recommendGasLimit);
-    if (realRatio.lt(recommendGasLimitRatio) && realRatio.gt(1)) {
-      errors.push({
-        code: 3004,
-        msg: i18n.t('page.signTx.gasLimitLessThanExpect'),
-        level: 'warn',
-      });
-    } else if (realRatio.lt(1)) {
-      errors.push({
-        code: 3005,
-        msg: i18n.t('page.signTx.gasLimitLessThanGasUsed'),
-        level: 'danger',
-      });
+    if (recommendGasLimitRatio === DEFAULT_GAS_LIMIT_RATIO) {
+      const realRatio = new BigNumber(gasLimit).div(recommendGasLimit);
+      if (realRatio.lt(DEFAULT_GAS_LIMIT_RATIO) && realRatio.gt(1)) {
+        errors.push({
+          code: 3004,
+          msg: i18n.t('page.signTx.gasLimitLessThanExpect'),
+          level: 'warn',
+        });
+      } else if (realRatio.lt(1)) {
+        errors.push({
+          code: 3005,
+          msg: i18n.t('page.signTx.gasLimitLessThanGasUsed'),
+          level: 'danger',
+        });
+      }
+    } else {
+      if (new BigNumber(gasLimit).lt(recommendGasLimit)) {
+        errors.push({
+          code: 3004,
+          msg: i18n.t('page.signTx.gasLimitLessThanExpect'),
+          level: 'warn',
+        });
+      }
     }
   }
   let sendNativeTokenAmount = new BigNumber(tx.value); // current transaction native token transfer count
@@ -232,9 +241,6 @@ export const SignTestnetTx = ({
   const chain = chainId ? findChain({ id: +chainId }) : undefined;
 
   const [realNonce, setRealNonce] = useState('');
-  const gasLimitMultiplier = useRabbySelector((state) =>
-    selectGasLimitMultiplier(state.preference)
-  );
   const [gasLimit, setGasLimit] = useState<string | undefined>(undefined);
   const [selectedGas, setSelectedGas] = useState<GasLevel | null>(null);
   const [isGnosisAccount, setIsGnosisAccount] = useState(false);
@@ -330,7 +336,7 @@ export const SignTestnetTx = ({
 
         if (!gasLimit) {
           recommendGasLimit = new BigNumber(estimateGas)
-            .times(gasLimitMultiplier)
+            .times(DEFAULT_GAS_LIMIT_RATIO)
             .toFixed(0);
 
           if (
@@ -886,7 +892,7 @@ export const SignTestnetTx = ({
     tx,
     isGnosisAccount: isGnosisAccount || isCoboArugsAccount,
     nativeTokenBalance,
-    recommendGasLimitRatio: gasLimitMultiplier,
+    recommendGasLimitRatio: 1.5,
   });
 
   useSetReportGasLevel(selectedGas?.level);
