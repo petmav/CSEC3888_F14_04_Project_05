@@ -88,6 +88,17 @@ export const SELECTOR_IS_ALLOWED = '0xbabcc539';
  */
 export const SELECTOR_REGISTER = '0x33f6cfb2';
 
+/**
+ * Gas limit for the registration call, as a multiple of the node's estimate.
+ *
+ * Every other transaction keeps Rabby's 1.5x. Redbelly funds a new account
+ * with roughly 1.12-1.14x the registration fee, so 1.5x would refuse it; and
+ * the call's gas barely varies (about 98% of the estimate is used). If the
+ * balance cannot cover 1.1x, the limit is lowered to what it can cover, but
+ * never below the estimate (`registrationGasLimit`).
+ */
+export const REGISTRATION_GAS_LIMIT_RATIO = 1.1;
+
 /** `getBaseGasFee()` on the gasfees contract. */
 export const SELECTOR_GET_BASE_GAS_FEE = '0x96ec79c1';
 
@@ -232,36 +243,3 @@ export function redbellyRpcUrlForServerId(
 
 /** What this wallet calls itself in window titles and approval screens. */
 export const WALLET_NAME = 'Redbelly Wallet';
-
-/**
- * Gas limit multiplier: the factor applied to the node's gas estimate to get
- * the gas limit a transaction is signed with. Redbelly's gas is cheap and an
- * unused limit is refunded, but the wallet checks `limit * price + value`
- * against the balance up front, so a large factor blocks an account that holds
- * only a little more than the real fee. It therefore starts at 1.1x, enough to
- * absorb small differences between estimate and execution, and can be changed
- * in Settings (1x to 3x) for contract calls whose gas varies more.
- */
-export const DEFAULT_GAS_LIMIT_MULTIPLIER = 1.1;
-export const MIN_GAS_LIMIT_MULTIPLIER = 1;
-export const MAX_GAS_LIMIT_MULTIPLIER = 3;
-export const GAS_LIMIT_MULTIPLIER_PRESETS = [1, 1.1, 1.25, 1.5];
-
-/**
- * Clamp a stored or typed multiplier to the allowed range, to two decimals.
- * Anything that is not a finite number falls back to the default.
- *
- * @param value - The raw value.
- * @returns A multiplier within `[MIN, MAX]`.
- */
-export function normalizeGasLimitMultiplier(value: unknown): number {
-  const number = typeof value === 'string' ? parseFloat(value) : value;
-  if (typeof number !== 'number' || !Number.isFinite(number)) {
-    return DEFAULT_GAS_LIMIT_MULTIPLIER;
-  }
-  const clamped = Math.min(
-    MAX_GAS_LIMIT_MULTIPLIER,
-    Math.max(MIN_GAS_LIMIT_MULTIPLIER, number)
-  );
-  return Math.round(clamped * 100) / 100;
-}

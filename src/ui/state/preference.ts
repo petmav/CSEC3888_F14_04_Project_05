@@ -1,10 +1,6 @@
 import { create } from 'zustand';
 
-import {
-  DEFAULT_GAS_LIMIT_MULTIPLIER,
-  normalizeGasLimitMultiplier,
-  REDBELLY_ONLY,
-} from '@/constant/redbelly';
+import { REDBELLY_ONLY } from '@/constant/redbelly';
 import type { TokenItem } from '@/background/service/openapi';
 import type {
   AddressSortStore,
@@ -44,7 +40,6 @@ export interface PreferenceState {
   addressSortStore: AddressSortStore;
   themeMode: DARK_MODE_TYPE;
   reserveGasOnSendToken: boolean;
-  gasLimitMultiplier: number;
   isHideEcologyNoticeDict: Record<string | number, boolean>;
   isEnabledPwdForNonWhitelistedTx?: boolean;
   isEnabledDappAccount?: boolean;
@@ -99,7 +94,6 @@ export type PreferenceActions = {
   switchLocale: (locale: string) => Promise<void>;
   switchThemeMode: (themeMode: DARK_MODE_TYPE) => Promise<void>;
   setIsReserveGasOnSendToken: (value: boolean) => Promise<void>;
-  setGasLimitMultiplier: (value: number) => Promise<void>;
   getAddressSortStoreValue: <Key extends keyof AddressSortStore>(
     key: Key
   ) => Promise<AddressSortStore[Key]>;
@@ -144,7 +138,6 @@ export const getDefaultPreferenceState = (): PreferenceState => ({
   addressSortStore: {} as AddressSortStore,
   themeMode: REDBELLY_ONLY ? DARK_MODE_TYPE.dark : DARK_MODE_TYPE.system,
   reserveGasOnSendToken: false,
-  gasLimitMultiplier: DEFAULT_GAS_LIMIT_MULTIPLIER,
   isHideEcologyNoticeDict: {},
   isEnabledPwdForNonWhitelistedTx: false,
   isEnabledDappAccount: false,
@@ -157,9 +150,6 @@ export const getDefaultPreferenceState = (): PreferenceState => ({
   desktopTokensAllMode: false,
   dashboardPanelOrder: [],
 });
-
-export const selectGasLimitMultiplier = (state: PreferenceState) =>
-  normalizeGasLimitMultiplier(state.gasLimitMultiplier);
 
 export const selectIsReserveGasOnSendToken = (state: PreferenceState) =>
   state.reserveGasOnSendToken;
@@ -294,12 +284,6 @@ export const usePreferenceStore = create<PreferenceStore>()((set, get) => ({
       `ThemeMode_${themeMode === DARK_MODE_TYPE.dark ? 'Dark' : 'Light'}`,
       { event_category: 'Settings Snapshot' }
     );
-  },
-  async setGasLimitMultiplier(value) {
-    const gasLimitMultiplier = normalizeGasLimitMultiplier(value);
-    set({ gasLimitMultiplier });
-    await wallet.setGasLimitMultiplier(gasLimitMultiplier);
-    void get().getPreference('gasLimitMultiplier');
   },
   async setIsReserveGasOnSendToken(reserveGasOnSendToken) {
     set({ reserveGasOnSendToken });
