@@ -17,8 +17,8 @@ from Rabby v0.94.8 (MIT). It:
   in, and refuses every other chain to dApps;
 - checks the address a transaction actually pays - decoded from the
   calldata for token transfers and approvals - against Redbelly's on-chain
-  KYC permission list before signing, and makes the user tick "I understand
-  the risks" before signing to a confirmed unregistered account;
+  KYC permission list before signing, and refuses to sign to a confirmed
+  unregistered account;
 - warns when a recipient imitates an address the user has paid before
   (address poisoning), and notes a first-time payee;
 - shows balances, RBNT price, fees, staked RBNT and activity read from
@@ -124,9 +124,10 @@ one at a time.
    user's known addresses (own accounts, address book, past payees from
    local history and the explorer) for the familiarity check.
 5. **Decision.** Sign waits while either check is running. A confirmed
-   unregistered recipient, or a lookalike of a known address, holds Sign
-   until the user ticks "I understand the risks"; the tick belongs to that
-   recipient and chain only. Unknown and Contract do not hold signing. If
+   unregistered recipient is refused: Sign stays disabled, with nothing to
+   tick. A lookalike of a known address holds Sign until the user ticks "I
+   understand the risks"; the tick belongs to that recipient and chain only.
+   Unknown and Contract do not hold signing. If
    the user's history could not be read, the panel says so rather than
    calling the payee new.
 6. **Broadcast** goes to the same canonical endpoint the checks used.
@@ -142,7 +143,7 @@ one at a time.
 | US9 own KYC status | Home chip, asset list, signing screen; an unregistered sender is warned that the node will reject the transaction |
 | US10 no setup | Both networks built in, rewritten on every start, not removable or duplicable |
 | US11 token payee | Payee decoded from calldata, in the wallet and the Snap |
-| US12 unregistered recipient | Warn and confirm: Sign waits for "I understand the risks" (team decision; the client's Week 5 ask was a hard block - see section 10) |
+| US12 unregistered recipient | Refused outright on the Send page and the signing screen, as the client asked in Week 5 |
 | US13 tokens and stake | Reddex's tokens listed with logos, plus discovery from the explorer; Reddex staking pool positions |
 
 Beyond the stories:
@@ -166,8 +167,8 @@ knows. The address is shown in full, because a shortened address hides
 exactly the characters a typo or a poisoned lookalike changes.
 
 **What holds signing.** A check still running; a confirmed unregistered
-recipient; a lookalike. Each needs a fresh "I understand the risks" for that
-recipient on that chain.
+recipient, which is refused outright; a lookalike, which needs a fresh "I
+understand the risks" for that recipient on that chain.
 
 **What deliberately does not hold signing.**
 
@@ -184,7 +185,7 @@ recipient on that chain.
 
 | Threat | Covered by |
 | --- | --- |
-| Paying an unregistered account (funds stuck) | KYC verdict, risk tick |
+| Paying an unregistered account (funds stuck) | KYC verdict; signing refused |
 | Wrong recipient inside a token transfer | Calldata decoding (US11) |
 | Address poisoning (lookalike in history) | Familiarity check, risk tick. Only payees of transactions the user signed count as known, so a scammer's zero-value `transferFrom` cannot make the lookalike "known" |
 | dApp switching the wallet to another chain | Provider allowlist (4901) |
@@ -247,8 +248,9 @@ monkey-patching, not browser enforcement; its limits are listed in
 | 3 Oct | PR #5 review follow-ups (approvals, NFT payees, gate tests, explorer errors, guard coverage); PR #6 Snap 0.4.0; PR #7 MVP polish (account types, address poisoning, token logos, English only, currency on Send, RPC pinning and retry) |
 
 Decisions on record: the RPC path over DeBank (2 Oct); warn and confirm over
-a hard block (2 Oct, pending client confirmation); hide untested account
-types rather than ship them untested (3 Oct).
+a hard block (2 Oct), later replaced by the hard block the client asked for
+(PR #21); hide untested account types rather than ship them untested
+(3 Oct).
 
 ## 10. Limitations and next steps
 
@@ -256,8 +258,6 @@ Before a demo:
 
 1. **Broadcast for real.** Send RBNT and a token from a funded,
    KYC-registered Testnet account, then on Mainnet.
-2. **Confirm US12 with the client.** Switching to a hard block is a one-line
-   change in `utils/redbelly/verdict.ts`.
 
 Known limitations:
 

@@ -73,9 +73,10 @@ never shown as 0 when it could not be read.
 1. Tap **Send**, choose the token and enter the recipient and amount.
 2. Under the recipient the wallet shows the **Redbelly check** for that
    address (see section 6), your own KYC status and the network fee.
-3. If the recipient is not registered, or looks like an address you have
-   used before, you must tick **I understand the risks and want to
-   continue** before you can send.
+3. If the recipient is not registered, the wallet will not send to it: the
+   address is outside the Redbelly Network, and nobody can spend funds sent
+   there. If it looks like an address you have used before, you must tick
+   **I understand the risks and want to continue** before you can send.
 4. Confirm on the signing screen.
 
 **About fees.** Redbelly prices gas in US dollars and converts it to RBNT,
@@ -113,7 +114,7 @@ characters a typo or a scam changes.
 | Result | Meaning | What to do |
 | --- | --- | --- |
 | Registered (green) | A verified Redbelly participant | Still check it is the *right* address - registered does not mean intended |
-| Not registered (red) | Not on Redbelly's permission list. Funds sent there cannot be moved until its owner registers | Don't send unless you are sure. You must tick "I understand the risks" to continue |
+| Not registered (red) | Not on Redbelly's permission list. Funds sent there cannot be moved until its owner registers | The wallet refuses to sign. Check the address with whoever gave it to you; they must register at access.redbelly.network first |
 | Contract address (grey) | A smart contract. Contracts are never KYC-registered, so this is normal for dApps | Check it is the dApp's real contract |
 | Could not verify (orange) | The Redbelly node did not answer, so the address was not checked | Wait and retry, or verify the address another way |
 

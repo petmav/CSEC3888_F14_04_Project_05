@@ -391,7 +391,8 @@
         "senderNotRegisteredWarning": "Your account is not registered on Redbelly, so the network will reject this transaction. Complete identity verification at access.redbelly.network first.",
         "gasLimitLowered": "Your balance does not cover the usual gas margin for registering, so the gas limit has been lowered to what it can cover. It is still above the network's estimate, but with less room, the transaction is slightly more likely to run out of gas and fail, which still charges the fee.",
         "senderRegistrationNote": "This transaction registers your account on Redbelly by submitting your verified identity credential. It is the one transaction an unregistered account can send; once it confirms, your account is registered.",
-        "acknowledgeReason": "This address is not registered on Redbelly. Tick \"I understand the risks\" to sign anyway."
+        "blockedNote": "Signing is blocked: this address is not verified on the Redbelly Network.",
+        "blockedReason": "Recipient is not registered on Redbelly. Funds sent there cannot be spent."
       },
       "tokenApprove": {
         "title": "Token Approval",
@@ -1007,7 +1008,7 @@
       },
       "redbelly": {
         "verified": "This address is verified on the Redbelly Network",
-        "notVerified": "This address is not verified in the Redbelly Network",
+        "blocked": "This address is not verified in the Redbelly Network, so you cannot send to it. Funds sent there cannot be spent.",
         "lookalike": "Looks like {{address}}, which you have used before - but it is a different address. Scammers create lookalikes to catch copy-paste mistakes.",
         "unknown": "Could not verify if address is on the Redbelly Network",
         "gasFee": "Gas fee",

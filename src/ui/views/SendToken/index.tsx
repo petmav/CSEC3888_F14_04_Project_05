@@ -797,10 +797,7 @@ const SendToken = () => {
   // A confirmed unregistered recipient cannot be sent to at all (no tick box).
   const redbellyBlockedReason =
     isRedbelly && redbellyVerdict && blocksSigning(redbellyVerdict)
-      ? t(
-          'page.sendToken.redbelly.blocked',
-          'This address is not verified in the Redbelly Network, so you cannot send to it. Funds sent there cannot be spent.'
-        )
+      ? t('page.sendToken.redbelly.blocked')
       : null;
 
   const { loading: loadingRisks, risks } = useAddressRisks({

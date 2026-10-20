@@ -61,13 +61,16 @@ export type RedbellyTxGate = {
  * locally means there is always an answer: a recipient, or "contract
  * creation", which has nobody to check.
  *
- * Warn, don't block (team decision, 2026-10-02, following PR #1):
+ * What holds signing:
  * - while the recipient check has not come back, signing waits - the user
  *   cannot outrun the warning;
- * - a confirmed unregistered recipient is shown in red and signing waits for
- *   "I understand the risks" (US12), as on the Send page;
- * - so does an address that imitates one the user has paid before (address
- *   poisoning); one never paid before is noted, not held;
+ * - a confirmed unregistered recipient is outside the network: it is shown
+ *   in red and signing is refused outright (US12), as on the Send page. There
+ *   is no tick box to get past it (the team's first choice, 2026-10-02, was
+ *   warn-and-confirm);
+ * - an address that imitates one the user has paid before (address
+ *   poisoning) waits for "I understand the risks"; one never paid before is
+ *   noted, not held;
  * - an unregistered signer is a warning only: the node rejects it with
  *   -32603, and the panel says so before the user signs (FR5) - except for
  *   the registration call itself, which the panel explains instead.
@@ -204,10 +207,7 @@ export function useRedbellyTxGate({
     if (checking) {
       blockReason = t('page.signTx.redbelly.checkingReason');
     } else if (blocked) {
-      blockReason = t(
-        'page.signTx.redbelly.blockedReason',
-        'Recipient is not registered on Redbelly. Funds sent there cannot be spent.'
-      );
+      blockReason = t('page.signTx.redbelly.blockedReason');
     } else if (needsAcknowledgement && !acknowledged) {
       blockReason = t('page.signTx.redbelly.lookalikeReason');
     }
