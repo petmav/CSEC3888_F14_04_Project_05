@@ -3,8 +3,7 @@
 A browser-extension wallet for Redbelly Network, forked from Rabby v0.94.8
 (MIT). It talks only to Redbelly Mainnet (151) and Testnet (153), checks
 every recipient against Redbelly's on-chain KYC permission list before
-signing, and makes the user acknowledge the risk before signing to a
-confirmed unregistered account.
+signing, and refuses to sign to a confirmed unregistered account.
 
 This is the fork deliverable of CSEC3888 P5. The MetaMask Snap in
 `redbelly-address-snap` remains the assessed baseline. For the narrative
@@ -69,13 +68,14 @@ checked is decoded locally from `to` and calldata
   router's `to` argument, for example. `decreaseAllowance`, Permit2 and
   batching contracts (multicall, Safe) fall here.
 
-The team chose
-**warn and confirm, not block** (2026-10-02), matching the Send page:
+**A payee outside the network is refused** (US12, the client's Week 5 ask;
+the team first shipped warn-and-confirm on 2026-10-02):
 
 - while the recipient check is running, Sign waits, so nobody signs before
   the warning appears;
-- a confirmed unregistered recipient is shown in red, and Sign stays disabled
-  until the user ticks "I understand the risks and want to continue" (US12);
+- a confirmed unregistered recipient (or approval spender) is shown in red
+  and Sign stays disabled, with no "I understand the risks" to get past it:
+  nobody can spend what is sent to an account outside the network;
 - an unregistered signer gets a warning that the node will reject the
   transaction (-32603), but signing is not held. The exception is the
   registration call itself (`0x33f6cfb2` to the permission contract, the
@@ -84,7 +84,7 @@ The team chose
   (`utils/redbelly/registration.ts`).
 
 The Send page applies the same verdict to the recipient field before the user
-gets this far.
+gets this far, and refuses an unregistered recipient the same way.
 
 A check that cannot complete (`UNKNOWN`) is shown as a warning and does not
 hold signing: Redbelly has one public endpoint, and an outage must not brick the
@@ -223,7 +223,7 @@ on 2026-10-01; none of these interfaces is documented by Redbelly.
 | US9 own KYC status | Done - home chip, asset list, signing screen |
 | US10 no manual network setup | Done - both networks built in |
 | US11 token transfer payee | Done - in the fork and the Snap (0.3.0) |
-| US12 unregistered sends | Done as warn-and-confirm (team decision): Sign waits for "I understand the risks"; also waits while checking. The Week 5 client request was a hard block - confirm the change with the client |
+| US12 unregistered sends | Done - refused outright on the Send page and the signing screen, as the client asked in Week 5; Sign also waits while checking |
 | US13 tokens and stake | Done - default tokens + discovery; Reddex pool positions |
 
 ## Community feedback

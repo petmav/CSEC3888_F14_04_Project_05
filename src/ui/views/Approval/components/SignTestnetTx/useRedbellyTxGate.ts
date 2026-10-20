@@ -12,7 +12,7 @@ import {
 } from '@/utils/redbelly/familiarity';
 import { paymentTarget, PaymentTarget } from '@/utils/redbelly/recipient';
 import { isRegistrationCall } from '@/utils/redbelly/registration';
-import { requiresAcknowledgement, Verdict } from '@/utils/redbelly/verdict';
+import { blocksSigning, Verdict } from '@/utils/redbelly/verdict';
 
 export type RedbellyTxGate = {
   isRedbelly: boolean;
@@ -40,7 +40,9 @@ export type RedbellyTxGate = {
    * may then be one they have paid, so it is not called first-time.
    */
   historyComplete: boolean;
-  /** The verdict or familiarity needs acknowledgement before signing. */
+  /** The recipient is confirmed unregistered: signing is refused outright. */
+  blocked: boolean;
+  /** A lookalike address needs acknowledgement before signing. */
   needsAcknowledgement: boolean;
   acknowledged: boolean;
   setAcknowledged: (value: boolean) => void;
@@ -59,13 +61,16 @@ export type RedbellyTxGate = {
  * locally means there is always an answer: a recipient, or "contract
  * creation", which has nobody to check.
  *
- * Warn, don't block (team decision, 2026-10-02, following PR #1):
+ * What holds signing:
  * - while the recipient check has not come back, signing waits - the user
  *   cannot outrun the warning;
- * - a confirmed unregistered recipient is shown in red and signing waits for
- *   "I understand the risks" (US12), as on the Send page;
- * - so does an address that imitates one the user has paid before (address
- *   poisoning); one never paid before is noted, not held;
+ * - a confirmed unregistered recipient is outside the network: it is shown
+ *   in red and signing is refused outright (US12), as on the Send page. There
+ *   is no tick box to get past it (the team's first choice, 2026-10-02, was
+ *   warn-and-confirm);
+ * - an address that imitates one the user has paid before (address
+ *   poisoning) waits for "I understand the risks"; one never paid before is
+ *   noted, not held;
  * - an unregistered signer is a warning only: the node rejects it with
  *   -32603, and the panel says so before the user signs (FR5) - except for
  *   the registration call itself, which the panel explains instead.
@@ -150,9 +155,9 @@ export function useRedbellyTxGate({
   const checking =
     isRedbelly && !!recipientAddress && (!verdict || knownAddresses === null);
   const isLookalike = familiarity?.kind === 'lookalike';
-  const needsAcknowledgement =
-    !checking &&
-    ((!!verdict && requiresAcknowledgement(verdict)) || isLookalike);
+  const blocked = !checking && !!verdict && blocksSigning(verdict);
+  // Only a lookalike can be acknowledged; an unregistered recipient cannot.
+  const needsAcknowledgement = !checking && !blocked && isLookalike;
 
   // An acknowledgement is for one recipient on one chain. It is stored
   // against that pair rather than reset by an effect, so a tick can never
@@ -201,11 +206,10 @@ export function useRedbellyTxGate({
   if (isRedbelly) {
     if (checking) {
       blockReason = t('page.signTx.redbelly.checkingReason');
+    } else if (blocked) {
+      blockReason = t('page.signTx.redbelly.blockedReason');
     } else if (needsAcknowledgement && !acknowledged) {
-      blockReason =
-        verdict && requiresAcknowledgement(verdict)
-          ? t('page.signTx.redbelly.acknowledgeReason')
-          : t('page.signTx.redbelly.lookalikeReason');
+      blockReason = t('page.signTx.redbelly.lookalikeReason');
     }
   }
 
@@ -219,6 +223,7 @@ export function useRedbellyTxGate({
     usdPerGas,
     familiarity,
     historyComplete: known?.complete ?? true,
+    blocked,
     needsAcknowledgement,
     acknowledged,
     setAcknowledged,

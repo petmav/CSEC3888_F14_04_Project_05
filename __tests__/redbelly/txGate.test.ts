@@ -1,8 +1,8 @@
 /**
  * @jest-environment jsdom
  */
-// The signing gate (US12 / FR7): when the Sign button is held, and that an
-// "I understand the risks" tick belongs to one recipient only.
+// The signing gate (US12 / FR7): when the Sign button is held or refused, and
+// that an "I understand the risks" tick belongs to one recipient only.
 import { act, createElement } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
@@ -47,10 +47,12 @@ const PERMISSION = BOB;
 const REGISTER = `0x33f6cfb2${'0'.repeat(64)}`;
 
 const CHECKING = 'page.signTx.redbelly.checkingReason';
-const ACKNOWLEDGE = 'page.signTx.redbelly.acknowledgeReason';
+const BLOCKED = 'page.signTx.redbelly.blockedReason';
 const LOOKALIKE = 'page.signTx.redbelly.lookalikeReason';
 // Same first four and last four hex characters as ALICE.
 const POISONED = '0xfbc7000000000000000000000000000000d0d1af';
+// Same first four and last four hex characters as BOB.
+const POISONED_BOB = '0xcb38000000000000000000000000000000009163';
 
 type Props = Parameters<typeof useRedbellyTxGate>[0];
 
@@ -154,72 +156,114 @@ describe('useRedbellyTxGate', () => {
     expect(gate.blockReason).toBeNull();
   });
 
-  it('holds signing on an unregistered recipient until acknowledged', async () => {
+  it('refuses to sign to an unregistered recipient, with no tick to get past it', async () => {
     getRedbellyVerdict.mockResolvedValue('NOT_REGISTERED');
 
     await render(send(ALICE));
     await settle();
-    expect(gate.needsAcknowledgement).toBe(true);
-    expect(gate.acknowledged).toBe(false);
-    expect(gate.blockReason).toBe(ACKNOWLEDGE);
+    expect(gate.blocked).toBe(true);
+    expect(gate.needsAcknowledgement).toBe(false);
+    expect(gate.blockReason).toBe(BLOCKED);
+
+    // Nothing the panel could call un-refuses it.
+    await act(async () => gate.setAcknowledged(true));
+    expect(gate.blockReason).toBe(BLOCKED);
+  });
+
+  it('refuses an unregistered recipient even when it is also a lookalike', async () => {
+    getRedbellyVerdict.mockResolvedValue('NOT_REGISTERED');
+    mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue({
+      addresses: [ALICE],
+      complete: true,
+    });
+
+    await render(send(POISONED));
+    await settle();
+    expect(gate.familiarity).toEqual({ kind: 'lookalike', similarTo: ALICE });
+    expect(gate.blocked).toBe(true);
+    expect(gate.needsAcknowledgement).toBe(false);
+    expect(gate.blockReason).toBe(BLOCKED);
 
     await act(async () => gate.setAcknowledged(true));
-    expect(gate.acknowledged).toBe(true);
-    expect(gate.blockReason).toBeNull();
+    expect(gate.blockReason).toBe(BLOCKED);
+  });
 
-    await act(async () => gate.setAcknowledged(false));
-    expect(gate.blockReason).toBe(ACKNOWLEDGE);
+  it('refuses an unregistered spender of an approval', async () => {
+    getRedbellyVerdict.mockResolvedValue('NOT_REGISTERED');
+    const data = `0x095ea7b3${ALICE.slice(2).padStart(64, '0')}${'1'.padStart(
+      64,
+      '0'
+    )}`;
+
+    await render(send(BOB, { data }));
+    await settle();
+    expect(gate.target).toStrictEqual({
+      kind: 'approval',
+      recipient: ALICE,
+      token: BOB,
+    });
+    expect(gate.blockReason).toBe(BLOCKED);
   });
 
   it('does not carry an acknowledgement over to a new recipient', async () => {
-    getRedbellyVerdict.mockResolvedValue('NOT_REGISTERED');
+    getRedbellyVerdict.mockResolvedValue('REGISTERED');
+    mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue({
+      addresses: [ALICE, BOB],
+      complete: true,
+    });
 
-    await render(send(ALICE));
+    await render(send(POISONED));
     await settle();
+    expect(gate.blockReason).toBe(LOOKALIKE);
     await act(async () => gate.setAcknowledged(true));
     expect(gate.blockReason).toBeNull();
 
-    const bob = deferred();
-    getRedbellyVerdict.mockReturnValue(bob.promise);
-    await render(send(BOB));
-    // Alice's verdict and tick must not open the gate for Bob - in any
-    // render, including the first, before an effect could reset anything.
-    expect(rendersFor(BOB).length).toBeGreaterThan(0);
-    for (const state of rendersFor(BOB)) {
+    const next = deferred();
+    getRedbellyVerdict.mockReturnValue(next.promise);
+    await render(send(POISONED_BOB));
+    // The first lookalike's verdict and tick must not open the gate for the
+    // second - in any render, including the first, before an effect could
+    // reset anything.
+    expect(rendersFor(POISONED_BOB).length).toBeGreaterThan(0);
+    for (const state of rendersFor(POISONED_BOB)) {
       expect(state.acknowledged).toBe(false);
       expect(state.blockReason).not.toBeNull();
     }
     expect(gate.blockReason).toBe(CHECKING);
 
-    await act(async () => bob.resolve('NOT_REGISTERED'));
+    await act(async () => next.resolve('REGISTERED'));
     expect(gate.acknowledged).toBe(false);
-    expect(gate.blockReason).toBe(ACKNOWLEDGE);
+    expect(gate.blockReason).toBe(LOOKALIKE);
 
-    // Back to Alice: the earlier tick is gone too.
-    getRedbellyVerdict.mockResolvedValue('NOT_REGISTERED');
-    await render(send(ALICE));
+    // Back to the first: the earlier tick is gone too.
+    getRedbellyVerdict.mockResolvedValue('REGISTERED');
+    await render(send(POISONED));
     await settle();
     expect(gate.acknowledged).toBe(false);
-    expect(gate.blockReason).toBe(ACKNOWLEDGE);
+    expect(gate.blockReason).toBe(LOOKALIKE);
   });
 
   it('does not carry an acknowledgement over to another chain', async () => {
-    getRedbellyVerdict.mockResolvedValue('NOT_REGISTERED');
+    getRedbellyVerdict.mockResolvedValue('REGISTERED');
+    mockUiWallet.getRedbellyKnownAddresses.mockResolvedValue({
+      addresses: [ALICE],
+      complete: true,
+    });
 
-    await render(send(ALICE));
+    await render(send(POISONED));
     await settle();
     await act(async () => gate.setAcknowledged(true));
     expect(gate.blockReason).toBeNull();
 
     const before = renders.length;
-    await render(send(ALICE, { chainId: 153 }));
+    await render(send(POISONED, { chainId: 153 }));
     for (const state of renders.slice(before)) {
       expect(state.acknowledged).toBe(false);
       expect(state.blockReason).not.toBeNull();
     }
     await settle();
     expect(gate.acknowledged).toBe(false);
-    expect(gate.blockReason).toBe(ACKNOWLEDGE);
+    expect(gate.blockReason).toBe(LOOKALIKE);
   });
 
   it('ignores a late verdict for a previous recipient', async () => {
@@ -237,7 +281,7 @@ describe('useRedbellyTxGate', () => {
 
     await act(async () => bob.resolve('NOT_REGISTERED'));
     expect(gate.verdict).toBe('NOT_REGISTERED');
-    expect(gate.blockReason).toBe(ACKNOWLEDGE);
+    expect(gate.blockReason).toBe(BLOCKED);
   });
 
   it('does not hold signing when the check fails (UNKNOWN)', async () => {
@@ -246,6 +290,7 @@ describe('useRedbellyTxGate', () => {
     await render(send(ALICE));
     await settle();
     expect(gate.verdict).toBe('UNKNOWN');
+    expect(gate.blocked).toBe(false);
     expect(gate.needsAcknowledgement).toBe(false);
     expect(gate.blockReason).toBeNull();
   });
@@ -265,7 +310,7 @@ describe('useRedbellyTxGate', () => {
       recipient: ALICE,
       token: BOB,
     });
-    expect(gate.blockReason).toBe(ACKNOWLEDGE);
+    expect(gate.blockReason).toBe(BLOCKED);
   });
 
   it('reports a contract call without holding signing', async () => {

@@ -1,5 +1,5 @@
 import {
-  requiresAcknowledgement,
+  blocksSigning,
   isCritical,
   verdictFor,
 } from '@/utils/redbelly/verdict';
@@ -51,27 +51,27 @@ describe('isCritical', () => {
   });
 });
 
-describe('requiresAcknowledgement', () => {
+describe('blocksSigning', () => {
   // US12 / FR7: the capability the Snap did not have. A Snap can annotate a
   // confirmation but never hold it; the fork waits for "I understand the
   // risks" before signing.
   it('holds signing to a confirmed unregistered recipient', () => {
-    expect(requiresAcknowledgement('NOT_REGISTERED')).toBe(true);
+    expect(blocksSigning('NOT_REGISTERED')).toBe(true);
   });
 
   it('allows signing when the check could not run', () => {
     // Redbelly exposes a single public RPC endpoint with no failover. Holding
     // here would make a node outage indistinguishable from a bricked wallet,
     // so UNKNOWN warns loudly (NFR2) and lets the user proceed.
-    expect(requiresAcknowledgement('UNKNOWN')).toBe(false);
+    expect(blocksSigning('UNKNOWN')).toBe(false);
   });
 
   it('allows signing to a contract', () => {
-    expect(requiresAcknowledgement('CONTRACT')).toBe(false);
+    expect(blocksSigning('CONTRACT')).toBe(false);
   });
 
   it('allows signing to a registered recipient', () => {
-    expect(requiresAcknowledgement('REGISTERED')).toBe(false);
+    expect(blocksSigning('REGISTERED')).toBe(false);
   });
 
   it('holds exactly the verdicts it escalates, and no others', () => {
@@ -84,7 +84,7 @@ describe('requiresAcknowledgement', () => {
       'UNKNOWN',
     ] as const;
     verdicts.forEach((verdict) => {
-      expect(requiresAcknowledgement(verdict)).toBe(isCritical(verdict));
+      expect(blocksSigning(verdict)).toBe(isCritical(verdict));
     });
   });
 });

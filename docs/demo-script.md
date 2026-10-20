@@ -68,14 +68,11 @@ Section 2 of the dApp. For each, point at the **Redbelly checks** panel.
    available.
    > Registered means a verified person controls it - not that it's the
    > person you meant. That's why the full address is shown, not 0x12...ab.
-2. **To an unregistered account** -> **Not registered** (red), and **Sign
-   is disabled** until you tick *I understand the risks and want to
-   continue*. Tick it, then Cancel. (Sign only becomes clickable if the
-   account can also pay the fee - with an unfunded account it stays grey
-   for that reason.)
-   > This is the capability a Snap doesn't have: the wallet holds the
-   > signature. We chose warn-and-confirm over a hard block, so an informed
-   > user can still proceed.
+2. **To an unregistered account** -> **Not registered** (red), *Signing is
+   blocked*, and **Sign stays disabled** - there is no tick box. Cancel.
+   > This is the capability a Snap doesn't have: the wallet refuses the
+   > signature. An account outside the network can't spend what it is sent,
+   > so there is nothing for the user to accept.
 3. **Call a contract** -> *Calling*, **Contract address** (grey), and the
    orange note *Only the contract above was checked*.
    > Contracts are never KYC-registered, so a warning there would fire on
@@ -125,17 +122,19 @@ Section 3 of the dApp.
 > - Redbelly only: built-in networks, other chains refused.
 > - Every payment checked against Redbelly's KYC list before signing, with
 >   the real recipient decoded from token transfers and approvals.
-> - Unregistered recipients and address-poisoning lookalikes need an explicit
->   "I understand the risks".
+> - Unregistered recipients are refused; address-poisoning lookalikes need
+>   an explicit "I understand the risks".
 > - No data to third parties.
 > - What it doesn't do: no phishing-site warnings or transaction simulation,
 >   and funds a contract forwards on aren't checked.
 
 ## Likely questions
 
-- **Why not block outright?** A team decision: warn and confirm, matching the
-  Send page. The client's original ask was a hard block; it is a one-line
-  change (`utils/redbelly/verdict.ts`).
+- **Why block outright instead of warning?** It is what the client asked
+  for. Nobody can spend from an account that is not on the permission list,
+  so a payment there is lost until its owner registers. A failed check
+  (*Could not verify*) is not blocked, so an outage doesn't brick the
+  wallet.
 - **Why fork Rabby, not MetaMask?** MIT licensed, its signing screen is its
   own code, and it already supports RPC-only networks. MetaMask Snaps can
   annotate a confirmation but not hold it.

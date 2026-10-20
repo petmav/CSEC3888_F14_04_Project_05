@@ -42,8 +42,6 @@ export const enum RiskType {
   CEX_NO_DEPOSIT = 4,
 
   FORBIDDEN_TIP = 5,
-  /** Redbelly recipient is confirmed not KYC registered. */
-  REDBELLY_NOT_VERIFIED = 6,
   /** The Redbelly check could not run; silence must not read as safe. */
   REDBELLY_UNKNOWN = 7,
   /** Imitates an address the user has paid before (address poisoning). */
@@ -56,7 +54,6 @@ const riskTypePriority = {
   [RiskType.CONTRACT_ADDRESS]: 10e1,
   [RiskType.SCAM_ADDRESS]: 10e3,
   [RiskType.FORBIDDEN_TIP]: 10e4,
-  [RiskType.REDBELLY_NOT_VERIFIED]: 10e5,
   [RiskType.REDBELLY_UNKNOWN]: 10e2,
   [RiskType.REDBELLY_LOOKALIKE]: 10e4 * 5,
 };
@@ -203,12 +200,6 @@ export const useAddressRisks = (options: {
                 : t(
                     'page.selectToAddress.riskAlert.riskType.risks.contractAddress'
                   ),
-          }
-        : null,
-      isRedbelly && redbellyVerdict === 'NOT_REGISTERED'
-        ? {
-            type: RiskType.REDBELLY_NOT_VERIFIED,
-            value: t('page.sendToken.redbelly.notVerified'),
           }
         : null,
       isRedbelly && redbellyVerdict === 'UNKNOWN'

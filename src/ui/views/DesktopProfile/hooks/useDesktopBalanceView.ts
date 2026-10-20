@@ -167,12 +167,39 @@ export const useDesktopBalanceView = ({ address }: { address?: string }) => {
   const isRefreshing =
     balanceLoading || curveLoading || isBalanceLoading || isCurveLoading;
 
+  // The grey placeholder over the amount and the chart is for a first load,
+  // when there is nothing to show yet. A refresh keeps the figures on screen
+  // and the refresh icon spins instead: Redbelly answers almost at once, so
+  // showing the placeholder again only made it flash.
+  const isLoadingNow = isBalanceLoading || isCurveLoading;
+  const sawLoadingRef = useRef(false);
+  const [settledFor, setSettledFor] = useState<string | undefined>();
+  const hasCache = !!currentHomeBalanceCache;
+
+  useEffect(() => {
+    sawLoadingRef.current = false;
+  }, [address]);
+
+  useEffect(() => {
+    if (isLoadingNow) {
+      sawLoadingRef.current = true;
+      return;
+    }
+    if (sawLoadingRef.current || hasCache) {
+      setSettledFor(address);
+    }
+  }, [isLoadingNow, hasCache, address]);
+
+  const isSkeletonLoading =
+    isLoadingNow && !(!!address && settledFor === address);
+
   return {
     balance,
     evmBalance,
     curveChartData,
     isCurveLoading,
     isBalanceLoading,
+    isSkeletonLoading,
     isRefreshing,
     refreshCurve,
     refreshBalance,

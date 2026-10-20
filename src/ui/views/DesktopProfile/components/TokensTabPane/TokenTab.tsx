@@ -32,6 +32,8 @@ interface Props {
   selectChainId?: string;
   searchValue: string;
   setSearchValue: (value: string) => void;
+  /** Bumped by the page's refresh button; re-reads Redbelly balances in place. */
+  refreshSignal?: number;
 }
 
 const StyledInput = styled(Input)`
@@ -51,6 +53,7 @@ export const TokenTab = ({
   setLpTokenMode,
   searchValue,
   setSearchValue,
+  refreshSignal,
 }: Props) => {
   const { t } = useTranslation();
   const currentAccount = useCurrentAccount();
@@ -156,6 +159,7 @@ export const TokenTab = ({
 
       {isMainnet && !searchValue ? (
         <RedbellyAssetSection
+          refreshSignal={refreshSignal}
           selectChainId={selectChainId ?? null}
           visible
           fluid

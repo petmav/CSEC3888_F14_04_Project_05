@@ -71,6 +71,7 @@ import { getKRCategoryByType } from '@/utils/transaction';
 import { filterRbiSource, useRbiSource } from '@/ui/utils/ga-event';
 import { findChain, findChainByEnum, findChainByID } from '@/utils/chain';
 import { isRedbellyChainId } from '@/constant/redbelly';
+import { blocksSigning } from '@/utils/redbelly/verdict';
 import { useRedbellyStore } from '@/ui/state/redbelly';
 import { buildRedbellyNativeToken } from '@/utils/redbelly/token';
 import { Chain } from '@debank/common';
@@ -793,6 +794,12 @@ const SendToken = () => {
       ? redbellyRecipient.verdict
       : null;
 
+  // A confirmed unregistered recipient cannot be sent to at all (no tick box).
+  const redbellyBlockedReason =
+    isRedbelly && redbellyVerdict && blocksSigning(redbellyVerdict)
+      ? t('page.sendToken.redbelly.blocked')
+      : null;
+
   const { loading: loadingRisks, risks } = useAddressRisks({
     isRedbelly,
     redbellyVerdict,
@@ -907,6 +914,7 @@ const SendToken = () => {
 
   const canSubmit =
     canSubmitBasic &&
+    !redbellyBlockedReason &&
     !loadingRisks &&
     (!hasRiskForToAddress || agreeRequiredChecked) &&
     (!hasRiskForToken || agreeRequiredChecked);
@@ -1151,6 +1159,11 @@ const SendToken = () => {
       forceSignPage,
     }: FormSendToken & { forceSignPage?: boolean }) => {
       if (!currentToken || !currentAccount?.address) {
+        return;
+      }
+      // Enter in the amount box submits the form without going through the
+      // disabled button, so the block is enforced here too.
+      if (redbellyBlockedReason) {
         return;
       }
       if (!isGnosisReplaceContextReady) {
@@ -3514,6 +3527,7 @@ const SendToken = () => {
           </div>
 
           <BottomArea
+            blockedReason={redbellyBlockedReason}
             mostImportantRisks={mostImportantRisks}
             agreeRequiredChecked={agreeRequiredChecked}
             onCheck={(newVal) => {

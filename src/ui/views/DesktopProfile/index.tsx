@@ -121,6 +121,7 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
     curveChartData,
     isBalanceLoading,
     isCurveLoading,
+    isSkeletonLoading,
     isRefreshing,
     appChainIds,
     refreshBalance,
@@ -132,7 +133,28 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
 
   const isUpdating = isBalanceLoading || isCurveLoading;
   const [updatedAt, setUpdatedAt] = useState(Date.now());
-  const [refreshKey, setRefreshKey] = useState(0);
+  // Refresh updates the page in place. It used to remount the whole card,
+  // which reset the tab bar's ink bar and TokenTab's state (showing "No
+  // Tokens" until the Redbelly rows loaded again) even when nothing changed.
+  const [refreshTick, setRefreshTick] = useState(0);
+  // NFTs, Transactions and Approvals only fetch when they mount, so these
+  // panes are remounted - and only while one of them is the open tab.
+  const [nftRefreshKey, setNftRefreshKey] = useState(0);
+  const [transactionsRefreshKey, setTransactionsRefreshKey] = useState(0);
+  const [approvalsRefreshKey, setApprovalsRefreshKey] = useState(0);
+
+  const bumpRefresh = useMemoizedFn(() => {
+    setRefreshTick((prev) => prev + 1);
+    if (activeTab === 'nft') {
+      setNftRefreshKey((prev) => prev + 1);
+    }
+    if (activeTab === 'transactions') {
+      setTransactionsRefreshKey((prev) => prev + 1);
+    }
+    if (activeTab === 'approvals') {
+      setApprovalsRefreshKey((prev) => prev + 1);
+    }
+  });
 
   useEffect(() => {
     if (!isUpdating) {
@@ -171,7 +193,7 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
       expiredNft(currentAccount.address);
     }
 
-    setRefreshKey((prev) => prev + 1);
+    bumpRefresh();
     refreshPositions();
     refreshBalance();
     refreshCurve();
@@ -182,7 +204,7 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
       expiredNft(currentAccount.address);
     }
 
-    setRefreshKey((prev) => prev + 1);
+    bumpRefresh();
     refreshPositions();
     refreshBalanceAndCurveIfExpired();
   });
@@ -245,7 +267,6 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
             <div className="flex items-start gap-[20px]">
               <main className="flex-1" id={PORTFOLIO_LIST_ID}>
                 <div
-                  key={refreshKey}
                   className={clsx(
                     'border border-t-0 border-solid border-rb-neutral-line',
                     'rounded-[20px] rounded-t-none'
@@ -255,7 +276,7 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                     balance={balance}
                     evmBalance={evmBalance}
                     curveChartData={curveChartData}
-                    isLoading={isBalanceLoading || isCurveLoading}
+                    isLoading={isSkeletonLoading}
                     isRefreshing={isRefreshing}
                     onRefresh={handleUpdate}
                     appChainIds={appChainIds}
@@ -314,6 +335,7 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                         hasTokens={!!hasTokens}
                         lpTokenMode={lpTokenMode}
                         setLpTokenMode={setLpTokenMode}
+                        refreshSignal={refreshTick}
                       />
                     </Tabs.TabPane>
                     <Tabs.TabPane
@@ -339,13 +361,14 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                       </>
                     </Tabs.TabPane>
                     <Tabs.TabPane tab="NFTs" key="nft">
-                      <NFTTabPane />
+                      <NFTTabPane key={nftRefreshKey} />
                     </Tabs.TabPane>
                     <Tabs.TabPane
                       tab={t('page.desktopProfile.tabs.transactions')}
                       key="transactions"
                     >
                       <TransactionsTabPane
+                        key={transactionsRefreshKey}
                         scrollContainerRef={scrollContainerRef}
                       />
                     </Tabs.TabPane>
@@ -355,7 +378,7 @@ const DesktopProfileContent: React.FC<DesktopProfileProps> = ({
                     >
                       <ApprovalsTabPane
                         isDesktop={true}
-                        key={`${currentAccount?.address}-${currentAccount?.type}`}
+                        key={`${currentAccount?.address}-${currentAccount?.type}-${approvalsRefreshKey}`}
                       />
                     </Tabs.TabPane>
                   </Tabs>

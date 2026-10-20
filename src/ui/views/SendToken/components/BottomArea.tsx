@@ -15,6 +15,7 @@ import { ReactComponent as RcIconCheckboxUncheck } from '@/ui/assets/send-token/
 const isTab = getUiType().isTab;
 
 export default function BottomArea({
+  blockedReason = null,
   mostImportantRisks,
   agreeRequiredChecked,
   onCheck,
@@ -26,6 +27,8 @@ export default function BottomArea({
   signatureInstance,
   onConfirm,
 }: {
+  /** Sending is refused outright; shown with no way to acknowledge it. */
+  blockedReason?: string | null;
   mostImportantRisks: { value: string }[];
   agreeRequiredChecked: boolean;
   onCheck: (nextVal: boolean) => void;
@@ -40,11 +43,28 @@ export default function BottomArea({
   const { t } = useTranslation();
 
   const canSubmit =
-    _canSubmit && (!mostImportantRisks.length || agreeRequiredChecked);
+    !blockedReason &&
+    _canSubmit &&
+    (!mostImportantRisks.length || agreeRequiredChecked);
 
   return (
     <div className={clsx('footer px-[20px]', isTab ? 'rounded-b-[16px]' : '')}>
-      {!!mostImportantRisks.length && (
+      {blockedReason ? (
+        <div
+          className="risks-wrapper mb-[8px]"
+          data-testid="redbelly-send-blocked"
+        >
+          <div className="risks-alert bg-r-red-light p-[12px] rounded-[8px]">
+            <div className="flex items-center justify-center">
+              <RcIconRiskAlert width={20} height={20} />
+              <span className="risks-text ml-[8px] text-r-red-default">
+                {blockedReason}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {!blockedReason && !!mostImportantRisks.length && (
         <div className="risks-wrapper mb-[8px]">
           <div className="risks-alert bg-r-red-light p-[12px] rounded-[8px]">
             {mostImportantRisks.map((risk) => (
