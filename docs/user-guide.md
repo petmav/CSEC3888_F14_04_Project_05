@@ -21,7 +21,13 @@ Redbelly Wallet is not in the Chrome Web Store. Install it from a release:
 5. Pin the extension from the puzzle-piece menu so its icon stays visible.
 
 To update, unzip the new release over the same folder and click the reload
-icon on the extension's card. Your accounts are kept.
+icon on the extension's card. Your accounts are kept. Do not click
+**Remove** to update: removing the extension deletes its stored accounts.
+
+From 0.2.0 the extension has a fixed ID (`lelgeoefhdhdcgdoebfekbcmiibkohld`)
+instead of one derived from the folder path. 0.1.0 had no fixed ID, so
+upgrading from 0.1.0 loads as a new, empty wallet: re-import your seed phrase
+or private key.
 
 If you also have MetaMask or another wallet installed, dApps may pick that
 one instead. Disable the other wallet while using Redbelly Wallet.
